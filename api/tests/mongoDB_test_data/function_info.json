@@ -1,0 +1,42 @@
+[
+       {
+        "pathToProject": "|path|to|project|proj1",
+        "pathToFile": "/path/to/project/proj1/util.js",
+        "fileName": "util.js",
+        "functionName": "deleteAllFiles",
+        "functionHash": "sdg7sdfg98fsd7g98dfs7df",
+        "pathToCache": "/cache/my_project/external/util-delete-all-files.js",
+        "cyclomaticComplexity": 68,
+        "dependents": 24,
+        "dependencies": 10,
+        "numberOfTests": 90,
+        "haveFunctionChanged": true
+    },
+    {
+        "pathToProject": "|path|to|project|proj1",
+        "pathToFile": "/path/to/project/proj1/util.js",
+        "fileName": "util.js",
+        "functionName": "addAllFiles",
+        "functionHash": "asdasdasdsdddddddd",
+        "pathToCache": "/cache/my_project/external/util-delete-all-files.js",
+        "cyclomaticComplexity": 68,
+        "dependents": 24,
+        "dependencies": 10,
+        "numberOfTests": 90,
+        "haveFunctionChanged": true
+    },
+    {
+        "pathToProject": "|path|to|project|proj1",
+        "pathToFile": "/path/to/project/proj1/util.js",
+        "fileName": "util.js",
+        "functionName": "editAllFiles",
+        "functionHash": "sdfsdfsdfsdfd",
+        "pathToCache": "/cache/my_project/external/util-delete-all-files.js",
+        "cyclomaticComplexity": 68,
+        "dependents": 24,
+        "dependencies": 10,
+        "numberOfTests": 90,
+        "haveFunctionChanged": true
+    }
+]
+

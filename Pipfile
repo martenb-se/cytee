@@ -12,6 +12,8 @@ pymongo = "==4.0.2"
 flask-socketio = "==5.1.1"
 python-dotenv = "==0.20.0"
 pytest = "==7.1.1"
+pytest-mock = "==3.7.0"
+pytest-mongodb = "==2.2.0"
 
 [dev-packages]
 

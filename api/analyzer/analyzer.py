@@ -1,9 +1,19 @@
 import esprima
 from copy import deepcopy
 
+from api.analyzer.coupling import calculate_dependencies
+from api.analyzer.logging_analyzer import logging
+from enum import Enum
 
-class HandleEsprima:
-    """Esprima handler
+
+class IdentifierTypes(Enum):
+    VARIABLE = 1
+    CLASS = 2
+    STATIC_METHOD = 3
+
+
+class EsprimaAnalyze:
+    """Esprima handler for analyzing file contents
 
     :param file_source: The file source code to use.
     :type file_source: str
@@ -16,140 +26,208 @@ class HandleEsprima:
             raise ValueError("'file_source' cannot be empty")
 
         try:
-            self.file_source = file_source
             self.esprima_tree = esprima.parseModule(file_source, {"range": True})
         except Exception:
             raise ValueError("'file_source' string could not be parsed.")
 
-    def __generate_function_declaration(self, current_node, **kwargs):
-        declaration_kind = kwargs.get('current_declaration_kind', "")
-        variable_chain = kwargs.get('variable_chain', [])
-        function_declaration = declaration_kind + " "
+        self.file_source = file_source
+        self.processed_functions = []
 
-        if len(variable_chain) == 0:
-            raise ValueError("Keyword arg 'variable_chain' is empty. Cannot create a declaration for an anonymous "
-                             "function")
+    def __append_to_identifier_chain(self, identifier_type, identifier_name, **old_kwargs):
+        if identifier_type is not IdentifierTypes.VARIABLE and \
+                identifier_type is not IdentifierTypes.CLASS and \
+                identifier_type is not IdentifierTypes.STATIC_METHOD:
+            raise ValueError("Unknown 'identifier_type': " + str(identifier_type))
 
-        function_declaration = function_declaration + variable_chain[0]
+        kwargs_pass = deepcopy(old_kwargs)
+        identifier_chain = kwargs_pass.get('identifier_chain', [])
+        identifier_chain.append({
+            'type': identifier_type,
+            'name': identifier_name
+        })
+        kwargs_pass['identifier_chain'] = identifier_chain
+        return kwargs_pass
 
-        for declaration_chain_length in range(1, len(variable_chain)):
-            function_declaration = \
-                function_declaration + \
-                " = {};\n" + \
-                '.'.join(variable_chain[:(declaration_chain_length + 1)]) + " "
+    def __append_to_class_arguments(self, current_node, **old_kwargs):
+        kwargs_pass = deepcopy(old_kwargs)
+        class_arguments = kwargs_pass.get('class_arguments', [])
 
-        function_declaration = \
-            function_declaration + \
-            " = " + \
-            self.file_source[current_node.range[0]:current_node.range[1]] + \
-            ";"
+        found_arguments = []
+        if hasattr(current_node, 'body') and hasattr(current_node.body, 'body') and \
+                isinstance(current_node.body.body, list):
+            for decl_in_class in current_node.body.body:
+                if isinstance(decl_in_class, esprima.nodes.MethodDefinition) and \
+                        decl_in_class.key.name == 'constructor':
+                    for param in decl_in_class.value.params:
+                        self.__handle_argument_types(found_arguments, param)
 
-        return function_declaration
+        class_arguments.append({
+            'identifier': self.__handle_found_function_get_identifier(**kwargs_pass),
+            'arguments': found_arguments
+        })
+
+        kwargs_pass['class_arguments'] = class_arguments
+
+        return kwargs_pass
+
+    def __handle_found_function_add(self, current_node, **kwargs):
+        self.processed_functions.append({
+            "declaration_kind": self.__handle_found_function_get_declaration_kind(**kwargs),
+            "identifier": self.__handle_found_function_get_identifier(**kwargs),
+            "function_definition": self.__handle_found_function_get_definition(current_node),
+            "arguments": self.__handle_function_get_arguments(current_node),
+            "class_arguments": self.__handle_function_get_class_arguments(**kwargs),
+            "source_code_range": self.__handle_function_get_source_code_range(current_node),
+            "identifier_chain": kwargs.get('identifier_chain', []),
+            "function_ast": current_node
+        })
+
+    def __handle_found_function_get_declaration_kind(self, **kwargs):
+        return kwargs.get('current_declaration_kind', "")
+
+    def __handle_found_function_get_identifier(self, **kwargs):
+        identifier_string = ""
+
+        identifier_chain = kwargs.get('identifier_chain', [])
+        for chain_index, current_identifier in enumerate(identifier_chain):
+            if current_identifier['type'] is IdentifierTypes.VARIABLE or \
+                    current_identifier['type'] is IdentifierTypes.STATIC_METHOD:
+                if len(identifier_string) > 0:
+                    identifier_string += "." + current_identifier['name']
+                else:
+                    identifier_string += current_identifier['name']
+            elif current_identifier['type'] is IdentifierTypes.CLASS:
+                if len(identifier_string) > 0:
+                    if (chain_index + 1) < len(identifier_chain) and \
+                            identifier_chain[chain_index + 1]['type'] is IdentifierTypes.STATIC_METHOD:
+                        identifier_string += "." + current_identifier['name']
+                    else:
+                        identifier_string += "(new " + identifier_string + "." + current_identifier['name'] + "())"
+                else:
+                    if (chain_index + 1) < len(identifier_chain) and \
+                            identifier_chain[chain_index + 1]['type'] is IdentifierTypes.STATIC_METHOD:
+                        identifier_string += current_identifier['name']
+                    else:
+                        identifier_string += "(new " + current_identifier['name'] + "())"
+
+        return identifier_string
+
+    def __handle_found_function_get_definition(self, current_node):
+        return self.file_source[current_node.range[0]:current_node.range[1]]
+
+    def __handle_argument_types(self, arguments, current_parameter):
+        if isinstance(current_parameter, esprima.nodes.Identifier):
+            self.__handle_argument_type_identifier(arguments, current_parameter)
+        elif isinstance(current_parameter, esprima.nodes.Property):
+            self.__handle_argument_type_property(arguments, current_parameter)
+        elif isinstance(current_parameter, esprima.nodes.ObjectExpression):
+            self.__handle_argument_type_objectexpression(arguments, current_parameter)
+        elif isinstance(current_parameter, esprima.nodes.RestElement):
+            self.__handle_argument_type_restelement(arguments, current_parameter)
+        else:
+            logging.warning("Argument type not yet implemented and cannot be analyzed: " + str(type(current_parameter)))
+
+    def __handle_argument_type_identifier(self, arguments, current_parameter):
+        arguments.append(current_parameter.name)
+
+    def __handle_argument_type_property(self, arguments, current_parameter):
+        self.__handle_argument_types(arguments, current_parameter.key)
+
+    def __handle_argument_type_objectexpression(self, arguments, current_parameter):
+        object_argument = []
+        for current_property in current_parameter.properties:
+            self.__handle_argument_types(object_argument, current_property)
+
+        arguments.append(object_argument)
+
+    def __handle_argument_type_restelement(self, arguments, current_parameter):
+        arguments.append(['...'])
+
+    def __handle_function_get_arguments(self, current_node):
+        arguments = []
+        if isinstance(current_node.params, list):
+            for param in current_node.params:
+                self.__handle_argument_types(arguments, param)
+
+        return arguments
+
+    def __handle_function_get_class_arguments(self, **kwargs):
+        return kwargs.get('class_arguments', [])
+
+    def __handle_function_get_source_code_range(self, current_node):
+        return current_node.range
 
     def __handle_estree_list(self, path, current_node, **kwargs):
-        # [{}, {}, {}, ...] -- TODO: Remove comment when done
         for index, node_in_list in enumerate(current_node):
             self.__find_all_functions(path + str(index + 1) + "/", node_in_list, **kwargs)
 
     def __handle_estree_esprima_nodes_module(self, path, current_node, **kwargs):
-        # 'type', 'sourceType', 'body', 'range' -- TODO: Remove comment when done
-        print(path)  # -- TODO: Remove line when done
-
-        # Enter 'body' -- TODO: Remove comment when done
+        logging.debug("AST Path: " + path)
         self.__find_all_functions(path + "body/", current_node.body, **kwargs)
 
-    def __handle_estree_esprima_nodes_importdeclaration(self, path, current_node, **kwargs):
-        # print("ImportDeclaration", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'specifiers', 'source', 'range' -- TODO: Remove comment when done
-        # Stop here. Not interesting. -- TODO: Remove comment when done
-        return
-
     def __handle_estree_esprima_nodes_variabledeclaration(self, path, current_node, **kwargs):
-        # print("VariableDeclaration", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'declarations', 'kind', 'range' -- TODO: Remove comment when done
-        print(path)  # -- TODO: Remove line when done
-
-        # Enter 'declarations' -- TODO: Remove comment when done
-        kwargs['current_declaration_kind'] = current_node.kind
-        self.__find_all_functions(path + "declarations/", current_node.declarations, **kwargs)
+        logging.debug("AST Path: " + path)
+        kwargs_pass = deepcopy(kwargs)
+        kwargs_pass['current_declaration_kind'] = current_node.kind
+        self.__find_all_functions(path + "declarations/", current_node.declarations, **kwargs_pass)
 
     def __handle_estree_esprima_nodes_variabledeclarator(self, path, current_node, **kwargs):
-        # print("VariableDeclarator", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'id', 'init', 'range' -- TODO: Remove comment when done
-        print(path)  # -- TODO: Remove line when done
-
-        # Set variable chain -- TODO: Remove comment when done
-        kwargs_pass = deepcopy(kwargs)
-        variable_chain = kwargs_pass.get('variable_chain', [])
-        variable_chain.append(current_node.id.name)
-        kwargs_pass['variable_chain'] = variable_chain
-
-        # Enter 'init' -- TODO: Remove comment when done
+        logging.debug("AST Path: " + path)
+        kwargs_pass = self.__append_to_identifier_chain(IdentifierTypes.VARIABLE, current_node.id.name, **kwargs)
         self.__find_all_functions(path + "init/", current_node.init, **kwargs_pass)
 
     def __handle_estree_esprima_nodes_objectexpression(self, path, current_node, **kwargs):
-        # print("ObjectExpression", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'properties', 'range' -- TODO: Remove comment when done
-        print(path)  # -- TODO: Remove line when done
-
-        # Enter 'properties' -- TODO: Remove comment when done
+        logging.debug("AST Path: " + path)
         self.__find_all_functions(path + "properties/", current_node.properties, **kwargs)
 
     def __handle_estree_esprima_nodes_property(self, path, current_node, **kwargs):
-        # print("Property", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'key', 'computed', 'value', 'kind', 'method', 'shorthand', 'range' -- TODO: Remove comment when done
-        print(path)  # -- TODO: Remove line when done
-
-        # Set variable chain -- TODO: Remove comment when done
-        kwargs_pass = deepcopy(kwargs)
-        variable_chain = kwargs_pass.get('variable_chain', [])
-        variable_chain.append(current_node.key.name)
-        kwargs_pass['variable_chain'] = variable_chain
-
-        # Enter 'value' -- TODO: Remove comment when done
+        logging.debug("AST Path: " + path)
+        kwargs_pass = self.__append_to_identifier_chain(IdentifierTypes.VARIABLE, current_node.key.name, **kwargs)
         self.__find_all_functions(path + "value/", current_node.value, **kwargs_pass)
 
+    def __handle_estree_esprima_nodes_classdeclaration(self, path, current_node, **kwargs):
+        logging.debug("AST Path: " + path)
+        kwargs_pass = self.__append_to_identifier_chain(IdentifierTypes.CLASS, current_node.id.name, **kwargs)
+        kwargs_pass = self.__append_to_class_arguments(current_node, **kwargs_pass)
+        self.__find_all_functions(path + "class_body/", current_node.body, **kwargs_pass)
+
+    def __handle_estree_esprima_nodes_classbody(self, path, current_node, **kwargs):
+        logging.debug("AST Path: " + path)
+        self.__find_all_functions(path + "body/", current_node.body, **kwargs)
+
+    def __handle_estree_esprima_nodes_methoddefinition(self, path, current_node, **kwargs):
+        logging.debug("AST Path: " + path)
+
+        if current_node.static:
+            kwargs_pass = self.__append_to_identifier_chain(IdentifierTypes.STATIC_METHOD, current_node.key.name,
+                                                            **kwargs)
+        else:
+            kwargs_pass = self.__append_to_identifier_chain(IdentifierTypes.VARIABLE, current_node.key.name, **kwargs)
+
+        if current_node.key.name != 'constructor':
+            self.__handle_found_function_add(current_node, **kwargs_pass)
+
     def __handle_estree_esprima_nodes_arrowfunctionexpression(self, path, current_node, **kwargs):
-        # print("ArrowFunctionExpression", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'generator', 'isAsync', 'params', 'body', 'expression', 'range' -- TODO: Remove comment when done
-        print(path)  # -- TODO: Remove line when done
+        logging.debug("AST Path: " + path)
+        self.__handle_found_function_add(current_node, **kwargs)
 
-        declaration_kind = kwargs.get('current_declaration_kind', "")  # -- TODO: Remove line when done
-        print("type:", kwargs.get('current_declaration_kind', ""))  # -- TODO: Remove line when done
-        print("variable:", '.'.join((kwargs.get('variable_chain', []))))  # -- TODO: Remove line when done
-        print("range:", current_node.range)  # -- TODO: Remove line when done
-        print("Variable content")  # -- TODO: Remove line when done
-        print(self.__generate_function_declaration(path, current_node, **kwargs))  # -- TODO: Remove line when done
-        # TODO: Continue from here with more function extractions
-        #   ...
-        #   ...
-        #   ...
-
-    def __handle_estree_esprima_nodes_binaryexpression(self, path, current_node, **kwargs):
-        # print("BinaryExpression", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'operator', 'left', 'right', 'range' -- TODO: Remove comment when done
-        # Stop here. Not interesting.  # -- TODO: Remove line when done
-        return
+    def __handle_estree_esprima_nodes_asyncarrowfunctionexpression(self, path, current_node, **kwargs):
+        logging.debug("AST Path: " + path)
+        self.__handle_found_function_add(current_node, **kwargs)
 
     def __handle_estree_esprima_nodes_exportdefaultdeclaration(self, path, current_node, **kwargs):
-        # print("ExportDefaultDeclaration", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'declaration', 'range' -- TODO: Remove comment when done
-        # Stop here. Not interesting. -- TODO: Remove comment when done
-        return
+        logging.debug("AST Path: " + path)
+        self.__find_all_functions(path + "declaration/", current_node.declaration, **kwargs)
 
     def __handle_estree_esprima_nodes_exportnameddeclaration(self, path, current_node, **kwargs):
-        # print("ExportNamedDeclaration", current_node.keys()) -- TODO: Remove comment when done
-        # 'type', 'declaration', 'specifiers', 'source', 'range' -- TODO: Remove comment when done
-        # Stop here. Not interesting.  # -- TODO: Remove line when done
-        return
+        logging.debug("AST Path: " + path)
+        self.__find_all_functions(path + "declaration/", current_node.declaration, **kwargs)
 
     def __find_all_functions(self, path, current_node, **kwargs):
         if isinstance(current_node, list):
             self.__handle_estree_list(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.Module):
             self.__handle_estree_esprima_nodes_module(path, current_node, **kwargs)
-        elif isinstance(current_node, esprima.nodes.ImportDeclaration):
-            self.__handle_estree_esprima_nodes_importdeclaration(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.VariableDeclaration):
             self.__handle_estree_esprima_nodes_variabledeclaration(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.VariableDeclarator):
@@ -158,22 +236,35 @@ class HandleEsprima:
             self.__handle_estree_esprima_nodes_objectexpression(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.Property):
             self.__handle_estree_esprima_nodes_property(path, current_node, **kwargs)
+        elif isinstance(current_node, esprima.nodes.ClassDeclaration):
+            self.__handle_estree_esprima_nodes_classdeclaration(path, current_node, **kwargs)
+        elif isinstance(current_node, esprima.nodes.ClassBody):
+            self.__handle_estree_esprima_nodes_classbody(path, current_node, **kwargs)
+        elif isinstance(current_node, esprima.nodes.MethodDefinition):
+            self.__handle_estree_esprima_nodes_methoddefinition(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.ArrowFunctionExpression):
             self.__handle_estree_esprima_nodes_arrowfunctionexpression(path, current_node, **kwargs)
-        elif isinstance(current_node, esprima.nodes.BinaryExpression):
-            self.__handle_estree_esprima_nodes_binaryexpression(path, current_node, **kwargs)
+        elif isinstance(current_node, esprima.nodes.AsyncArrowFunctionExpression):
+            self.__handle_estree_esprima_nodes_asyncarrowfunctionexpression(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.ExportDefaultDeclaration):
             self.__handle_estree_esprima_nodes_exportdefaultdeclaration(path, current_node, **kwargs)
         elif isinstance(current_node, esprima.nodes.ExportNamedDeclaration):
             self.__handle_estree_esprima_nodes_exportnameddeclaration(path, current_node, **kwargs)
-        else:
-            print("Unknown type:", type(current_node))
-            return 1
+        elif not isinstance(current_node, esprima.nodes.ImportDeclaration) and\
+                not isinstance(current_node, esprima.nodes.Literal) and \
+                not isinstance(current_node, esprima.nodes.BinaryExpression) and \
+                not isinstance(current_node, esprima.nodes.Identifier):
+            logging.warning("Type not yet implemented and cannot be analyzed: " + str(type(current_node)))
+            return
 
-    def find_all_functions(self):
-        # -- TODO: Add documentation and/or change name
+    def process_functions(self):
+        """ Will walk through the AST and process all found functions.
+
+        :return: A list of all the found functions and their meta data.
+        :rtype: list
+        """
         self.__find_all_functions("/", self.esprima_tree)
-        return 1
+        return self.processed_functions
 
 
 def analyze_files(list_of_files):
@@ -183,8 +274,8 @@ def analyze_files(list_of_files):
     :type list_of_files: list
 
     :raises:
-        TypeError: Explanation here.
-        ValueError: Explanation here.
+        TypeError: If the passed 'list_of_files' is of the wrong type.
+        ValueError: If the passed 'list_of_files' is empty.
 
     :return:
     """
@@ -193,6 +284,8 @@ def analyze_files(list_of_files):
     elif len(list_of_files) < 1:
         raise ValueError("'list_of_files' cannot be empty")
 
+    processed_files = []
+
     for current_file in list_of_files:
         if not isinstance(current_file, str):
             raise ValueError("'list_of_files' must only contain paths to files as STRINGS")
@@ -200,19 +293,19 @@ def analyze_files(list_of_files):
             raise ValueError("Paths in 'list_of_files' cannot be empty strings")
 
         with open(current_file, 'r') as file:
-            print("current_file", current_file)
-            # print("file", file) -- TODO: Remove comment when done
-            # print("file.read()", file.read()) -- TODO: Remove comment when done
-            # parsed_source = esprima.parseModule(file.read(), {"range": True}) -- TODO: Remove comment when done
+            analyze_handler = EsprimaAnalyze(file.read())
+            processed_functions = analyze_handler.process_functions()
 
-            handler = HandleEsprima(file.read())
-            handler.find_all_functions()
+            processed_files.append({
+                'filename': current_file,
+                'processed_functions': processed_functions
+            })
 
-            # TODO: Continue from here with..
-            #   - cache
-            #   - cc
-            #   - coupling
+    # TODO: Remove debug print
+    for processed_file in processed_files:
+        for processed_function in processed_file['processed_functions']:
+            print(processed_file['filename'], processed_function['identifier'], processed_function['arguments'])
 
-            # print(parsed_source) -- TODO: Remove comment when done
+    calculate_dependencies(processed_files)
 
     return 0

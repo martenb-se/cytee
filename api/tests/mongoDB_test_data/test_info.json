@@ -1,0 +1,81 @@
+[
+  {
+   "_id": {
+     "$oid": "0123456789ab0123456789ab"
+   },
+    "pathToProject": "|path|to|project|proj1",
+    "fullPath": "|path|to|project|proj1|external|util:js",
+    "functionName": "function1",
+    "customName": "",
+    "moduleData": {
+      "argumentList": [
+        {
+          "argument": "arg1",
+          "type": "undefined"
+        },
+        {
+          "argument": "arg2",
+          "type": "string",
+          "value": "wawawewa"
+        }
+      ],
+      "returnValue": {
+        "type": "string",
+        "value": "asdasd"
+      }
+    }
+  },
+  {
+   "_id": {
+     "$oid": "0123456789ab0123456789ac"
+   },
+    "pathToProject": "|path|to|project|proj1",
+    "fullPath": "|path|to|project|proj1|external|util:js",
+    "functionName": "deleteAllFiles",
+    "customName": "super test 2",
+    "moduleData": {
+      "argumentList": [
+        {
+          "argument": "errorCode",
+          "type": "NULL"
+        },
+        {
+          "argument": "someString",
+          "type": "string",
+          "value": "wawawewa"
+        }
+      ],
+      "returnValue": {
+        "type": "string",
+        "value": ":("
+      }
+    }
+  },
+  {
+   "_id": {
+     "$oid": "0123456789ab0123456789ad"
+   },
+    "pathToProject": "|path|to|project|proj1",
+    "fullPath": "|path|to|project|proj1|external|util:js",
+    "functionName": "deleteAllFiles",
+    "customName": "super test 3",
+    "moduleData": {
+      "argumentList": [
+        {
+          "argument": "errorCode",
+          "type": "string"
+        },
+        {
+          "argument": "someString",
+          "type": "string",
+          "value": "wowowowowop"
+        }
+      ],
+      "returnValue": {
+        "type": "string",
+        "value": ":)"
+      }
+    }
+  }
+]
+

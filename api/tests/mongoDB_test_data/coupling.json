@@ -1,0 +1,37 @@
+[
+  {
+    "_id":{
+      "$oid": "0123456789ab0123456789ab"
+    },
+    "function": "|path|to|project|proj1|external|util:js-deleteAllFiles",
+    "dependentFunctions": [
+      "|path|to|project|proj1|internal|util:js-deleteNoFiles",
+      "|path|to|project|proj1|internal|util:js-deleteSomeFiles",
+      "|path|to|project|proj1|internal|util:js-deleteThreeFiles"
+    ]
+  },
+    {
+    "_id":{
+      "$oid": "0123456789ab0123456789ac"
+    },
+    "function": "|path|to|project|proj1|external|tools:js-toolest",
+    "dependentFunctions": [
+      "|path|to|project|proj1|internal|bib:js-function1",
+      "|path|to|project|proj1|internal|bob:js-function2",
+      "|path|to|project|proj1|internal|bab:js-function3",
+      "|path|to|project|proj1|internal|bab:js-function4"
+    ]
+  },
+  {
+    "_id":{
+      "$oid": "0123456789ab0123456789ad"
+    },
+    "function": "|path|to|project|proj1|external|main:js-toolest",
+    "dependentFunctions": [
+      "|path|to|project|proj1|internal|bib:js-function1",
+      "|path|to|project|proj1|internal|bob:js-function2",
+      "|path|to|project|proj1|internal|bab:js-function3",
+      "|path|to|project|proj1|internal|bab:js-function4"
+    ]
+  }
+]

@@ -1,4 +1,8 @@
+# IDE
 .idea
+
+# Cache
+/.analyze_cache
 
 # python
 Pipfile.lock

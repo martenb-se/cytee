@@ -46,68 +46,151 @@ def __check_for_valid_arguments(in_arg: list):
                 __check_for_valid_string(arg_name)
 
 
+def __app_to_db_string_conv(in_string: str) -> str:
+    """Returns a string copy of the given string that can be stored in the
+    database. "/" characters are converted to "|" and "." is converted to
+    ":".
+
+    :param in_string: Given string to be converted.
+
+    :return: String suitable for mongoDB databases.
+    """
+    in_string = in_string.replace('/', '|')
+    in_string = in_string.replace('.', ':')
+    return in_string
+
+
+def __db_to_app_string_conv(db_string: str) -> str:
+    """converts a string that has been stored in the database (and
+    therefore conforms to mongoDBs naming restrictions) to a string that
+    can be used in the application.
+
+    :param db_string: Given string to be converted.
+
+    :return: String suitable for the application.
+    """
+
+    app_string = db_string.replace('|', '/')
+    app_string = app_string.replace(':', '.')
+    return app_string
+
+
+def app_to_db_doc_conv(app_document, document_attribute_checker):
+
+    db_document = app_document.copy()
+
+    for attribute, value in db_document.items():
+        if document_attribute_checker[attribute]['app_to_db_conv']:
+            db_document[attribute] = document_attribute_checker[
+                attribute]['app_to_db_conv'](value)
+
+    return db_document
+
+
+def db_to_app_doc_conv(db_document, document_attribute_checker):
+
+    app_document = db_document.copy()
+
+    for attribute, value in app_document.items():
+        if document_attribute_checker[attribute]['db_to_app_conv']:
+            app_document[attribute] = document_attribute_checker[
+                attribute]['db_to_app_conv'](value)
+
+    return app_document
+
+
 FUNCTION_INFO_ATTRIBUTE_CHECKER = {
     '_id': {
         'type': str,
-        'cond': __check_for_valid_id_string
+        'cond': __check_for_valid_id_string,
+        'app_to_db_conv': lambda app_data: ObjectId(app_data),
+        'db_to_app_conv': lambda db_data: str(db_data)
     },
     'pathToProject': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'fileId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'functionId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'arguments': {
         'type': list,
-        'cond': __check_for_valid_arguments
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     },
     'functionRange': {
         'type': tuple,
-        'cond': __check_for_valid_function_range
+        'cond': __check_for_valid_function_range,
+        'app_to_db_conv': lambda app_data: [app_data[0], app_data[1]],
+        'db_to_app_conv': lambda db_data: tuple(db_data)
     },
     'functionHash': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     },
     'dependents': {
         'type': int,
-        'cond': __check_for_valid_number
+        'cond': __check_for_valid_number,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     },
     'dependencies': {
         'type': int,
-        'cond': __check_for_valid_number
+        'cond': __check_for_valid_number,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     },
     'numberOfTests': {
         'type': int,
-        'cond': __check_for_valid_number
+        'cond': __check_for_valid_number,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     },
     'haveFunctionChanged': {
         'type': bool,
-        'cond': None
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     }
 }
 TEST_INFO_ATTRIBUTES_CHECKER = {
     '_id': {
         'type': str,
-        'cond': __check_for_valid_id_string
+        'cond': __check_for_valid_id_string,
+        'app_to_db_conv': lambda app_data: ObjectId(app_data),
+        'db_to_app_conv': lambda db_data: str(db_data)
     },
     'pathToProject': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'fileId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'functionId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'customName': {
         'type': str,
@@ -122,23 +205,39 @@ TEST_INFO_ATTRIBUTES_CHECKER = {
 FUNCTION_COUPLING_ATTRIBUTES_CHECKER = {
     '_id': {
         'type': str,
-        'cond': __check_for_valid_id_string
+        'cond': __check_for_valid_id_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'pathToProject': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'fileId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'functionId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'callerFileId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     },
     'callerFunctionId': {
         'type': str,
-        'cond': __check_for_valid_string
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
     }
 }
 
@@ -308,145 +407,6 @@ class DatabaseHandler:
         self.database = None
         return
 
-    def __app_to_db_string_conv(self, in_string: str) -> str:
-        """Returns a string copy of the given string that can be stored in the
-        database. "/" characters are converted to "|" and "." is converted to
-        ":".
-
-        :param in_string: Given string to be converted.
-
-        :return: String suitable for mongoDB databases.
-        """
-        in_string = in_string.replace('/', '|')
-        in_string = in_string.replace('.', ':')
-        return in_string
-
-    def __db_to_app_string_conv(self, db_string: str) -> str:
-        """converts a string that has been stored in the database (and
-        therefore conforms to mongoDBs naming restrictions) to a string that
-        can be used in the application.
-
-        :param db_string: Given string to be converted.
-
-        :return: String suitable for the application.
-        """
-
-        app_string = db_string.replace('|', '/')
-        app_string = app_string.replace(':', '.')
-        return app_string
-
-    def __function_info_app_to_db_conv(self, function_info: dict) -> dict:
-        """Converts strings in the given function info object to conform to
-        the mongoDB naming restrictions.
-
-        :param function_info: The function info document representation to be
-            converted.
-
-        :return: Function info document suitable for mongoDB databases
-        """
-
-        for item in FUNCTION_INFO_BAD_ATTRIBUTES:
-            if item in function_info:
-                function_info[item] = self.__app_to_db_string_conv(
-                    function_info[item])
-        if '_id' in function_info:
-            function_info['_id'] = ObjectId(function_info['_id'])
-        return function_info
-
-    def __test_info_app_to_db_conv(self, test_info: dict) -> dict:
-        """Converts strings in the given test info object to conform to
-         the mongoDB naming restrictions.
-
-         :param test_info: The test info document representation to be
-             converted.
-
-         :return: Test info document suitable for mongoDB databases
-         """
-
-        for item in TEST_INFO_BAD_ATTRIBUTES:
-            if item in test_info:
-                test_info[item] = self.__app_to_db_string_conv(test_info[item])
-        if '_id' in test_info:
-            test_info['_id'] = ObjectId(test_info['_id'])
-        return test_info
-
-    def __function_coupling_app_to_db_conv(
-            self,
-            function_coupling: dict) -> dict:
-        """Converts strings in the given function coupling object to conform to
-         the mongoDB naming restrictions.
-
-         :param function_coupling: The test info document representation to be
-             converted.
-
-         :return: Function coupling document suitable for mongoDB databases
-         """
-        if 'function' in function_coupling:
-            function_coupling['function'] = self.__app_to_db_string_conv(
-                function_coupling['function'])
-        if 'dependentFunctions' in function_coupling:
-            function_coupling['dependentFunctions'] = [
-                self.__app_to_db_string_conv(item) for item in
-                function_coupling['dependentFunctions']]
-        if '_id' in function_coupling:
-            function_coupling['_id'] = ObjectId(function_coupling['_id'])
-        return function_coupling
-
-    def __function_info_db_to_app_conv(self, function_info: dict) -> dict:
-        """Converts strings in the given function info object in order to
-        be used in the rest of the application.
-
-        :param function_info: The function info document representation to be
-            converted.
-
-        :return: No return value.
-        """
-
-        for item in FUNCTION_INFO_BAD_ATTRIBUTES:
-            if item in function_info:
-                function_info[item] = self.__db_to_app_string_conv(
-                    function_info[item])
-        function_info['_id'] = str(function_info['_id'])
-
-        return function_info
-
-    def __test_info_db_to_app_conv(self, test_info: dict) -> dict:
-        """Converts strings in the given test info object in order to
-        be used in the rest of the application.
-
-        :param test_info: The test info document representation to be
-            converted.
-
-        :return: No return value.
-        """
-
-        for item in TEST_INFO_BAD_ATTRIBUTES:
-            if item in test_info:
-                test_info[item] = self.__db_to_app_string_conv(test_info[item])
-        test_info['_id'] = str(test_info['_id'])
-        return test_info
-
-    def __function_coupling_db_to_app_conv(
-            self,
-            function_coupling: dict) -> dict:
-        """Converts strings in the given function coupling object in order to
-         be used in the rest of the application.
-
-         :param function_coupling: The function coupling document
-            representation to be converted.
-
-         :return: No return value.
-         """
-        if 'function' in function_coupling:
-            function_coupling['function'] = self.__db_to_app_string_conv(
-                function_coupling['function'])
-        if 'dependentFunctions' in function_coupling:
-            function_coupling['dependentFunctions'] = [
-                self.__db_to_app_string_conv(item) for item in
-                function_coupling['dependentFunctions']]
-        function_coupling['_id'] = str(function_coupling['_id'])
-        return function_coupling
-
     def __check_connection(self) -> None:
         """Checks if the instance is connected to a database.
 
@@ -522,15 +482,9 @@ class DatabaseHandler:
             attribute_dict
         )
 
-        if document_attribute == '_id':
-            db_attribute_value = ObjectId(attribute_value)
-        elif document_attribute in bad_attribute_list:
-            if isinstance(attribute_value, list):
-                db_attribute_value = [self.__app_to_db_string_conv(attr_val)
-                                      for attr_val in attribute_value]
-            else:
-                db_attribute_value = self.__app_to_db_string_conv(
-                    attribute_value)
+        if attribute_dict[document_attribute]['app_to_db_conv']:
+            db_attribute_value = attribute_dict[
+                document_attribute]['app_to_db_conv'](attribute_value)
         else:
             db_attribute_value = attribute_value
 
@@ -552,7 +506,7 @@ class DatabaseHandler:
             if not db_documents:
                 return None
 
-            return [db_to_app_conv(docs) for docs in db_documents]
+            return [db_to_app_doc_conv(docs, attribute_dict) for docs in db_documents]
         else:
             return query_function(db_attribute_value)
 
@@ -593,8 +547,7 @@ class DatabaseHandler:
 
         self.__check_connection()
         check_valid_document(document, attribute_dict)
-
-        db_document = app_to_db_conv(document.copy())
+        db_document = app_to_db_doc_conv(document, attribute_dict)
 
         if not query_function:
             db_result = self.database[collection].insert_one(db_document)
@@ -652,7 +605,7 @@ class DatabaseHandler:
         check_valid_attribute_filter(filter_attribute, attribute_dict)
         check_valid_document(updated_document_data, attribute_dict)
 
-        db_document = app_to_db_conv(updated_document_data.copy())
+        db_document = app_to_db_doc_conv(updated_document_data, attribute_dict)
 
         if not filter_attribute_value:
             db_document_filter = db_document[filter_attribute]
@@ -662,14 +615,13 @@ class DatabaseHandler:
                 filter_attribute_value,
                 attribute_dict)
 
-            if filter_attribute == '_id':
-                db_document_filter = ObjectId(filter_attribute_value)
-            elif filter_attribute in bad_attribute_list:
-                db_document_filter = self.__app_to_db_string_conv(
-                    filter_attribute_value)
+            if attribute_dict[filter_attribute]['app_to_db_conv']:
+                db_document_filter = attribute_dict[
+                        filter_attribute][
+                        'app_to_db_conv'](
+                        filter_attribute_value)
             else:
                 db_document_filter = filter_attribute_value
-
         if not query_function:
             self.database[collection].update_one(
                 {filter_attribute: db_document_filter},
@@ -728,15 +680,11 @@ class DatabaseHandler:
             attribute_dict
         )
 
-        if filter_attribute == '_id':
-            db_attribute_filter = ObjectId(filter_attribute_value)
-        elif filter_attribute in bad_attribute_list:
-            if isinstance(filter_attribute_value, list):
-                db_attribute_filter = [self.__app_to_db_string_conv(attr_val)
-                                       for attr_val in filter_attribute_value]
-            else:
-                db_attribute_filter = self.__app_to_db_string_conv(
-                    filter_attribute_value)
+        if attribute_dict[filter_attribute]['app_to_db_conv']:
+            db_attribute_filter = attribute_dict[
+                filter_attribute][
+                'app_to_db_conv'](
+                filter_attribute_value)
         else:
             db_attribute_filter = filter_attribute_value
 
@@ -837,35 +785,14 @@ class DatabaseHandler:
             If the value of attribute_value is invalid for the corresponding
             document_attribute, or if the document_attribute isn't a string.
         """
-        if document_attribute == 'dependentFunctions':
-            def dependent_function_query(db_attribute_value):
-                db_documents = self.database['coupling'].find({
-                    'dependentFunctions': db_attribute_value[0]
-                })
-                if not db_documents:
-                    return None
-
-                return [self.__db_to_app_string_conv(docs['function']) for docs
-                        in db_documents]
-
-            return self.__get_query(
-                collection='coupling',
-                attribute_value=attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                db_to_app_conv=self.__function_coupling_db_to_app_conv,
-                document_attribute=document_attribute,
-                query_function=dependent_function_query
-            )
-        else:
-            return self.__get_query(
-                collection='coupling',
-                attribute_value=attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                db_to_app_conv=self.__function_coupling_db_to_app_conv,
-                document_attribute=document_attribute
-            )
+        return self.__get_query(
+            collection='coupling',
+            attribute_value=attribute_value,
+            attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
+            bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
+            db_to_app_conv=self.__function_coupling_db_to_app_conv,
+            document_attribute=document_attribute
+        )
 
     def add_function_info(self, function_info: any) -> str:
         """Adds a function info document to the database.
@@ -1148,28 +1075,11 @@ class DatabaseHandler:
             if filter_attribute isn't a string.
         """
 
-        if filter_attribute == 'dependentFunctions':
-            def delete_dependents(filter_attribute_str, db_attribute_filter):
-                self.database['coupling'].delete_many({
-                    filter_attribute_str: db_attribute_filter[0]
-                })
-
-            self.__query_remove_one(
-                collection='coupling',
-                filter_attribute=filter_attribute,
-                filter_attribute_value=filter_attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                act_on_first_match=act_on_first_match,
-                query_function=delete_dependents
-            )
-
-        else:
-            self.__query_remove_one(
-                collection='coupling',
-                filter_attribute=filter_attribute,
-                filter_attribute_value=filter_attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                act_on_first_match=act_on_first_match
-            )
+        self.__query_remove_one(
+            collection='coupling',
+            filter_attribute=filter_attribute,
+            filter_attribute_value=filter_attribute_value,
+            attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
+            bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
+            act_on_first_match=act_on_first_match
+        )

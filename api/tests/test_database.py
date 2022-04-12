@@ -35,7 +35,7 @@ def __function_info_data(
         "functionId": file_name,
         "functionHash": function_hash,
         "arguments": [{"util": ['wawaewwa']}],
-        "functionRange": [1, 10],
+        "functionRange": (1, 10),
         "dependents": dependents,
         "dependencies": dependencies,
         "numberOfTests": number_of_tests,
@@ -51,8 +51,8 @@ def __test_info_data(
         custom_name: str = ""):
     data = {
         "pathToProject": proj_path,
-        "fullPath": full_path,
-        "functionName": function_name,
+        "fileId": full_path,
+        "functionId": function_name,
         "customName": custom_name,
         "moduleData": {
             "argumentList": [
@@ -79,15 +79,13 @@ def __function_coupling_data(
         function: str =
         "/path/to/project/proj1/external/util.js-deleteAllFiles",
         dependent_functions: list = None):
-    if dependent_functions is None:
-        dependent_functions = [
-            "/path/to/project/proj1/internal/util.js-deleteNoFiles",
-            "/path/to/project/proj1/internal/util.js-deleteSomeFiles",
-            "/path/to/project/proj1/internal/util.js-deleteThreeFiles"]
     data = {
-        "function": function,
-        "dependentFunctions": dependent_functions
-    }
+        'pathToProject': '/path/to/project/proj1',
+        'fileId': 'file1',
+        'functionId': 'func1',
+        'callerFileId': 'file2',
+        'callerFunctionId': 'fun2'
+        }
     return data
 
 
@@ -438,8 +436,8 @@ def test__query_set_one_filter_attribute_in_updated_doc(mock_db):
     updated_fun_inf = func_inf.copy()
     updated_fun_inf['_id'] = func_inf_id
     updated_fun_inf['pathToProject'] = '/path/is/changed'
-    updated_fun_inf['fileName'] = 'newFile.js'
-    updated_fun_inf['functionName'] = 'doNotDeleteAllFiles'
+    updated_fun_inf['fileId'] = 'newFile.js'
+    updated_fun_inf['functionId'] = 'doNotDeleteAllFiles'
     updated_fun_inf['dependencies'] = 3
     updated_fun_inf['haveFunctionChanged'] = True
 

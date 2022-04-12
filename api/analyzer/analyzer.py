@@ -87,22 +87,6 @@ class AnalyzeJS:
 
                 elif not is_search_result_a_method_call:
                     is_search_result_a_method_parameter = 'params' in search_result
-
-                    """if method == "error":
-                        print("=================================================")
-                        print(self.__get_path_string(search_result))
-                        print(type(self.__go_to_absolute_path(search_result)))
-                        print(type(self.__go_to_absolute_path(search_result[:-1])))
-                        print(type(self.__go_to_absolute_path(search_result[:-2])))
-
-                        parent_parent_node = self.__go_to_absolute_path(search_result[:-2])
-                        if 'callee' in parent_parent_node and \
-                            isinstance(parent_parent_node.callee,
-                                       esprima.nodes.StaticMemberExpression):
-                            print(parent_parent_node.callee)
-
-                        print("=================================================")"""
-
                     if is_search_result_a_method_parameter:
                         string_identity = self.__METHOD_STRING_IDENTITY_IGNORE
                     else:
@@ -179,6 +163,7 @@ class AnalyzeJS:
 
         # TODO: Must be expanded to handle the crazy arguments like:
         #   https://github.com/oldboyxx/jira_clone/blob/26a9e77b1789fef9cb43edb5d6018cf1663cf035/client/src/shared/utils/styles.js#L140
+        #   What this is: https://stackoverflow.com/questions/26578167/es6-object-destructuring-default-parameters
         #   To implement:
         #     - Must support: left hand <class 'esprima.nodes.ObjectExpression'>
         #     - Must support: right hand right <class 'esprima.nodes.StaticMemberExpression'>
@@ -677,4 +662,7 @@ def analyze_files(list_of_files, project_root=""):
         # TODO: Announce to callback or something that file X of Y is being analyzed (needed for loading info)
         analyzer.begin_analyze()
 
-    return 0
+        # TODO: Add ability to save analyzed data to database
+        # TODO: Add caching of analyzed files.
+
+    return

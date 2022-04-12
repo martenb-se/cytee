@@ -34,39 +34,118 @@ def __check_for_valid_id_string(in_arg: str) -> bool:
     return len(in_arg) == 24
 
 
+def __check_for_valid_function_range(in_arg: tuple):
+    return __check_for_valid_number(in_arg[0]) \
+           and __check_for_valid_number(in_arg[1])
+
+
+def __check_for_valid_arguments(in_arg: list):
+    for func_args in in_arg:
+        for args in func_args.items():
+            for arg_name in args:
+                __check_for_valid_string(arg_name)
+
+
 FUNCTION_INFO_ATTRIBUTE_CHECKER = {
-    '_id': {'type': str, 'cond': __check_for_valid_id_string},
-    'pathToProject': {'type': str, 'cond': __check_for_valid_string},
-    'pathToFile': {'type': str, 'cond': __check_for_valid_string},
-    'fileName': {'type': str, 'cond': __check_for_valid_string},
-    'functionName': {'type': str, 'cond': __check_for_valid_string},
-    'functionHash': {'type': str, 'cond': __check_for_valid_string},
-    'pathToCache': {'type': str, 'cond': __check_for_valid_string},
-    'dependents': {'type': int, 'cond': __check_for_valid_number},
-    'dependencies': {'type': int, 'cond': __check_for_valid_number},
-    'numberOfTests': {'type': int, 'cond': __check_for_valid_number},
-    'haveFunctionChanged': {'type': bool, 'cond': None}
+    '_id': {
+        'type': str,
+        'cond': __check_for_valid_id_string
+    },
+    'pathToProject': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'fileId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'functionId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'arguments': {
+        'type': list,
+        'cond': __check_for_valid_arguments
+    },
+    'functionRange': {
+        'type': tuple,
+        'cond': __check_for_valid_function_range
+    },
+    'functionHash': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'dependents': {
+        'type': int,
+        'cond': __check_for_valid_number
+    },
+    'dependencies': {
+        'type': int,
+        'cond': __check_for_valid_number
+    },
+    'numberOfTests': {
+        'type': int,
+        'cond': __check_for_valid_number
+    },
+    'haveFunctionChanged': {
+        'type': bool,
+        'cond': None
+    }
 }
 TEST_INFO_ATTRIBUTES_CHECKER = {
-    '_id': {'type': str, 'cond': __check_for_valid_id_string},
-    'pathToProject': {'type': str, 'cond': __check_for_valid_string},
-    'fullPath': {'type': str, 'cond': __check_for_valid_string},
-    'functionName': {'type': str, 'cond': __check_for_valid_string},
-    'customName': {'type': str, 'cond': None},
-    'moduleData': {'type': dict, 'cond': None}
+    '_id': {
+        'type': str,
+        'cond': __check_for_valid_id_string
+    },
+    'pathToProject': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'fileId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'functionId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'customName': {
+        'type': str,
+        'cond': None
+    },
+    'moduleData': {
+        'type': dict,
+        'cond': None
+    }
 }
 
 FUNCTION_COUPLING_ATTRIBUTES_CHECKER = {
-    '_id': {'type': str, 'cond': __check_for_valid_string},
-    'function': {'type': str, 'cond': __check_for_valid_string},
-    'dependentFunctions': {'type': list, 'cond': lambda in_arg: reduce(
-        lambda x, y: x and y, in_arg, True)}
+    '_id': {
+        'type': str,
+        'cond': __check_for_valid_id_string
+    },
+    'pathToProject': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'fileId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'callerFileId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    },
+    'callerFunctionId': {
+        'type': str,
+        'cond': __check_for_valid_string
+    }
 }
 
-FUNCTION_INFO_BAD_ATTRIBUTES = ['pathToProject', 'pathToFile', 'fileName',
-                                'pathToCache']
-TEST_INFO_BAD_ATTRIBUTES = ['pathToProject', 'fullPath', 'functionName']
-FUNCTION_COUPLING_BAD_ATTRIBUTES = ['function', 'dependentFunctions']
+FUNCTION_INFO_BAD_ATTRIBUTES = ['pathToProject', 'fileId', 'functionId']
+TEST_INFO_BAD_ATTRIBUTES = ['pathToProject', 'fileId', 'functionId']
+FUNCTION_COUPLING_BAD_ATTRIBUTES = ['pathToProject', 'fileId', 'callerFileId',
+                                    'callerFunctionId']
 
 
 def check_valid_document_attribute(

@@ -21,21 +21,21 @@ def mock_db(mocker, mongodb):
 
 def __function_info_data(
         proj_path: str = "/path/to/project/proj1",
-        path_to_file: str = "/path/to/project/proj1/src/utl",
-        file_name: str = "file.js",
+        path_to_file: str = "util",
+        file_name: str = "util.das",
         function_name: str = "function1",
-        function_hash: str = "123jh213j1l23hj23hk1j23",
-        dependents: int = 6,
-        dependencies: int = 4,
-        number_of_tests: int = 7,
-        have_function_changed: bool = False):
+        function_hash: str = "sdg7sdfg98fsd7g98dfs7df",
+        dependents: int = 24,
+        dependencies: int = 10,
+        number_of_tests: int = 90,
+        have_function_changed: bool = True):
     data = {
         "pathToProject": proj_path,
-        "pathToFile": path_to_file,
-        "fileName": file_name,
-        "functionName": function_name,
+        "fileId": path_to_file,
+        "functionId": file_name,
         "functionHash": function_hash,
-        "pathToCache": f"/cache{path_to_file}",
+        "arguments": [{"util": ['wawaewwa']}],
+        "functionRange": [1, 10],
         "dependents": dependents,
         "dependencies": dependencies,
         "numberOfTests": number_of_tests,
@@ -732,17 +732,7 @@ def test__query_remove_custom_query(mock_db):
 
 def test_get_function_info_by_id(mock_db):
     t_db = mock_db
-    expected_func_inf = __function_info_data(
-        proj_path='/path/to/project/proj1',
-        path_to_file='/path/to/project/proj1/util.js',
-        file_name='util.js',
-        function_name='deleteAllFiles',
-        function_hash="sdg7sdfg98fsd7g98dfs7df",
-        dependents=24,
-        dependencies=10,
-        number_of_tests=90,
-        have_function_changed=True
-    )
+    expected_func_inf = __function_info_data()
     expected_func_inf['_id'] = "0123456789ab0123456789ab"
     received_func_inf = t_db.get_function_info("0123456789ab0123456789ab")[0]
     __compare_objects(expected_func_inf, received_func_inf)

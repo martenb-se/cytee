@@ -375,7 +375,7 @@ class DatabaseHandler:
 
         :raises RuntimeError: If instance is not connected to a database.
         """
-        if self.client is not None and self.database is not None:
+        if self.client is None and self.database is None:
             raise RuntimeError("""
                 Tried to send query without connecting to database.
             """)

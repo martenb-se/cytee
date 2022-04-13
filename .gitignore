@@ -7,3 +7,4 @@
 # Ignore lock files
 Pipfile.lock
 package-lock.json
+**/package-lock.json

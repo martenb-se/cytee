@@ -5,7 +5,7 @@ import hashlib
 from api.cache import read_file, save_file, compare_file_cache
 
 MOCK_CACHE_ROOT = \
-    "/home/icean/ownCloud/Study/Exjobb/project/cytee/.analyze_cache"
+    "/some/place/.analyze_cache"
 MOCK_PROJECT_ROOT = \
     "/my/mocked/project"
 MOCK_FILES_AND_CONTENTS = {
@@ -20,6 +20,8 @@ def __copied_cache_hash_function(to_hash):
 
 @pytest.fixture
 def mock_cache_files(mocker, mocker_open, mocker_os_path_isfile):
+    mocker.patch("api.cache.CONFIG_LOCATION_CACHE", MOCK_CACHE_ROOT)
+
     project_root_hash = __copied_cache_hash_function(MOCK_PROJECT_ROOT)
     file_mocks_open = {}
     for mock_file in MOCK_FILES_AND_CONTENTS.keys():
@@ -56,16 +58,6 @@ def mock_cache_files(mocker, mocker_open, mocker_os_path_isfile):
     }
 
 
-def test_cache_read_file_nonexistant(mock_cache_files):
-    file_contents = read_file("/my/mocked/project", "dir/to/missing_file")
-    assert file_contents is False
-
-
-def test_cache_read_file_existing(mock_cache_files):
-    file_contents = read_file("/my/mocked/project", "dir/to/some_file")
-    assert file_contents == "Some file contents here"
-
-
 def test_cache_save_file(mock_cache_files):
     project_root = "/my/mocked/project"
     project_root_hash = __copied_cache_hash_function(project_root)
@@ -83,6 +75,16 @@ def test_cache_save_file(mock_cache_files):
             f"{file_id_hash}.js"]
 
     assert written_file_contents == file_contents_to_write
+
+
+def test_cache_read_file_nonexistant(mock_cache_files):
+    file_contents = read_file("/my/mocked/project", "dir/to/missing_file")
+    assert file_contents is False
+
+
+def test_cache_read_file_existing(mock_cache_files):
+    file_contents = read_file("/my/mocked/project", "dir/to/some_file")
+    assert file_contents == "Some file contents here"
 
 
 def test_compare_file_cache_test(mock_cache_files):

@@ -4,7 +4,6 @@ import esprima
 import re
 from api.analyzer.logging_analyzer import logging
 from api.cache import save_file
-from api.database import database_handler
 
 
 class AnalyzeJS:
@@ -284,21 +283,15 @@ class AnalyzeJS:
 
         :param current_node: The node to find the arguments under.
         :type current_node: esprima.nodes.VariableDeclarator|
-        esprima.nodes.Property|
-        esprima.nodes.FunctionDeclaration|
-        esprima.nodes.MethodDefinition
+        esprima.nodes.Property
 
         :return: An ordered list of method arguments.
         """
         if not (isinstance(current_node, esprima.nodes.VariableDeclarator) or
-                isinstance(current_node, esprima.nodes.Property) or
-                isinstance(current_node, esprima.nodes.FunctionDeclaration) or
-                isinstance(current_node, esprima.nodes.MethodDefinition)):
+                isinstance(current_node, esprima.nodes.Property)):
             logging.warning(
-                "Method arguments cannot be found for unknown node type: "
-                f"{type(current_node)}")
-            # Uncomment to get more information about unhandled type
-            # logging.warning(f"Node information: {current_node}")
+                "Called __find_method_arguments() with unknown node type: " +
+                str(type(current_node)))
 
         function_arguments = []
         if 'value' in current_node.__dict__ and \
@@ -309,9 +302,6 @@ class AnalyzeJS:
                 'params' in current_node.init.__dict__:
             function_arguments = self.__make_argument_list(
                 current_node.init.params)
-        elif 'params' in current_node.__dict__:
-            function_arguments = self.__make_argument_list(
-                current_node.params)
         return function_arguments
 
     def __call_chain_entry_handle_import(
@@ -384,10 +374,7 @@ class AnalyzeJS:
             if chain_entry['name'] in self.class_information:
                 chain_entry['arguments'] = \
                     self.class_information[chain_entry['name']]['arguments']
-            elif self.__find_by_prop_value(
-                    "name",
-                    "constructor",
-                    current_path):
+            else:
                 node_class_constructor = \
                     self.__go_to_absolute_path(
                         self.__find_by_prop_value(
@@ -399,9 +386,7 @@ class AnalyzeJS:
                 self.class_information[chain_entry['name']] = \
                     {'arguments': chain_entry['arguments']}
         elif (isinstance(current_node, esprima.nodes.VariableDeclarator) or
-              isinstance(current_node, esprima.nodes.Property) or
-              isinstance(current_node, esprima.nodes.FunctionDeclaration) or
-              isinstance(current_node, esprima.nodes.MethodDefinition)):
+              isinstance(current_node, esprima.nodes.Property)):
             chain_entry['arguments'] = \
                 self.__find_method_arguments(current_node)
 
@@ -414,10 +399,9 @@ class AnalyzeJS:
                   isinstance(current_node,
                              esprima.nodes.StaticMemberExpression)):
             logging.warning(
-                "Call chain argument handler cannot yet handle type: "
-                f"{type(current_node)}")
-            # Uncomment to get more information about unhandled type
-            # logging.warning(f"Node information: {current_node}")
+                "__call_chain_entry_handle_arguments: not yet checked type: " +
+                str(type(current_node)))
+            logging.warning(str(current_node))
 
     def __create_call_chain_entry(
             self,
@@ -578,308 +562,7 @@ class AnalyzeJS:
 
         return file_identity, '.'.join(identity)
 
-    def __initiate_export_information(self):
-        """Export information tuple initiator with data default.
-
-        :return: The default export information before any information is
-        found.
-        """
-        return "private", ""
-
-    def __make_tuple_export_default(self, method_name):
-        """Create a default export tuple for the given method.
-
-        :param method_name: The name of the method to create the tuple for.
-        :return: The export information tuple.
-        """
-        return "export default", method_name
-
-    def __make_tuple_export_named(self, method_name):
-        """Create a named export tuple for the given method.
-
-        :param method_name: The name of the method to create the tuple for.
-        :return: The export information tuple.
-        """
-        return "export", method_name
-
-    def __match_export_default_information(self, method_name):
-        """Find possible export default declaration information for the given
-        method.
-
-        :param method_name: The method to search for and match.
-        :return: The export information tuple for the given method.
-        """
-        export_type, export_name = self.__initiate_export_information()
-
-        export_default_declarations = \
-            self.__find_all_by_prop_value("type", "ExportDefaultDeclaration")
-
-        for export_default_path in export_default_declarations:
-            export_default_node = \
-                self.__go_to_absolute_path(export_default_path)
-
-            is_export_an_identifier = isinstance(
-                export_default_node.declaration,
-                esprima.nodes.Identifier)
-
-            is_export_an_object = isinstance(
-                export_default_node.declaration,
-                esprima.nodes.ObjectExpression)
-
-            is_export_a_function = isinstance(
-                export_default_node.declaration,
-                esprima.nodes.FunctionDeclaration)
-
-            is_export_a_class = isinstance(
-                export_default_node.declaration,
-                esprima.nodes.ClassDeclaration)
-
-            if is_export_an_identifier:
-                if export_default_node.declaration.name == method_name:
-                    return self.__make_tuple_export_default(method_name)
-
-            elif is_export_an_object:
-                for exported_prop in \
-                        export_default_node.declaration.properties:
-                    if exported_prop.key.name == method_name:
-                        return self.__make_tuple_export_default(method_name)
-
-            elif is_export_a_function or is_export_a_class:
-                if export_default_node.declaration.id.name == method_name:
-                    return self.__make_tuple_export_default(method_name)
-
-            else:
-                logging.warning(
-                    "Export information for 'export default' not yet "
-                    f"supported: {type(export_default_node.declaration)}")
-
-        return export_type, export_name
-
-    def __handle_previously_declared_asset_export_named(
-            self,
-            method_name,
-            export_named_node):
-        """Handle named export for a previously declared asset (const, let,
-        function or class) with the given method name.
-
-        :param method_name: The method to search for.
-        :return: The export information tuple for the given method.
-        """
-        export_type, export_name = self.__initiate_export_information()
-
-        for export_named_instance in export_named_node.specifiers:
-
-            is_exported_named_instance_an_identifier = \
-                isinstance(
-                    export_named_instance.exported,
-                    esprima.nodes.Identifier)
-
-            is_local_named_instance_an_identifier = \
-                isinstance(
-                    export_named_instance.local,
-                    esprima.nodes.Identifier)
-
-            if is_exported_named_instance_an_identifier and \
-                    is_local_named_instance_an_identifier:
-                if export_named_instance.local.name == method_name:
-                    return self.__make_tuple_export_named(
-                        export_named_instance.exported.name)
-
-            else:
-                logging.warning(
-                    "Export information for 'export named' not yet "
-                    "supported. Exported instance is of type: "
-                    f"{type(export_named_instance.exported)} and local "
-                    "instance of type: "
-                    f"{type(export_named_instance.local)}")
-
-        return export_type, export_name
-
-    def __handle_newly_declared_asset_export_named(
-            self,
-            method_name,
-            export_named_node):
-        """Handle named export for a newly declared asset (const, let,
-        function or class) with the given method name.
-
-        :param method_name: The method to search for.
-        :return: The export information tuple for the given method.
-        """
-        export_type, export_name = self.__initiate_export_information()
-
-        is_declaration_a_variabledeclaration = \
-            isinstance(
-                export_named_node.declaration,
-                esprima.nodes.VariableDeclaration)
-
-        is_declaration_a_functiondeclaration = \
-            isinstance(
-                export_named_node.declaration,
-                esprima.nodes.FunctionDeclaration)
-
-        is_declaration_a_classdeclaration = \
-            isinstance(
-                export_named_node.declaration,
-                esprima.nodes.ClassDeclaration)
-
-        if is_declaration_a_variabledeclaration:
-            for export_named_instance in \
-                    export_named_node.declaration.declarations:
-                is_exported_named_instance_a_variable_declarator = \
-                    isinstance(
-                        export_named_instance,
-                        esprima.nodes.VariableDeclarator)
-
-                if is_exported_named_instance_a_variable_declarator:
-                    is_variable_declarator_id_an_identifier = \
-                        isinstance(
-                            export_named_instance.id,
-                            esprima.nodes.Identifier)
-
-                    if is_variable_declarator_id_an_identifier:
-                        if export_named_instance.id.name == method_name:
-                            return self.__make_tuple_export_named(
-                                export_named_instance.id.name)
-
-                    else:
-                        logging.warning(
-                            "Support for id of type: "
-                            f"'{type(export_named_instance.id)}' for newly "
-                            "declared exported variable declaration not yet "
-                            "added.")
-
-                else:
-                    logging.warning(
-                        "Support for newly declared asset export of type: "
-                        f"'{type(export_named_instance)}' not yet added.")
-
-        elif is_declaration_a_functiondeclaration:
-            is_function_declarator_id_an_identifier = \
-                isinstance(
-                    export_named_node.declaration.id,
-                    esprima.nodes.Identifier)
-
-            if is_function_declarator_id_an_identifier:
-                if export_named_node.declaration.id.name == method_name:
-                    return self.__make_tuple_export_named(
-                        export_named_node.declaration.id.name)
-
-                else:
-                    logging.warning(
-                        "Support for id of type: "
-                        f"'{type(export_named_node.declaration)}' for newly "
-                        "declared exported function declaration not yet "
-                        "added.")
-
-        elif is_declaration_a_classdeclaration:
-            is_class_declarator_id_an_identifier = \
-                isinstance(
-                    export_named_node.declaration.id,
-                    esprima.nodes.Identifier)
-
-            if is_class_declarator_id_an_identifier:
-                if export_named_node.declaration.id.name == method_name:
-                    return self.__make_tuple_export_named(
-                        export_named_node.declaration.id.name)
-
-                else:
-                    logging.warning(
-                        "Support for id of type: "
-                        f"'{type(export_named_node.declaration)}' for newly "
-                        "declared exported class declaration not yet "
-                        "added.")
-
-        else:
-            logging.warning(
-                "Called export new declaration handler with unsupported type: "
-                f"{type(export_named_node.declaration)}")
-
-        return export_type, export_name
-
-    def __match_export_named_information(self, method_name):
-        """Find possible named export declaration information for the given
-        method.
-
-        :param method_name: The method to search for and match.
-        :return: The export information tuple for the given method.
-        """
-        export_type, export_name = self.__initiate_export_information()
-
-        export_named_declarations = \
-            self.__find_all_by_prop_value("type", "ExportNamedDeclaration")
-
-        for export_named_path in export_named_declarations:
-            export_named_node = \
-                self.__go_to_absolute_path(export_named_path)
-
-            if len(export_named_node.specifiers) > 0:
-                export_type, export_name = \
-                    self.__handle_previously_declared_asset_export_named(
-                        method_name,
-                        export_named_node)
-
-            if self.__was_export_information_found(export_type, export_name):
-                break
-
-            if export_named_node.declaration is not None:
-                if isinstance(
-                        export_named_node.declaration,
-                        esprima.nodes.VariableDeclaration) or \
-                        isinstance(
-                            export_named_node.declaration,
-                            esprima.nodes.FunctionDeclaration) or \
-                        isinstance(
-                            export_named_node.declaration,
-                            esprima.nodes.ClassDeclaration):
-                    export_type, export_name = \
-                        self.__handle_newly_declared_asset_export_named(
-                            method_name,
-                            export_named_node)
-
-                else:
-                    logging.warning(
-                        "Export information support for type: "
-                        f"{type(export_named_node.declaration)}"
-                        " not yet added.")
-
-        return export_type, export_name
-
-    def __was_export_information_found(self, export_type, export_name):
-        """Check if given export type and name means that export information
-        has been found.
-
-        :param export_type: The export type to check.
-        :param export_name: The export name to check.
-        :return: True if the export information is different from the defaults.
-        """
-        default_export_type, default_export_name = \
-            self.__initiate_export_information()
-        return not (
-                export_type == default_export_type and
-                export_name == default_export_name)
-
-    def __find_export_information_for_asset(self, method_name):
-        """Find any export information for the given method.
-
-        :param method_name: The method to find any export information for.
-        :return: The export information tuple for the given method.
-        """
-        export_type, export_name = \
-            self.__match_export_default_information(method_name)
-
-        if not self.__was_export_information_found(export_type, export_name):
-            export_type, export_name = \
-                self.__match_export_named_information(method_name)
-
-        return export_type, export_name
-
-    def __save_created_method(
-            self,
-            string_identity,
-            current_node,
-            call_chain,
-            export_info,
-            export_name):
+    def __save_created_method(self, string_identity, current_node, call_chain):
         """Save found method creation in the AST to the cache of all found
         method creations.
 
@@ -905,9 +588,7 @@ class AnalyzeJS:
             self.created_functions[string_identity] = \
                 {
                     'current_node': current_node,
-                    'call_chain': call_chain,
-                    'export_info': export_info,
-                    'export_name': export_name
+                    'call_chain': call_chain
                 }
 
     def __handle_node_method_declaration(self, path, current_node):
@@ -952,11 +633,6 @@ class AnalyzeJS:
             file_identity, string_identity = \
                 self.__create_identity_from_call_chain(call_chain)
 
-            #
-            export_info, export_name = \
-                self.__find_export_information_for_asset(
-                    call_chain[0]['name'])
-
             if not (len(call_chain) >= 2 and
                     call_chain[-1][
                         'type'] is esprima.nodes.MethodDefinition and
@@ -965,9 +641,7 @@ class AnalyzeJS:
                 self.__save_created_method(
                     string_identity,
                     current_node,
-                    call_chain,
-                    export_info,
-                    export_name)
+                    call_chain)
 
     def __get_path_string(self, path):
         """Convert the given AST path to a string.
@@ -1162,57 +836,6 @@ class AnalyzeJS:
         return self.__find_method_calls(path_to_function)
 
 
-def __save_data_to_db(
-        project_root="",
-        file_source="",
-        analyzer=None):
-
-    created_functions = analyzer.get_functions()
-
-    for created_function in created_functions:
-        col_arguments = []
-        for call in created_functions[created_function]['call_chain']:
-            col_arguments.append({call['name']: call['arguments']})
-
-        function_dependencies = analyzer.get_method_calls(created_function)
-        for file_identity in function_dependencies:
-            for string_identity in function_dependencies[file_identity]:
-                if string_identity != '!unknown' and \
-                        string_identity != '!ignore':
-                    database_handler.add_function_dependency({
-                        "pathToProject": project_root,
-                        "fileId": analyzer.get_file_identity(),
-                        "functionId": created_function,
-                        "calledFileId": file_identity,
-                        "calledFunctionId": string_identity
-                    })
-
-        current_node = created_functions[created_function]['current_node']
-        function_source = \
-            file_source[current_node.range[0]:current_node.range[1]]
-        function_hash = hashlib.sha256(str.encode(function_source))
-
-        database_handler.add_function_info({
-            "pathToProject": project_root,
-            "fileId": analyzer.get_file_identity(),
-            "functionId": created_function,
-            "arguments": col_arguments,
-            "functionRange": (
-                current_node.range[0],
-                current_node.range[1]),
-            "functionHash": function_hash.hexdigest(),
-            "exportInfo": created_functions[created_function]['export_info'],
-            "exportName": created_functions[created_function]['export_name']
-        })
-
-
-def __save_data_to_cache(
-        project_root="",
-        file_source="",
-        analyzer=None):
-    save_file(project_root, analyzer.get_file_identity(), file_source)
-
-
 def analyze_files(list_of_files, project_root=""):
     """Analyze list of files
 
@@ -1225,12 +848,19 @@ def analyze_files(list_of_files, project_root=""):
         TypeError: If the passed 'list_of_files' is of the wrong type.
         ValueError: If the passed 'list_of_files' is empty.
 
-    :return: Nothing
+    :return: ?
+    TODO: Specify return
     """
     if not isinstance(list_of_files, list):
         raise TypeError("'list_of_files' must be a LIST")
     elif len(list_of_files) < 1:
         raise ValueError("'list_of_files' cannot be empty")
+
+    # TODO: REMOVE DB SAVE EXAMPLE
+    db_save = {
+        "functionInfo": [],
+        "coupling": []
+    }
 
     for file_num, current_file in enumerate(list_of_files):
         if not isinstance(current_file, str):
@@ -1244,7 +874,7 @@ def analyze_files(list_of_files, project_root=""):
             file_source = file.read()
 
         if len(file_source) < 1:
-            logging.info(f"File '{current_file}' is empty, skipping.")
+            logging.warning(f"File '{current_file}' is empty, skipping.")
             continue
 
         analyzer = AnalyzeJS(current_file, project_root=project_root)
@@ -1257,12 +887,71 @@ def analyze_files(list_of_files, project_root=""):
 
         analyzer.begin_analyze()
 
-        __save_data_to_db(
-            project_root=project_root,
-            file_source=file_source,
-            analyzer=analyzer)
+        # TODO: Add ability to save analyzed data to database
+        # TODO: REMOVE DB SAVE EXAMPLE
+        created_functions = analyzer.get_functions()
+        for created_function in created_functions:
+            col_arguments = []
+            for call in created_functions[created_function]['call_chain']:
+                col_arguments.append(
+                    {
+                        call['name']: call['arguments']
+                    })
 
-        __save_data_to_cache(
-            project_root=project_root,
-            file_source=file_source,
-            analyzer=analyzer)
+            function_dependencies = analyzer.get_method_calls(created_function)
+            for file_identity in function_dependencies:
+                for string_identity in function_dependencies[file_identity]:
+                    if string_identity != '!unknown' and \
+                            string_identity != '!ignore':
+                        db_save["coupling"].append(
+                            {
+                                "pathToProject": project_root,
+                                "fileId": analyzer.get_file_identity(),
+                                "functionId": created_function,
+                                "callerFileId": file_identity,
+                                "callerFunctionId": string_identity
+                            }
+                        )
+
+            current_node = created_functions[created_function]['current_node']
+
+            function_source = \
+                file_source[
+                    current_node.range[0]:
+                    current_node.range[1]]
+
+            function_hash = hashlib.sha256(str.encode(function_source))
+
+            db_save["functionInfo"].append({
+                "pathToProject": project_root,
+                "fileId": analyzer.get_file_identity(),
+                "functionId": created_function,
+                "arguments": col_arguments,
+                "functionRange": (
+                    current_node.range[0],
+                    current_node.range[1]),
+                "functionHash": function_hash.hexdigest()
+            })
+
+        # Save file to cache
+        save_file(project_root, analyzer.get_file_identity(), file_source)
+
+    # TODO: REMOVE DB SAVE EXAMPLE
+    print("(DATABASE-SAVE) - Save to table functionInfo:")
+    for function_info in db_save["functionInfo"]:
+        print(f"{' ':<2} New entry:")
+        for function_info_col in function_info.keys():
+            print(f"{' ':<4} {function_info_col:<20} : "
+                  f"{function_info[function_info_col]}")
+        print()
+
+    print()
+    print("(DATABASE-SAVE) - Save to table coupling:")
+    for coupling_info in db_save["coupling"]:
+        print(f"{' ':<2} New entry:")
+        for coupling_info_col in coupling_info.keys():
+            print(f"{' ':<4} {coupling_info_col:<20} : "
+                  f"{coupling_info[coupling_info_col]}")
+        print()
+
+    return

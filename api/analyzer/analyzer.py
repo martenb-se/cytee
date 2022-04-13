@@ -10,7 +10,7 @@ class AnalyzeJS:
     __METHOD_STRING_IDENTITY_UNKNOWN = "!unknown"
     __METHOD_STRING_IDENTITY_IGNORE = "!ignore"
 
-    def __init__(self, file_location, project_root=""):
+    def __init__(self, file_location, project_root):
         """Analyzer for JavaScript project files.
 
         :param file_location: The JS file to analyze.
@@ -25,16 +25,27 @@ class AnalyzeJS:
 
         if not isinstance(project_root, str):
             raise TypeError("'project_root' must be a STRING")
+        elif len(project_root) < 1:
+            raise ValueError("'project_root' cannot be empty")
 
         try:
             with open(file_location, 'r') as file:
                 self.file_source = file.read()
-                self.esprima_tree = esprima.parseModule(self.file_source,
-                                                        {"range": True})
 
-        except Exception:
-            raise ValueError("Contents in file at 'file_location' string "
-                             "could not be parsed.")
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"File at '{file_location}' cannot be found and analyzed.")
+
+        try:
+            self.esprima_tree = esprima.parseModule(self.file_source,
+                                                    {"range": True})
+
+        except esprima.Error as e:
+            raise SyntaxError(
+                "Contents in file at 'file_location' string could not be "
+                "parsed.\n"
+                "Information from esprima:\n"
+                f"{e}")
 
         self.file_location = file_location
         self.project_root = project_root
@@ -529,7 +540,9 @@ class AnalyzeJS:
                     current_call['type'] is \
                     esprima.nodes.CatchClause or \
                     current_call['type'] is \
-                    esprima.nodes.StaticMemberExpression:
+                    esprima.nodes.StaticMemberExpression or \
+                    current_call['type'] is \
+                    esprima.nodes.FunctionDeclaration:
                 identity.append(current_call['name'])
 
             elif current_call['type'] is \
@@ -857,6 +870,13 @@ def analyze_files(list_of_files, project_root=""):
             raise ValueError(
                 "Paths in 'list_of_files' cannot be empty strings")
 
+        with open(current_file, 'r') as file:
+            file_source = file.read()
+
+        if len(file_source) < 1:
+            logging.warning(f"File '{current_file}' is empty, skipping.")
+            continue
+
         analyzer = AnalyzeJS(current_file, project_root=project_root)
 
         # TODO: Announce to callback or something that file X of Y is being
@@ -895,12 +915,10 @@ def analyze_files(list_of_files, project_root=""):
 
             current_node = created_functions[created_function]['current_node']
 
-            with open(current_file, 'r') as file:
-                file_source = file.read()
-                function_source = \
-                    file_source[
-                        current_node.range[0]:
-                        current_node.range[1]]
+            function_source = \
+                file_source[
+                    current_node.range[0]:
+                    current_node.range[1]]
 
             function_hash = hashlib.sha256(str.encode(function_source))
 

@@ -1,4 +1,9 @@
+# IDE
 .idea
 
-# python
+# Cache
+/.analyze_cache
+
+# Ignore lock files
 Pipfile.lock
+package-lock.json

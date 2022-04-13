@@ -4,5 +4,6 @@
 # Cache
 /.analyze_cache
 
-# python
+# Ignore lock files
 Pipfile.lock
+package-lock.json

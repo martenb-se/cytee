@@ -7,13 +7,16 @@ from pprint import pprint
 #  about which function is being tested and such.
 # TODO: support NaN number
 
+
 # TODO: Nename to something related to javascript
 def number_var_formatter(number_arg):
     return f"""{number_arg}"""
 
+
 # TODO: Nename to something related to javascript
 def string_var_formatter(string_arg):
     return f"""\"{string_arg}\""""
+
 
 # TODO: Nename to something related to javascript
 def boolean_var_formatter(bool_arg):
@@ -21,11 +24,12 @@ def boolean_var_formatter(bool_arg):
         return "true"
     return "false"
 
+
 # TODO: Nename to something related to javascript
 def object_var_formatter(object_arg, type_matcher_dict):
     var_string = "{"
     var_string += __object_var_formatter_recur(
-                    object_arg,
+                    {'value': object_arg},
                     type_matcher_dict,
                     var_string)
     var_string += "}"
@@ -44,17 +48,16 @@ def __object_var_formatter_recur(
         else:
             var_string += ","
 
-        var_string += object_arg['argument'] + ":"
+        var_string += item['argument'] + ":"
 
-        if item['type'] == 'object':
+        if item['type'] is 'object':
             var_string += '{'
             var_string += __object_var_formatter_recur(
-                                item,
+                                {'value': item['value']},
                                 type_matcher_dict,
                                 var_string)
             var_string += '}'
-
-        if isinstance(type_matcher_dict[item['type']]['var_formatter'], str):
+        elif isinstance(type_matcher_dict[item['type']]['var_formatter'], str):
             var_string += type_matcher_dict[item['type']]['var_formatter']
         else:
             var_string += type_matcher_dict[
@@ -64,17 +67,20 @@ def __object_var_formatter_recur(
     return var_string
 
 
+def array_var_formatter(array_obj, type_matcher_dict):
+    pass
+
 # check the number of arguemnts a function takes
 # https://stackoverflow.com/questions/847936/how-can-i-find-the-number-of-arguments-of-a-python-function
 
 TYPE_MATCHER_DICT = {
     'array': {
         'matcher': 'toBeEqual',
-        'var_formatter': ""
+        'var_formatter': array_var_formatter
     },
     'bigInt': {
         'matcher': 'toEqual',
-        'var_formatter': number_var_formatter
+        'var_formatter': None
     },
     'boolean': {
         'matcher': 'toBeTruthy',

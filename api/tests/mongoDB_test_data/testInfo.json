@@ -3,9 +3,9 @@
    "_id": {
      "$oid": "0123456789ab0123456789ab"
    },
-    "pathToProject": "|path|to|project|proj1",
-    "fullPath": "|path|to|project|proj1|external|util:js",
-    "functionName": "function1",
+    "pathToProject": "|home|user|web_dev_projects|jira_clone|client|src",
+    "fileId": "shared|utils|api",
+    "functionId": "default:get",
     "customName": "",
     "moduleData": {
       "argumentList": [
@@ -29,25 +29,25 @@
    "_id": {
      "$oid": "0123456789ab0123456789ac"
    },
-    "pathToProject": "|path|to|project|proj1",
-    "fullPath": "|path|to|project|proj1|external|util:js",
-    "functionName": "deleteAllFiles",
-    "customName": "super test 2",
+    "pathToProject": "|home|user|web_dev_projects|jira_clone|client|src",
+    "fileId": "shared|utils|api",
+    "functionId": "default:get",
+    "customName": "",
     "moduleData": {
       "argumentList": [
         {
-          "argument": "errorCode",
-          "type": "NULL"
+          "argument": "arg1",
+          "type": "string",
+          "value": "sdkfsdf"
         },
         {
-          "argument": "someString",
-          "type": "string",
-          "value": "wawawewa"
+          "argument": "arg2",
+          "type": "undefined"
         }
       ],
       "returnValue": {
         "type": "string",
-        "value": ":("
+        "value": "wopwop"
       }
     }
   },
@@ -55,25 +55,26 @@
    "_id": {
      "$oid": "0123456789ab0123456789ad"
    },
-    "pathToProject": "|path|to|project|proj1",
-    "fullPath": "|path|to|project|proj1|external|util:js",
-    "functionName": "deleteAllFiles",
-    "customName": "super test 3",
+    "pathToProject": "|home|user|web_dev_projects|jira_clone|client|src",
+    "fileId": "shared|utils|api",
+    "functionId": "default:get",
+    "customName": "",
     "moduleData": {
       "argumentList": [
         {
-          "argument": "errorCode",
-          "type": "string"
+          "argument": "arg1",
+          "type": "int",
+          "value": 213
         },
         {
-          "argument": "someString",
+          "argument": "arg2",
           "type": "string",
-          "value": "wowowowowop"
+          "value": "you_cant_do_that"
         }
       ],
       "returnValue": {
         "type": "string",
-        "value": ":)"
+        "value": "asdasd"
       }
     }
   }

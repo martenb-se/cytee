@@ -20,39 +20,53 @@ def mock_db(mocker, mongodb):
 
 
 def __function_info_data(
-        proj_path: str = "/path/to/project/proj1",
-        path_to_file: str = "util",
-        file_name: str = "util.das",
-        function_name: str = "function1",
+        path_to_project: str =
+        "/home/user/web_dev_projects/jira_clone/client/src",
+        file_id: str = "shared/utils/api",
+        function_id: str = "default.get",
+        arguments: list = None,
+        function_range: tuple = None,
         function_hash: str = "sdg7sdfg98fsd7g98dfs7df",
         dependents: int = 24,
         dependencies: int = 10,
-        number_of_tests: int = 90,
-        have_function_changed: bool = True):
+        number_fo_tests: int = 90,
+        have_function_changed: bool = False,
+        export_info: str = "export default",
+        export_name: str = ""
+):
+    if not arguments:
+        arguments = [{"args": ""}]
+
+    if not function_range:
+        function_range = (1, 10)
+
     data = {
-        "pathToProject": proj_path,
-        "fileId": path_to_file,
-        "functionId": file_name,
+        "pathToProject": path_to_project,
+        "fileId": file_id,
+        "functionId": function_id,
+        "arguments": arguments,
+        "functionRange": function_range,
         "functionHash": function_hash,
-        "arguments": [{"util": ['wawaewwa']}],
-        "functionRange": (1, 10),
         "dependents": dependents,
         "dependencies": dependencies,
-        "numberOfTests": number_of_tests,
-        "haveFunctionChanged": have_function_changed
+        "numberOfTests": number_fo_tests,
+        "haveFunctionChanged": have_function_changed,
+        "exportInfo": export_info,
+        "exportName": export_name
     }
     return data
 
 
 def __test_info_data(
-        proj_path: str = "/path/to/project/proj1",
-        full_path: str = "/path/to/project/proj1/external/util.js",
-        function_name: str = "function1",
+        path_to_project: str =
+        "/home/user/web_dev_projects/jira_clone/client/src",
+        file_id: str = "shared/utils/api",
+        function_id: str = "default.get",
         custom_name: str = ""):
     data = {
-        "pathToProject": proj_path,
-        "fileId": full_path,
-        "functionId": function_name,
+        "pathToProject": path_to_project,
+        "fileId": file_id,
+        "functionId": function_id,
         "customName": custom_name,
         "moduleData": {
             "argumentList": [
@@ -76,17 +90,33 @@ def __test_info_data(
 
 
 def __function_coupling_data(
-        function: str =
-        "/path/to/project/proj1/external/util.js-deleteAllFiles",
-        dependent_functions: list = None):
+        path_to_project: str = '/path/to/project/proj1',
+        file_id: str = 'file1',
+        function_id: str = 'api',
+        caller_file_id: str = 'TokenHandler',
+        caller_function_id: str = 'getToken'
+):
     data = {
-        'pathToProject': '/path/to/project/proj1',
-        'fileId': 'file1',
+        'pathToProject': path_to_project,
+        'fileId': file_id,
         'functionId': 'func1',
         'callerFileId': 'file2',
         'callerFunctionId': 'fun2'
-        }
+    }
     return data
+
+
+def test_connect_to_db_standard(mocker):
+    db_mock = mocker.patch('api.database.MongoClient')
+    db_mock().admin.command.return_value = 1
+    db_mock().urangutest = "Super_real_database"
+    db_mock().close.return_value = 1
+    try:
+        t_db = DatabaseHandler("mongodb://localhost:27017")
+        t_db.connect_to_db()
+        t_db.disconnect_from_db()
+    except RuntimeError:
+        pytest.fail("Could not connect to database.")
 
 
 def __compare_objects(
@@ -103,149 +133,7 @@ def __compare_objects(
             assert attribute_value == expected_item[attribute]
 
 
-def test_check_valid_document_attribute_valid_arguments():
-    try:
-        check_valid_document_attribute(
-            '_id',
-            '0123456789ab0123456789ab',
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-    except Exception:
-        pytest.fail()
-
-
-def test_check_valid_document_attribute_non_existent_attribute():
-    with pytest.raises(ValueError):
-        check_valid_document_attribute(
-            'not_a_real_attribute',
-            '0123456789ab0123456789ab',
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_attribute_wrong_attribute_value_type():
-    with pytest.raises(TypeError):
-        check_valid_document_attribute(
-            '_id',
-            123,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_attribute_attribute_value_ignores_cond_id():
-    with pytest.raises(ValueError):
-        check_valid_document_attribute(
-            '_id',
-            "123123123",
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_attribute_attribute_value_ignores_cond_string():
-    with pytest.raises(ValueError):
-        check_valid_document_attribute(
-            'pathToProject',
-            "",
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_attribute_attribute_value_ignores_cond_number():
-    with pytest.raises(ValueError):
-        check_valid_document_attribute(
-            'dependents',
-            -1,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_valid_arguments():
-    func_inf = __function_info_data()
-    try:
-        check_valid_document(
-            func_inf,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-    except Exception:
-        pytest.fail()
-
-
-def test_check_valid_document_non_existing_attribute():
-    func_inf = __function_info_data()
-    func_inf['not_a_valid_argument'] = "bob"
-    with pytest.raises(ValueError):
-        check_valid_document(
-            func_inf,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_wrong_attribute_type():
-    func_inf = __function_info_data()
-    func_inf['_id'] = 123
-    with pytest.raises(TypeError):
-        check_valid_document(
-            func_inf,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_document_attribute_value_ignores_cond():
-    func_inf = __function_info_data()
-    func_inf['_id'] = '123123'
-    with pytest.raises(ValueError):
-        check_valid_document(
-            func_inf,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_attribute_filter_valid_arguments():
-    try:
-        check_valid_attribute_filter(
-            '_id',
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-    except Exception:
-        pytest.fail()
-
-
-def test_check_valid_argument_filter_wrong_attribute_type():
-    with pytest.raises(TypeError):
-        check_valid_attribute_filter(
-            123,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_argument_filter_invalid_attribute_value():
-    with pytest.raises(ValueError):
-        check_valid_attribute_filter(
-            '',
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_check_valid_argument_filer_non_existent_attribute():
-    with pytest.raises(ValueError):
-        check_valid_attribute_filter(
-            'not_real_attribute',
-            FUNCTION_INFO_ATTRIBUTE_CHECKER
-        )
-
-
-def test_connect_to_db_standard(mocker):
-    db_mock = mocker.patch('api.database.MongoClient')
-    db_mock().admin.command.return_value = 1
-    db_mock().urangutest = "Super_real_database"
-    db_mock().close.return_value = 1
-    try:
-        t_db = DatabaseHandler("mongodb://localhost:27017")
-        t_db.connect_to_db()
-        t_db.disconnect_from_db()
-    except RuntimeError:
-        pytest.fail("Could not connect to database.")
-
+# TODO: write tests for check_valid_document_attributes
 
 def test_connect_to_db_bad_arguments():
     with pytest.raises(TypeError):
@@ -274,117 +162,125 @@ def test_disconnect_from_db_without_connection():
 
 def test__get_query_by_id(mock_db):
     t_db = mock_db
-
-    document = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='0123456789ab0123456789ab',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
-    )
-
-    assert len(document) == 1
-    assert document[0]['_id'] == '0123456789ab0123456789ab'
+    expected_document = __function_info_data()
+    expected_document['_id'] = "0123456789ab0123456789ab"
+    resulting_document = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": "0123456789ab0123456789ab"},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
+    )[0]
+    __compare_objects(resulting_document, expected_document)
 
 
-def test__get_query_by_bad_attribute(mock_db):
+def test__get_query_by_argument_that_needs_to_be_transformed(mock_db):
     t_db = mock_db
-    documents = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='/path/to/project/proj1',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='pathToProject'
-    )
-    assert len(documents) == 3
-    for doc in documents:
-        assert doc['pathToProject'] == '/path/to/project/proj1'
+
+    received_documents = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={
+            'pathToProject':
+                "/home/user/web_dev_projects/jira_clone/client/src"},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
+    for doc in received_documents:
+        assert doc['pathToProject'] == \
+               "/home/user/web_dev_projects/jira_clone/client/src"
 
 
-def test__get_query_by_bool(mock_db):
+def test__get_query_by_several_attributes(mock_db):
     t_db = mock_db
-    documents = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=True,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='haveFunctionChanged'
-    )
-    assert len(documents) == 2
-    for doc in documents:
-        assert doc['haveFunctionChanged'] is True
+    received_documents = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={
+            'pathToProject':
+                "/home/user/web_dev_projects/jira_clone/client/src",
+            'haveFunctionChanged': False
+        },
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
+    for doc in received_documents:
+        assert doc['pathToProject'] == \
+               "/home/user/web_dev_projects/jira_clone/client/src"
+        assert doc['haveFunctionChanged'] is False
 
 
 def test__get_query_act_on_first_match(mock_db):
     t_db = mock_db
-    documents = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='/path/to/project/proj1',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='pathToProject',
+    received_documents = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={
+            'pathToProject':
+                "/home/user/web_dev_projects/jira_clone/client/src"},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
         act_on_first_match=True
     )
-    assert len(documents) == 1
-    assert documents[0]['pathToProject'] == '/path/to/project/proj1'
+    assert len(received_documents) == 1
+    assert received_documents[0]['pathToProject'] == \
+           "/home/user/web_dev_projects/jira_clone/client/src"
 
 
 def test__get_query_non_existent_doc(mock_db):
     t_db = mock_db
-    documents = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='0123456789ab0123456789af',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
+    resulting_document = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": "ffffffffffffffffffffffff"},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
     )
-    assert documents is None
+    assert resulting_document is None
 
 
 def test__get_query_custom_query_function(mock_db):
     t_db = mock_db
 
     def custom_query(db_attribute_value):
-        return t_db.database['test_info'].find_one({
-            '_id': db_attribute_value
+        result_document = t_db.database[FUNCTION_INFO_COLLECTION].find_one({
+            '_id': ObjectId("0123456789ab0123456789ac")
         })
+        app_result_document = db_to_app_doc_conv(
+            result_document,
+            FUNCTION_INFO_ATTRIBUTE_CHECKER)
+        return [app_result_document]
 
-    documents = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='0123456789ab0123456789ab',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id',
-        query_function=custom_query
+    expected_document = __function_info_data(
+        file_id="shared/utils/tokenize",
+        function_id="getToken",
+        export_info="export"
     )
-    assert str(documents['_id']) == '0123456789ab0123456789ab'
+    expected_document['_id'] = "0123456789ab0123456789ac"
+
+    resulting_document = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": "0123456789ab0123456789ab"},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
+        query_function=custom_query
+    )[0]
+
+    __compare_objects(resulting_document, expected_document)
 
 
 def test__add_query_valid_arguments(mock_db):
     t_db = mock_db
-    func_inf = __function_info_data()
-    func_inf_id = t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
-        document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
+
+    func_inf = __function_info_data(
+        file_id="shared/api/get",
+        function_id="get_http"
     )
-    returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
-    )[0]
+
+    func_inf_id = t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        document=func_inf,
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
+    )
+
     func_inf['_id'] = func_inf_id
-    __compare_objects(func_inf, returned_func_inf)
+
+    received_func_inf = t_db._DatabaseHandler__get_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
+    )[0]
+
+    __compare_objects(received_func_inf, func_inf)
 
 
 def test__add_query_custom_query_function(mock_db):
@@ -392,71 +288,61 @@ def test__add_query_custom_query_function(mock_db):
     func_inf = __function_info_data()
 
     def custom_query(db_document):
-        db_document['secret'] = 'secret_value'
-        db_result = t_db.database['function_info'].insert_one(db_document)
+        db_document['pathToProject'] = 'this_is_a_secret_path'
+        db_result = t_db.database[
+            FUNCTION_INFO_COLLECTION] \
+            .insert_one(db_document)
         return str(db_result.inserted_id)
 
-    func_inf_id = t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
+    func_inf_id = t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
         document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
         query_function=custom_query
     )
 
     returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
     )[0]
 
     func_inf['_id'] = func_inf_id
+    func_inf['pathToProject'] = 'this_is_a_secret_path'
     __compare_objects(
         func_inf,
-        returned_func_inf,
-        black_list=['secret']
+        returned_func_inf
     )
-    assert returned_func_inf['secret'] == 'secret_value'
 
 
 def test__query_set_one_filter_attribute_in_updated_doc(mock_db):
     t_db = mock_db
     func_inf = __function_info_data()
 
-    func_inf_id = t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
+    func_inf_id = t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
         document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
     updated_fun_inf = func_inf.copy()
     updated_fun_inf['_id'] = func_inf_id
-    updated_fun_inf['pathToProject'] = '/path/is/changed'
-    updated_fun_inf['fileId'] = 'newFile.js'
-    updated_fun_inf['functionId'] = 'doNotDeleteAllFiles'
-    updated_fun_inf['dependencies'] = 3
+    updated_fun_inf['pathToProject'] = 'newPath'
+    updated_fun_inf['fileId'] = 'newFile'
+    updated_fun_inf['functionId'] = 'newFunction'
+    updated_fun_inf['dependencies'] = 5
     updated_fun_inf['haveFunctionChanged'] = True
 
-    t_db._DatabaseHandler__query_set_one(
-        collection='function_info',
+    t_db._DatabaseHandler__set_query(
+        collection=FUNCTION_INFO_COLLECTION,
         updated_document_data=updated_fun_inf,
-        filter_attribute='_id',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES
+        attribute_filter_dict={'_id': func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
     )
 
     returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
     )[0]
 
     __compare_objects(
@@ -465,42 +351,33 @@ def test__query_set_one_filter_attribute_in_updated_doc(mock_db):
     )
 
 
-def test__query_set_one_filter_attribute_not_in_updated_doc(mock_db):
+def test__set_query(mock_db):
     t_db = mock_db
     func_inf = __function_info_data()
 
-    func_inf_id = t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
+    func_inf_id = t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
         document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
     updated_fun_inf = func_inf.copy()
+
     updated_fun_inf['pathToProject'] = '/path/is/changed'
-    updated_fun_inf['fileName'] = 'newFile.js'
-    updated_fun_inf['functionName'] = 'doNotDeleteAllFiles'
+    updated_fun_inf['fileId'] = 'newFile.js'
+    updated_fun_inf['functionId'] = 'doNotDeleteAllFiles'
     updated_fun_inf['dependencies'] = 3
     updated_fun_inf['haveFunctionChanged'] = True
 
-    t_db._DatabaseHandler__query_set_one(
-        collection='function_info',
+    t_db._DatabaseHandler__set_query(
+        collection=FUNCTION_INFO_COLLECTION,
         updated_document_data=updated_fun_inf,
-        filter_attribute='_id',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-        filter_attribute_value=func_inf_id,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-
-    )
+        attribute_filter_dict={'_id': func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
     returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
     )[0]
 
     __compare_objects(
@@ -514,246 +391,123 @@ def test__query_set_one_custom_query(mock_db):
     t_db = mock_db
     func_inf = __function_info_data()
 
-    func_inf_id = t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
+    func_inf_id = t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
         document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
     updated_fun_inf = func_inf.copy()
-    updated_fun_inf['pathToProject'] = '/path/is/changed'
-    updated_fun_inf['fileName'] = 'newFile.js'
-    updated_fun_inf['functionName'] = 'doNotDeleteAllFiles'
+
+    updated_fun_inf['pathToProject'] = 'this_is_a_secret_path'
+    updated_fun_inf['fileId'] = 'newFile.js'
+    updated_fun_inf['functionId'] = 'doNotDeleteAllFiles'
     updated_fun_inf['dependencies'] = 3
     updated_fun_inf['haveFunctionChanged'] = True
 
-    def custom_query(db_document, filter_attribute, db_document_filter):
-        db_document['secret'] = 'secret_value'
-        t_db.database['function_info'].update_one(
-            {filter_attribute: db_document_filter},
-            {'$set': db_document})
+    def custom_query(db_document, db_attribute_filter_dict):
+        db_document['pathToProject'] = 'this_is_a_secret_path'
+        t_db.database[
+            FUNCTION_INFO_COLLECTION] \
+            .update_one(db_attribute_filter_dict,
+                        {'$set': db_document})
 
-    t_db._DatabaseHandler__query_set_one(
-        collection='function_info',
+    t_db._DatabaseHandler__set_query(
+        collection=FUNCTION_INFO_COLLECTION,
         updated_document_data=updated_fun_inf,
-        filter_attribute='_id',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-        filter_attribute_value=func_inf_id,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        query_function=custom_query
-    )
+        attribute_filter_dict={'_id': func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
+        query_function=custom_query)
 
     returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
     )[0]
 
     __compare_objects(
         returned_func_inf,
         updated_fun_inf,
-        black_list=['_id', 'secret']
+        black_list=['_id']
     )
-
-    assert returned_func_inf['secret'] == 'secret_value'
 
 
 def test__query_remove_one_by_id(mock_db):
     t_db = mock_db
     func_inf = __function_info_data()
-    func_inf_id = t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
+    func_inf_id = t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
         document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-    t_db._DatabaseHandler__query_remove_one(
-        collection='function_info',
-        filter_attribute='_id',
-        filter_attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        act_on_first_match=True
-    )
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
+    t_db._DatabaseHandler__remove_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={'_id': func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
     returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value=func_inf_id,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='_id'
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={"_id": func_inf_id},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
     )
+
     assert returned_func_inf is None
 
 
-def test__query_remove_one_act_on_first_match_by_project(mock_db):
+def test__query_remove_by_project(mock_db):
     t_db = mock_db
-    func_inf = __function_info_data(
-        proj_path='/secret/proj/path'
-    )
-    t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
+    func_inf = __function_info_data(path_to_project='/secret/proj/path')
+
+    t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
         document=func_inf,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-    t_db._DatabaseHandler__query_remove_one(
-        collection='function_info',
-        filter_attribute='pathToProject',
-        filter_attribute_value='/secret/proj/path',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        act_on_first_match=True
-    )
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
+    t_db._DatabaseHandler__add_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        document=func_inf,
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
+    t_db._DatabaseHandler__remove_query(
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={'pathToProject': '/secret/proj/path'},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER,
+        act_on_first_match=False)
+
     returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='/secret/proj/path',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='pathToProject'
-    )
+        collection=FUNCTION_INFO_COLLECTION,
+        attribute_filter_dict={'pathToProject': '/secret/proj/path'},
+        attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
+
     assert returned_func_inf is None
-
-
-def test__query_remove_remove_all_documents_related_to_project(mock_db):
-    t_db = mock_db
-    func_inf1 = __function_info_data(
-        proj_path='/secret/proj/path',
-        file_name='file1.js'
-    )
-    func_inf2 = __function_info_data(
-        proj_path='/secret/proj/path',
-        file_name='file2.js'
-    )
-    func_inf3 = __function_info_data(
-        proj_path='/secret/proj/path',
-        file_name='file3.js'
-    )
-    t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
-        document=func_inf1,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-    t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
-        document=func_inf2,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-    t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
-        document=func_inf3,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-    t_db._DatabaseHandler__query_remove_one(
-        collection='function_info',
-        filter_attribute='pathToProject',
-        filter_attribute_value='/secret/proj/path',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        act_on_first_match=False
-    )
-    returned_func_inf = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='/secret/proj/path',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='pathToProject'
-    )
-    assert returned_func_inf is None
-
-
-def test__query_remove_custom_query(mock_db):
-    t_db = mock_db
-    func_inf1 = __function_info_data(
-        proj_path='/secret/proj/path1'
-    )
-    func_inf2 = __function_info_data(
-        proj_path='/secret/proj/path2'
-    )
-
-    t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
-        document=func_inf1,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-    t_db._DatabaseHandler__query_add_one(
-        collection='function_info',
-        document=func_inf2,
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        app_to_db_conv=t_db._DatabaseHandler__function_info_app_to_db_conv,
-    )
-
-    def custom_query(filter_attribute, db_attribute_filter):
-        t_db.database['function_info'].delete_one({
-            'pathToProject': '|secret|proj|path2'})
-
-    t_db._DatabaseHandler__query_remove_one(
-        collection='function_info',
-        filter_attribute='pathToProject',
-        filter_attribute_value='/secret/proj/path1',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        act_on_first_match=True,
-        query_function=custom_query
-    )
-    returned_func_inf_1 = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='/secret/proj/path1',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='pathToProject'
-    )
-    returned_func_inf_2 = t_db._DatabaseHandler__get_query(
-        collection='function_info',
-        attribute_value='/secret/proj/path2',
-        attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-        bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-        db_to_app_conv=t_db._DatabaseHandler__function_info_db_to_app_conv,
-        document_attribute='pathToProject'
-    )
-
-    assert returned_func_inf_1 is not None
-    assert returned_func_inf_2 is None
 
 
 def test_get_function_info_by_id(mock_db):
     t_db = mock_db
     expected_func_inf = __function_info_data()
     expected_func_inf['_id'] = "0123456789ab0123456789ab"
-    received_func_inf = t_db.get_function_info("0123456789ab0123456789ab")[0]
+    received_func_inf = t_db.get_function_info(
+        {'_id': "0123456789ab0123456789ab"})[0]
     __compare_objects(expected_func_inf, received_func_inf)
 
 
 def test_get_function_info_by_project(mock_db):
     t_db = mock_db
-    documents = t_db.get_function_info(
-        attribute_value="/path/to/project/proj1",
-        document_attribute="pathToProject"
-    )
+    documents = t_db.get_function_info({
+        'pathToProject': "/home/user/web_dev_projects/jira_clone/client/src"})
+
     assert len(documents) == 3
     for doc in documents:
-        assert doc['pathToProject'] == "/path/to/project/proj1"
+        assert doc['pathToProject'] == \
+               "/home/user/web_dev_projects/jira_clone/client/src"
 
 
-def test_get_function_info_by_have_function_changed(mock_db):
+def test_get_function_info_by_project_and_have_project_changed(mock_db):
     t_db = mock_db
-    documents = t_db.get_function_info(
-        attribute_value=True,
-        document_attribute="haveFunctionChanged"
+    documents = t_db.get_function_info({
+        'pathToProject': "/home/user/web_dev_projects/jira_clone/client/src",
+        'haveFunctionChanged': True}
     )
-    assert len(documents) == 2
+    assert len(documents) == 1
     for doc in documents:
         assert doc['haveFunctionChanged']
 
@@ -762,58 +516,57 @@ def test_get_test_info_by_id(mock_db):
     t_db = mock_db
     expected_test_info = __test_info_data()
     expected_test_info['_id'] = "0123456789ab0123456789ab"
-    received_test_info = t_db.get_test_info("0123456789ab0123456789ab")[0]
+    received_test_info = t_db.get_test_info({
+        '_id': "0123456789ab0123456789ab"})[0]
     __compare_objects(received_test_info, expected_test_info)
 
 
 def test_get_test_info_by_project(mock_db):
     t_db = mock_db
-    documents = t_db.get_test_info(
-        attribute_value="/path/to/project/proj1",
-        document_attribute="pathToProject"
-    )
+    documents = t_db.get_test_info({
+        'pathToProject': "/home/user/web_dev_projects/jira_clone/client/src"
+    })
     assert len(documents) == 3
     for doc in documents:
-        assert doc['pathToProject'] == "/path/to/project/proj1"
+        assert doc['pathToProject'] == \
+               "/home/user/web_dev_projects/jira_clone/client/src"
 
 
-def test_get_test_info_by_function_name(mock_db):
+def test_get_test_info_by_function_id(mock_db):
     t_db = mock_db
-    documents = t_db.get_test_info(
-        attribute_value="deleteAllFiles",
-        document_attribute="functionName"
-    )
-    assert len(documents) == 2
+    documents = t_db.get_test_info({
+        'functionId': "default.get"
+    })
+    assert len(documents) == 3
     for doc in documents:
-        assert doc['functionName'] == "deleteAllFiles"
+        assert doc['functionId'] == "default.get"
 
 
 def test_get_function_coupling_by_id(mock_db):
     t_db = mock_db
-    document = t_db.get_function_coupling("0123456789ab0123456789ab")
+    document = t_db.get_function_dependency({
+        "_id": "0123456789ab0123456789ab"
+    })
     assert len(document) == 1
     assert document[0]['_id'] == "0123456789ab0123456789ab"
 
 
 def test_get_function_coupling_by_function(mock_db):
     t_db = mock_db
-    document = t_db.get_function_coupling(
-        attribute_value="""/path/to/project/proj1/external/util.js-deleteAllFiles""",
-        document_attribute="function"
-    )
-    assert len(document) == 1
-    assert document[0]['function'] == """/path/to/project/proj1/external/util.js-deleteAllFiles"""
+    document = t_db.get_function_dependency({
+        'functionId': 'api'
+    })
+    assert len(document) == 3
+    assert document[0][
+               'functionId'] == "api"
 
 
-def test_get_function_coupling_by_dependent_function(mock_db):
+def test_get_function_coupling_by_caller_function(mock_db):
     t_db = mock_db
-    document = t_db.get_function_coupling(
-        attribute_value=["""/path/to/project/proj1|internal/bib.js-function1"""],
-        document_attribute="dependentFunctions"
-    )
+    document = t_db.get_function_dependency({
+        'callerFunctionId': 'getToken'})
     for doc in document:
-        assert doc in ["/path/to/project/proj1/external/tools.js-toolest",
-                       "/path/to/project/proj1/external/main.js-toolest"]
+        assert doc['callerFunctionId'] == 'getToken'
 
 
 def test_add_function_info(mock_db):
@@ -821,7 +574,8 @@ def test_add_function_info(mock_db):
     expected_func_inf = __function_info_data()
     func_inf_id = t_db.add_function_info(expected_func_inf)
     expected_func_inf['_id'] = func_inf_id
-    received_func_inf = t_db.get_function_info(func_inf_id)[0]
+    received_func_inf = t_db.get_function_info({
+        '_id': func_inf_id})[0]
     __compare_objects(received_func_inf, expected_func_inf)
 
 
@@ -830,16 +584,17 @@ def test_add_test_info(mock_db):
     expected_test_inf = __test_info_data()
     test_inf_id = t_db.add_test_info(expected_test_inf)
     expected_test_inf['_id'] = test_inf_id
-    received_test_inf = t_db.get_test_info(test_inf_id)[0]
+    received_test_inf = t_db.get_test_info({
+        '_id': test_inf_id})[0]
     __compare_objects(received_test_inf, expected_test_inf)
 
 
 def test_add_function_coupling(mock_db):
     t_db = mock_db
     expected_func_coup = __function_coupling_data()
-    func_coup_id = t_db.add_function_coupling(expected_func_coup)
+    func_coup_id = t_db.add_function_dependency(expected_func_coup)
     expected_func_coup['_id'] = func_coup_id
-    received_func_coup = t_db.get_function_coupling(func_coup_id)[0]
+    received_func_coup = t_db.get_function_dependency({'_id': func_coup_id})[0]
     __compare_objects(received_func_coup, expected_func_coup)
 
 
@@ -850,12 +605,15 @@ def test_set_function_info(mock_db):
     expected_func_inf = func_inf.copy()
     expected_func_inf['_id'] = func_inf_id
     expected_func_inf['pathToProject'] = "/path/to/project/proj37"
-    expected_func_inf['fileName'] = "superUtil.js"
+    expected_func_inf['fileId'] = "superUtil.js"
     expected_func_inf['dependents'] = 36
     expected_func_inf['numberOfTests'] = 700
     expected_func_inf['haveFunctionChanged'] = True
-    t_db.set_function_info(update_function_info=expected_func_inf)
-    received_func_inf = t_db.get_function_info(func_inf_id)[0]
+    t_db.set_function_info(
+        update_function_info=expected_func_inf,
+        attribute_filter_dict={'_id': func_inf_id}
+    )
+    received_func_inf = t_db.get_function_info({'_id': func_inf_id})[0]
     __compare_objects(received_func_inf, expected_func_inf)
 
 
@@ -867,21 +625,24 @@ def test_set_test_info(mock_db):
     expected_test_inf['_id'] = test_inf_id
     expected_test_inf['pathToProject'] = "/path/to/project/proj1"
     expected_test_inf['customName'] = "superDuperTest"
-    t_db.set_test_info(expected_test_inf)
-    received_test_inf = t_db.get_test_info(test_inf_id)[0]
+    t_db.set_test_info(
+        update_test_info=expected_test_inf,
+        attribute_filter_dict={'_id': test_inf_id})
+    received_test_inf = t_db.get_test_info({'_id': test_inf_id})[0]
     __compare_objects(received_test_inf, expected_test_inf)
 
 
 def test_set_function_coupling(mock_db):
     t_db = mock_db
     func_coup = __function_coupling_data()
-    func_coup_id = t_db.add_function_coupling(func_coup)
+    func_coup_id = t_db.add_function_dependency(func_coup)
     expected_func_coup = func_coup.copy()
     expected_func_coup['_id'] = func_coup_id
-    expected_func_coup['dependentFunctions']\
-        .append("/path/to/project/proj1/internal/util.js-addEvenMoreFiles")
-    t_db.set_function_coupling(expected_func_coup)
-    received_func_coup = t_db.get_function_coupling(func_coup_id)[0]
+    expected_func_coup['functionId'] = 'api_new'
+    t_db.set_function_dependency(
+        update_function_dependency=expected_func_coup,
+        attribute_filter_dict={'_id': func_coup_id})
+    received_func_coup = t_db.get_function_dependency({'_id': func_coup_id})[0]
     __compare_objects(received_func_coup, expected_func_coup)
 
 
@@ -889,27 +650,24 @@ def test_delete_function_info_by_id(mock_db):
     t_db = mock_db
     func_info = __function_info_data()
     func_coup_id = t_db.add_function_info(func_info)
-    t_db.delete_function_info(func_coup_id)
-    received_func_inf = t_db.get_function_info(func_coup_id)
+    t_db.remove_function_info({'_id': func_coup_id})
+    received_func_inf = t_db.get_function_info({'_id': func_coup_id})
     assert received_func_inf is None
 
 
 def test_delete_function_info_by_project(mock_db):
     t_db = mock_db
     func_inf = __function_info_data(
-        proj_path="/path/to/project/projSecret"
+        path_to_project="/path/to/project/projSecret"
     )
     t_db.add_function_info(func_inf)
     t_db.add_function_info(func_inf)
     t_db.add_function_info(func_inf)
-    t_db.delete_function_info(
-        filter_attribute_value="/path/to/project/projSecret",
-        filter_attribute="pathToProject",
-        act_on_first_match=False
+    t_db.remove_function_info(
+        attribute_filter_dict={'pathToProject': "/path/to/project/projSecret"}
     )
     received_func_inf = t_db.get_function_info(
-        document_attribute="pathToProject",
-        attribute_value="/path/to/project/projSecret"
+        attribute_filter_dict={'pathToProject': "/path/to/project/projSecret"}
     )
     assert received_func_inf is None
 
@@ -917,19 +675,16 @@ def test_delete_function_info_by_project(mock_db):
 def test_delete_function_info_by_file(mock_db):
     t_db = mock_db
     func_inf = __function_info_data(
-        file_name="superSecretFile.js"
+        file_id="superSecretFile.js"
     )
     t_db.add_function_info(func_inf)
     t_db.add_function_info(func_inf)
     t_db.add_function_info(func_inf)
-    t_db.delete_function_info(
-        filter_attribute_value="superSecretFile.js",
-        filter_attribute="fileName",
-        act_on_first_match=False
+    t_db.remove_function_info(
+        {'fileId': "superSecretFile.js"}
     )
     received_func_inf = t_db.get_function_info(
-        document_attribute="fileName",
-        attribute_value="superSecretFile.js"
+        {'fileId': "superSecretFile.js"}
     )
     assert received_func_inf is None
 
@@ -937,17 +692,14 @@ def test_delete_function_info_by_file(mock_db):
 def test_delete_function_info_by_function_name(mock_db):
     t_db = mock_db
     func_inf = __function_info_data(
-        function_name="neverDeleteAnyFiles"
+        function_id="neverDeleteAnyFiles"
     )
     t_db.add_function_info(func_inf)
-    t_db.delete_function_info(
-        filter_attribute_value="neverDeleteAnyFiles",
-        filter_attribute="functionName",
-        act_on_first_match=False
+    t_db.remove_function_info(
+        {'functionId': "neverDeleteAnyFiles"}
     )
     received_func_inf = t_db.get_function_info(
-        document_attribute="functionName",
-        attribute_value="neverDeleteAnyFiles"
+        {'functionId': "neverDeleteAnyFiles"}
     )
     assert received_func_inf is None
 
@@ -956,27 +708,24 @@ def test_delete_test_info_by_id(mock_db):
     t_db = mock_db
     test_inf = __test_info_data()
     test_inf_id = t_db.add_test_info(test_inf)
-    t_db.delete_test_info(test_inf_id)
-    received_test_inf = t_db.get_test_info(test_inf_id)
+    t_db.remove_test_info({'_id': test_inf_id})
+    received_test_inf = t_db.get_test_info({'_id': test_inf_id})
     assert received_test_inf is None
 
 
 def test_delete_test_info_by_project(mock_db):
     t_db = mock_db
     test_inf = __test_info_data(
-        proj_path="/path/to/project/projSecret"
+        path_to_project="/path/to/project/projSecret"
     )
     t_db.add_test_info(test_inf)
     t_db.add_test_info(test_inf)
     t_db.add_test_info(test_inf)
-    t_db.delete_test_info(
-        filter_attribute_value="/path/to/project/projSecret",
-        filter_attribute="pathToProject",
-        act_on_first_match=False
+    t_db.remove_test_info(
+        {'pathToProject': "/path/to/project/projSecret"}
     )
     received_test_inf = t_db.get_test_info(
-        document_attribute="pathToProject",
-        attribute_value="/path/to/project/projSecret"
+        {'pathToProject': "/path/to/project/projSecret"}
     )
     assert received_test_inf is None
 
@@ -984,19 +733,16 @@ def test_delete_test_info_by_project(mock_db):
 def test_delete_test_info_by_function(mock_db):
     t_db = mock_db
     test_inf = __test_info_data(
-        function_name="neverDeleteAnyFiles"
+        function_id="neverDeleteAnyFiles"
     )
     t_db.add_test_info(test_inf)
     t_db.add_test_info(test_inf)
     t_db.add_test_info(test_inf)
-    t_db.delete_test_info(
-        filter_attribute_value="neverDeleteAnyFiles",
-        filter_attribute="functionName",
-        act_on_first_match=False
+    t_db.remove_test_info(
+        {'functionId': 'neverDeleteAnyFiles'}
     )
     received_test_inf = t_db.get_test_info(
-        document_attribute="functionName",
-        attribute_value="neverDeleteAnyFiles"
+        {'functionId': 'neverDeleteAnyFiles'}
     )
     assert received_test_inf is None
 
@@ -1004,48 +750,25 @@ def test_delete_test_info_by_function(mock_db):
 def test_delete_function_coupling_by_id(mock_db):
     t_db = mock_db
     func_coup = __function_coupling_data()
-    func_coup_id = t_db.add_function_coupling(func_coup)
-    t_db.delete_function_coupling(func_coup_id)
-    received_func_coup = t_db.get_function_coupling(func_coup_id)
+    func_coup_id = t_db.add_function_dependency(func_coup)
+    t_db.remove_function_dependency({'_id': func_coup_id})
+    received_func_coup = t_db.get_function_dependency({'_id': func_coup_id})
     assert received_func_coup is None
 
 
 def test_delete_function_coupling_by_function(mock_db):
     t_db = mock_db
     func_coup = __function_coupling_data(
-        function="secret_function"
+        function_id="secret_function"
     )
-    func_coup_id = t_db.add_function_coupling(func_coup)
-    t_db.delete_function_coupling(
-        filter_attribute="function",
-        filter_attribute_value="secret_function",
-        act_on_first_match=False
+    func_coup_id = t_db.add_function_dependency(func_coup)
+    t_db.remove_function_dependency(
+        {'functionId': "secret_function"}
     )
-    received_func_coup = t_db.delete_function_coupling(func_coup_id)
-    assert received_func_coup is None
+    t_db.remove_function_dependency({'_id': func_coup_id})
 
-
-def test_delete_function_coupling_by_dependent(mock_db):
-    t_db = mock_db
-    func_coup = __function_coupling_data(
-        function="func1",
-        dependent_functions=["secret_function"]
-    )
-    func_coup = __function_coupling_data(
-        function="func2",
-        dependent_functions=["secret_function"]
-    )
-    func_coup = __function_coupling_data(
-        function="func3",
-        dependent_functions=["secret_function"]
+    received_func_coup = t_db.get_function_dependency(
+        {'_id': func_coup_id}
     )
 
-    func_coup_id = t_db.add_function_coupling(func_coup)
-    t_db.delete_function_coupling(
-        filter_attribute="dependentFunctions",
-        filter_attribute_value=["secret_function"],
-        act_on_first_match=False
-    )
-
-    received_func_coup = t_db.delete_function_coupling(func_coup_id)
     assert received_func_coup is None

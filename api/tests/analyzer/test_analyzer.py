@@ -38,10 +38,19 @@ MOCK_FILES_AND_CONTENTS = [
      "export/export_default_function.js"),
     ("/project/src/export_default_object.js",
      "export/export_default_object.js"),
+
     ("/project/src/export_named.js",
      "export/export_named.js"),
     ("/project/src/export_named_same_name.js",
      "export/export_named_same_name.js"),
+    ("/project/src/export_named_declare_class.js",
+     "export/export_named_declare_class.js"),
+    ("/project/src/export_named_declare_function.js",
+     "export/export_named_declare_function.js"),
+    ("/project/src/export_named_declare_variable_const_arrow_function.js",
+     "export/export_named_declare_variable_const_arrow_function.js"),
+    ("/project/src/export_named_declare_variable_let_arrow_function.js",
+     "export/export_named_declare_variable_let_arrow_function.js"),
 
     ("/project/src/no_export_arrow_function.js",
      "export/no_export_arrow_function.js"),
@@ -111,7 +120,7 @@ def __debug_created_functions(created_functions):
         print()
 
 
-def test_class_esprimaanalyze_init_file_location_not_string():
+def test_analyzejs_init_file_location_not_string():
     file_location = False
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -123,7 +132,7 @@ def test_class_esprimaanalyze_init_file_location_not_string():
         assert False
 
 
-def test_class_esprimaanalyze_init_file_location_empty():
+def test_analyzejs_init_file_location_empty():
     file_location = ""
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -135,7 +144,7 @@ def test_class_esprimaanalyze_init_file_location_empty():
         assert False
 
 
-def test_class_esprimaanalyze_init_project_root_not_string():
+def test_analyzejs_init_project_root_not_string():
     file_source = "/some/path/to/file.js"
     project_root = False
     try:
@@ -147,7 +156,7 @@ def test_class_esprimaanalyze_init_project_root_not_string():
         assert False
 
 
-def test_class_esprimaanalyze_init_project_root_empty():
+def test_analyzejs_init_project_root_empty():
     file_location = "/some/path/to/file.js"
     project_root = ""
     try:
@@ -159,7 +168,7 @@ def test_class_esprimaanalyze_init_project_root_empty():
         assert False
 
 
-def test_class_esprimaanalyze_init_file_nonexistant():
+def test_analyzejs_init_file_nonexistant():
     file_location = "/project/src/missing_file.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -180,7 +189,7 @@ def test_class_esprimaanalyze_init_file_nonexistant():
 #
 
 
-def test_class_esprimaanalyze_init_bad_code(mock_project_files):
+def test_analyzejs_init_bad_code(mock_project_files):
     file_location = "/project/src/bad_code.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -200,7 +209,7 @@ def test_class_esprimaanalyze_init_bad_code(mock_project_files):
 #
 
 
-def test_class_esprimaanalyze_init_supported_object_spreading(
+def test_analyzejs_init_supported_object_spreading(
         mock_project_files):
     file_location = "/project/src/unsupported_object_spreading.js"
     project_root = MOCK_PROJECT_ROOT
@@ -213,7 +222,7 @@ def test_class_esprimaanalyze_init_supported_object_spreading(
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_optional_catch_bind(
+def test_analyzejs_init_unsupported_optional_catch_bind(
         mock_project_files):
     file_location = "/project/src/unsupported_optional_catch_bind.js"
     project_root = MOCK_PROJECT_ROOT
@@ -228,7 +237,7 @@ def test_class_esprimaanalyze_init_unsupported_optional_catch_bind(
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_private_class_variable(
+def test_analyzejs_init_unsupported_private_class_variable(
         mock_project_files):
     file_location = "/project/src/unsupported_private_class_variable.js"
     project_root = MOCK_PROJECT_ROOT
@@ -244,7 +253,7 @@ def test_class_esprimaanalyze_init_unsupported_private_class_variable(
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_logical_assignment(
+def test_analyzejs_init_unsupported_logical_assignment(
         mock_project_files):
     file_location = "/project/src/unsupported_logical_assignment.js"
     project_root = MOCK_PROJECT_ROOT
@@ -259,7 +268,7 @@ def test_class_esprimaanalyze_init_unsupported_logical_assignment(
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_private_slot_check(
+def test_analyzejs_init_unsupported_private_slot_check(
         mock_project_files):
     file_location = "/project/src/unsupported_private_slot_check.js"
     project_root = MOCK_PROJECT_ROOT
@@ -280,7 +289,7 @@ def test_class_esprimaanalyze_init_unsupported_private_slot_check(
 #
 
 
-def test_class_esprimaanalyze_begin_analyze_global_function(
+def test_analyzejs_begin_analyze_global_function(
         mock_project_files):
     file_location = "/project/src/global_function.js"
     project_root = MOCK_PROJECT_ROOT
@@ -302,7 +311,7 @@ def test_class_esprimaanalyze_begin_analyze_global_function(
 #
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default(
+def test_analyzejs_begin_analyze_export_default(
         mock_project_files):
     file_location = "/project/src/export_default.js"
     project_root = MOCK_PROJECT_ROOT
@@ -322,7 +331,7 @@ def test_class_esprimaanalyze_begin_analyze_export_default(
         expected_method_id
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default_class(
+def test_analyzejs_begin_analyze_export_default_class(
         mock_project_files):
     file_location = "/project/src/export_default_class.js"
     project_root = MOCK_PROJECT_ROOT
@@ -344,7 +353,7 @@ def test_class_esprimaanalyze_begin_analyze_export_default_class(
         expected_class
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default_function(
+def test_analyzejs_begin_analyze_export_default_function(
         mock_project_files):
     file_location = "/project/src/export_default_function.js"
     project_root = MOCK_PROJECT_ROOT
@@ -364,7 +373,7 @@ def test_class_esprimaanalyze_begin_analyze_export_default_function(
         expected_method_id
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default_object(
+def test_analyzejs_begin_analyze_export_default_object(
         mock_project_files):
     file_location = "/project/src/export_default_object.js"
     project_root = MOCK_PROJECT_ROOT
@@ -384,7 +393,7 @@ def test_class_esprimaanalyze_begin_analyze_export_default_object(
         expected_method_id
 
 
-def test_class_esprimaanalyze_begin_analyze_export_named(
+def test_analyzejs_begin_analyze_export_named(
         mock_project_files):
     file_location = "/project/src/export_named.js"
     project_root = MOCK_PROJECT_ROOT
@@ -405,9 +414,95 @@ def test_class_esprimaanalyze_begin_analyze_export_named(
         expected_export_name
 
 
-def test_class_esprimaanalyze_begin_analyze_export_named_same_name(
+def test_analyzejs_begin_analyze_export_named_same_name(
         mock_project_files):
     file_location = "/project/src/export_named_same_name.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer.begin_analyze()
+
+    expected_method_id = "exportedFunction"
+    expected_export_info = "export"
+
+    created_functions = analyzer.get_functions()
+
+    assert \
+        expected_method_id in created_functions and \
+        created_functions[expected_method_id]["export_info"] == \
+        expected_export_info and \
+        created_functions[expected_method_id]["export_name"] == \
+        expected_method_id
+
+
+def test_analyzejs_begin_analyze_named_declare_class(
+        mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_class.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer.begin_analyze()
+
+    expected_class = "ExportedClass"
+    expected_method_id = \
+        f"(new {expected_class}()).someOtherFunction"
+    expected_export_info = "export"
+
+    created_functions = analyzer.get_functions()
+
+    assert \
+        expected_method_id in created_functions and \
+        created_functions[expected_method_id]["export_info"] == \
+        expected_export_info and \
+        created_functions[expected_method_id]["export_name"] == \
+        expected_class
+
+
+def test_analyzejs_begin_analyze_named_declare_function(
+        mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_function.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer.begin_analyze()
+
+    expected_method_id = "exportedFunction"
+    expected_export_info = "export"
+
+    created_functions = analyzer.get_functions()
+
+    assert \
+        expected_method_id in created_functions and \
+        created_functions[expected_method_id]["export_info"] == \
+        expected_export_info and \
+        created_functions[expected_method_id]["export_name"] == \
+        expected_method_id
+
+
+def test_analyzejs_begin_analyze_named_const_variable_arrow_function(
+        mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_variable_const_arrow_function.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer.begin_analyze()
+
+    expected_method_id = "exportedFunction"
+    expected_export_info = "export"
+
+    created_functions = analyzer.get_functions()
+
+    assert \
+        expected_method_id in created_functions and \
+        created_functions[expected_method_id]["export_info"] == \
+        expected_export_info and \
+        created_functions[expected_method_id]["export_name"] == \
+        expected_method_id
+
+
+def test_analyzejs_begin_analyze_named_let_variable_arrow_function(
+        mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_variable_let_arrow_function.js"
     project_root = MOCK_PROJECT_ROOT
     analyzer = AnalyzeJS(file_location, project_root=project_root)
     analyzer.begin_analyze()
@@ -430,7 +525,7 @@ def test_class_esprimaanalyze_begin_analyze_export_named_same_name(
 #
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_arrow_function(
+def test_analyzejs_begin_analyze_no_export_arrow_function(
         mock_project_files):
     file_location = "/project/src/no_export_arrow_function.js"
     project_root = MOCK_PROJECT_ROOT
@@ -449,7 +544,7 @@ def test_class_esprimaanalyze_begin_analyze_no_export_arrow_function(
         created_functions[expected_method_id]["export_name"] == ""
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_class(
+def test_analyzejs_begin_analyze_no_export_class(
         mock_project_files):
     file_location = "/project/src/no_export_class.js"
     project_root = MOCK_PROJECT_ROOT
@@ -470,7 +565,7 @@ def test_class_esprimaanalyze_begin_analyze_no_export_class(
         created_functions[expected_method_id]["export_name"] == ""
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_function(
+def test_analyzejs_begin_analyze_no_export_function(
         mock_project_files):
     file_location = "/project/src/no_export_function.js"
     project_root = MOCK_PROJECT_ROOT
@@ -489,7 +584,7 @@ def test_class_esprimaanalyze_begin_analyze_no_export_function(
         created_functions[expected_method_id]["export_name"] == ""
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_object_prop_fn(
+def test_analyzejs_begin_analyze_no_export_object_prop_fn(
         mock_project_files):
     file_location = "/project/src/no_export_object_property_function.js"
     project_root = MOCK_PROJECT_ROOT

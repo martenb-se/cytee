@@ -8,3 +8,6 @@
 Pipfile.lock
 package-lock.json
 **/package-lock.json
+
+# database comfig
+db.config.yml

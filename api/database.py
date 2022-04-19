@@ -640,3 +640,8 @@ class DatabaseHandler:
             collection=FUNCTION_DEPENDENCY_COLLECTION,
             attribute_filter_dict=attribute_filter_dict,
             attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER)
+
+
+if __name__ != '__main__':
+    database_handler = DatabaseHandler('mongodb://127.0.0.1:27017')
+    database_handler.connect_to_db()

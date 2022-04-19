@@ -7,6 +7,14 @@ from api.cache import save_file
 from api.instances.database_main import database_handler
 from api.websocket_constants import *
 
+# TODO: Move all of the below to a common file to be imported where it's
+#  needed.
+WEBSOCKET_STATUS_URL = "sock_choose_files"
+WEBSOCKET_ERR_FILE_EMPTY = "ERR_FILE_EMPTY"
+WEBSOCKET_ERR_FILE_MISSING = "ERR_FILE_MISSING"
+WEBSOCKET_ERR_PARSE_FAILURE = "ERR_PARSE_FAILURE"
+WEBSOCKET_ERR_UNEXPECTED = "ERR_UNEXPECTED"
+
 
 class AnalyzeJS:
     __METHOD_STRING_IDENTITY_UNKNOWN = "!unknown"

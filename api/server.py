@@ -5,11 +5,18 @@ from flask import Flask, request, jsonify
 from pprint import pprint
 from flask_sock import Sock
 from threading import Thread
-from api.websocket_constants import *
 
 server = Flask(__name__, static_folder='../build', static_url_path='/')
 socket = Sock(server)
 shared_socket_handlers = {}
+
+# TODO: Move all of the below to a common file to be imported where it's
+#  needed.
+WEBSOCKET_STATUS_URL = "sock_choose_files"
+WEBSOCKET_ERR_FILE_EMPTY = "ERR_FILE_EMPTY"
+WEBSOCKET_ERR_FILE_MISSING = "ERR_FILE_MISSING"
+WEBSOCKET_ERR_PARSE_FAILURE = "ERR_PARSE_FAILURE"
+WEBSOCKET_ERR_UNEXPECTED = "ERR_UNEXPECTED"
 
 
 @server.route('/')

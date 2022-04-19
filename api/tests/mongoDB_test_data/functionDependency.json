@@ -6,8 +6,8 @@
     "pathToProject": "|path|to|project|proj1",
     "fileId": "shared|utils|api",
     "functionId": "api",
-    "callerFileId": "TokenHandler",
-    "callerFunctionId": "getToken"
+    "calledFileId": "TokenHandler",
+    "calledFunctionId": "getToken"
   },
     {
     "_id":{
@@ -16,8 +16,8 @@
     "pathToProject": "|path|to|project|proj1",
     "fileId": "shared|utils|api",
     "functionId": "api",
-    "callerFileId": "TokenHandler",
-    "callerFunctionId": "removeToken"
+    "calledFileId": "TokenHandler",
+    "calledFunctionId": "removeToken"
   },
   {
     "_id":{
@@ -26,7 +26,7 @@
     "pathToProject": "|path|to|project|proj1",
     "fileId": "shared|utils|api",
     "functionId": "api",
-    "callerFileId": "TokenHandler",
-    "callerFunctionId": "setToken"
+    "calledFileId": "TokenHandler",
+    "calledFunctionId": "setToken"
   }
 ]

@@ -93,15 +93,15 @@ def __function_coupling_data(
         path_to_project: str = '/path/to/project/proj1',
         file_id: str = 'file1',
         function_id: str = 'api',
-        caller_file_id: str = 'TokenHandler',
-        caller_function_id: str = 'getToken'
+        called_file_id: str = 'TokenHandler',
+        called_function_id: str = 'getToken'
 ):
     data = {
         'pathToProject': path_to_project,
         'fileId': file_id,
-        'functionId': 'func1',
-        'callerFileId': 'file2',
-        'callerFunctionId': 'fun2'
+        'functionId': function_id,
+        'calledFileId': called_file_id,
+        'calledFunctionId': called_function_id
     }
     return data
 
@@ -561,12 +561,12 @@ def test_get_function_coupling_by_function(mock_db):
                'functionId'] == "api"
 
 
-def test_get_function_coupling_by_caller_function(mock_db):
+def test_get_function_coupling_by_called_function(mock_db):
     t_db = mock_db
     document = t_db.get_function_dependency({
-        'callerFunctionId': 'getToken'})
+        'calledFunctionId': 'getToken'})
     for doc in document:
-        assert doc['callerFunctionId'] == 'getToken'
+        assert doc['calledFunctionId'] == 'getToken'
 
 
 def test_add_function_info(mock_db):

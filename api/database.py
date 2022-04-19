@@ -1,7 +1,10 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from pymongo.errors import ConnectionFailure
-from functools import reduce
+
+FUNCTION_INFO_COLLECTION = 'functionInfo'
+TEST_INFO_COLLECTION = 'testInfo'
+FUNCTION_DEPENDENCY_COLLECTION = 'functionDependency'
 
 
 def __check_for_valid_string(in_arg: str) -> bool:
@@ -34,137 +37,284 @@ def __check_for_valid_id_string(in_arg: str) -> bool:
     return len(in_arg) == 24
 
 
+def __check_for_valid_function_range(in_arg: tuple):
+    return __check_for_valid_number(in_arg[0]) \
+           and __check_for_valid_number(in_arg[1])
+
+
+def __check_for_valid_export_info(in_arg):
+    return in_arg in ['export', 'export default', 'private']
+
+
+def __check_for_valid_arguments(in_arg: list):
+    for func_args in in_arg:
+        for args in func_args.items():
+            for arg_name in args:
+                __check_for_valid_string(arg_name)
+
+
+def __app_to_db_string_conv(in_string: str) -> str:
+    """Returns a string copy of the given string that can be stored in the
+    database. "/" characters are converted to "|" and "." is converted to
+    ":".
+
+    :param in_string: Given string to be converted.
+
+    :return: String suitable for mongoDB databases.
+    """
+    in_string = in_string.replace('/', '|')
+    in_string = in_string.replace('.', ':')
+    return in_string
+
+
+def __db_to_app_string_conv(db_string: str) -> str:
+    """converts a string that has been stored in the database (and
+    therefore conforms to mongoDBs naming restrictions) to a string that
+    can be used in the application.
+
+    :param db_string: Given string to be converted.
+
+    :return: String suitable for the application.
+    """
+
+    app_string = db_string.replace('|', '/')
+    app_string = app_string.replace(':', '.')
+    return app_string
+
+
+def app_to_db_doc_conv(app_document, document_attribute_checker):
+    db_document = app_document.copy()
+
+    for attribute, value in db_document.items():
+        if document_attribute_checker[attribute]['app_to_db_conv']:
+            db_document[attribute] = document_attribute_checker[
+                attribute]['app_to_db_conv'](value)
+
+    return db_document
+
+
+def db_to_app_doc_conv(db_document, document_attribute_checker):
+    app_document = db_document.copy()
+
+    for attribute, value in app_document.items():
+        if document_attribute_checker[attribute]['db_to_app_conv']:
+            app_document[attribute] = document_attribute_checker[
+                attribute]['db_to_app_conv'](value)
+
+    return app_document
+
+
 FUNCTION_INFO_ATTRIBUTE_CHECKER = {
-    '_id': {'type': str, 'cond': __check_for_valid_id_string},
-    'pathToProject': {'type': str, 'cond': __check_for_valid_string},
-    'pathToFile': {'type': str, 'cond': __check_for_valid_string},
-    'fileName': {'type': str, 'cond': __check_for_valid_string},
-    'functionName': {'type': str, 'cond': __check_for_valid_string},
-    'functionHash': {'type': str, 'cond': __check_for_valid_string},
-    'pathToCache': {'type': str, 'cond': __check_for_valid_string},
-    'dependents': {'type': int, 'cond': __check_for_valid_number},
-    'dependencies': {'type': int, 'cond': __check_for_valid_number},
-    'numberOfTests': {'type': int, 'cond': __check_for_valid_number},
-    'haveFunctionChanged': {'type': bool, 'cond': None}
+    '_id': {
+        'type': str,
+        'cond': __check_for_valid_id_string,
+        'app_to_db_conv': lambda app_data: ObjectId(app_data),
+        'db_to_app_conv': lambda db_data: str(db_data)
+    },
+    'pathToProject': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'fileId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'functionId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'arguments': {
+        'type': list,
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'functionRange': {
+        'type': tuple,
+        'cond': __check_for_valid_function_range,
+        'app_to_db_conv': lambda app_data: [app_data[0], app_data[1]],
+        'db_to_app_conv': lambda db_data: tuple(db_data)
+    },
+    'functionHash': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'dependents': {
+        'type': int,
+        'cond': __check_for_valid_number,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'dependencies': {
+        'type': int,
+        'cond': __check_for_valid_number,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'numberOfTests': {
+        'type': int,
+        'cond': __check_for_valid_number,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'haveFunctionChanged': {
+        'type': bool,
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'exportInfo': {
+        'type': str,
+        'cond': __check_for_valid_export_info,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'exportName': {
+        'type': str,
+        'cond': None,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    }
 }
+
 TEST_INFO_ATTRIBUTES_CHECKER = {
-    '_id': {'type': str, 'cond': __check_for_valid_id_string},
-    'pathToProject': {'type': str, 'cond': __check_for_valid_string},
-    'fullPath': {'type': str, 'cond': __check_for_valid_string},
-    'functionName': {'type': str, 'cond': __check_for_valid_string},
-    'customName': {'type': str, 'cond': None},
-    'moduleData': {'type': dict, 'cond': None}
+    '_id': {
+        'type': str,
+        'cond': __check_for_valid_id_string,
+        'app_to_db_conv': lambda app_data: ObjectId(app_data),
+        'db_to_app_conv': lambda db_data: str(db_data)
+    },
+    'pathToProject': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'fileId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'functionId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'customName': {
+        'type': str,
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    },
+    'moduleData': {
+        'type': dict,
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
+    }
 }
 
-FUNCTION_COUPLING_ATTRIBUTES_CHECKER = {
-    '_id': {'type': str, 'cond': __check_for_valid_string},
-    'function': {'type': str, 'cond': __check_for_valid_string},
-    'dependentFunctions': {'type': list, 'cond': lambda in_arg: reduce(
-        lambda x, y: x and y, in_arg, True)}
+FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER = {
+    '_id': {
+        'type': str,
+        'cond': __check_for_valid_id_string,
+        'app_to_db_conv': lambda app_data: ObjectId(app_data),
+        'db_to_app_conv': lambda db_data: str(db_data)
+    },
+    'pathToProject': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'fileId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'functionId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'callerFileId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    },
+    'callerFunctionId': {
+        'type': str,
+        'cond': __check_for_valid_string,
+        'app_to_db_conv': __app_to_db_string_conv,
+        'db_to_app_conv': __db_to_app_string_conv
+    }
 }
 
-FUNCTION_INFO_BAD_ATTRIBUTES = ['pathToProject', 'pathToFile', 'fileName',
-                                'pathToCache']
-TEST_INFO_BAD_ATTRIBUTES = ['pathToProject', 'fullPath', 'functionName']
-FUNCTION_COUPLING_BAD_ATTRIBUTES = ['function', 'dependentFunctions']
 
-
-def check_valid_document_attribute(
-        attribute: str,
-        attribute_value: any,
-        document_attribute_checker: dict
+def check_valid_document_attributes(
+        attribute_filter_value_dict: dict,
+        attribute_property_checker: dict,
+        *, strict_compare: bool = False
 ) -> None:
-    """Checks is a given attribute is a valid attribute of a document.
+    for attribute_key, attribute_value in attribute_filter_value_dict.items():
 
-    :param attribute: The attribute, represented as a string, that is being
-        checked
-    :param attribute_value: The value of the attribute
-    :param document_attribute_checker: The dictionary that contains information
-        about the type and condition that the attributes should conform to
+        if not isinstance(attribute_key, str):
+            raise TypeError(f"""
+            All keys in the {attribute_filter_value_dict} should be strings but
+            got a key of type {type(attribute_key)} with the corresponding
+            value: {attribute_value}.""")
 
-    :return: No return value
+        if not __check_for_valid_string(attribute_key):
+            raise ValueError(f"""
+            A key in the {attribute_filter_value_dict}, with the corresponding
+            value {attribute_value}, is an empty string.""")
 
-    :raises ValueError: If given attribute isn't an attribute in the document
-        specified by the document_attribute_checker, or if the value of the
-        attribute_value doesn't conform to the condition specified by the
-        document_attribute_checker
-    :raises TypeError: If given attribute_value isn't the type that is
-        specified in the document_attribute_checker
-    """
-    if attribute not in document_attribute_checker:
-        raise ValueError(f"""
-        The given document attribute {attribute} is not an valid
-        attribute.""")
+        if attribute_key not in attribute_property_checker:
+            raise ValueError(f"""
+            The attribute key {attribute_key} isn't a valid attribute according
+            to the attribute property checker.""")
 
-    if not isinstance(
-            attribute_value,
-            document_attribute_checker[attribute]['type']
-    ):
-        raise TypeError(f"""
-         The {attribute} attribute's value should be {
-        document_attribute_checker[attribute]['type']}, but was given a
-         {type(attribute_value)} type.""")
+        if not isinstance(
+                attribute_value,
+                attribute_property_checker[
+                    attribute_key][
+                    'type']):
+            raise TypeError(f"""The value of the attribute {attribute_key},
+                should be a {attribute_property_checker[attribute_key]['type']}
+                type, but was given a value of type {
+                type(attribute_value)}.""")
 
-    if document_attribute_checker[attribute]['cond'] and \
-            not document_attribute_checker[attribute]['cond'](attribute_value):
-        raise ValueError(f"""
-        The value {attribute_value} of attribute {attribute} does 
-        not conform to the constraints of the attribute.""")
+        if attribute_property_checker[
+                attribute_key]['cond']:
+            if not attribute_property_checker[
+                    attribute_key][
+                    'cond'](
+                    attribute_value):
+                raise ValueError(f"""
+                Attribute {attribute_key} has the value {attribute_value} which 
+                doesn't conform to the conditions for that attribute.""")
 
-
-def check_valid_document(
-        document: dict,
-        document_attribute_checker: dict
-) -> None:
-    """Checks that the document, specified by the document_attribute_checker is
-    valid.
-
-    :param document: The document to be checked
-    :param document_attribute_checker: The dictionary that contains information
-        about the type and condition that the attributes should conform to
-
-    :return: No return value
-
-    :raises TypeError: If document doesn't conform to
-        document_attribute_checker
-    :raises ValueError: If the value of any attribute in the document doesn't
-        conform to document_attribute_checker
-    """
-    for attribute, attribute_value in document.items():
-        check_valid_document_attribute(
-            attribute,
-            attribute_value,
-            document_attribute_checker
-        )
-
-
-def check_valid_attribute_filter(
-        attribute_filter: str,
-        document_attribute_checker: dict
-) -> None:
-    """Checks if a given attribute filter conforms to the document attribute
-    checker
-
-    :param attribute_filter:  The attribute filter being checked
-    :param document_attribute_checker: The dictionary that contains information
-        about the type and condition that the attributes should conform to
-
-    :return: No return value
-
-    :raises TypeError: If document doesn't conform to
-        document_attribute_checker
-    :raises ValueError: If the value of any attribute in the document doesn't
-        conform to document_attribute_checker
-    """
-    if not isinstance(attribute_filter, str):
-        raise TypeError(f"""Filter attribute {attribute_filter} is not of type 
-        str.""")
-
-    if not __check_for_valid_string(attribute_filter):
-        raise ValueError("""Filter attribute cant be an empty string """)
-
-    if attribute_filter not in document_attribute_checker:
-        raise ValueError("""Filter attribute is not a valid attribute""")
+    if strict_compare:
+        for item in attribute_property_checker:
+            if item is '_id':
+                continue
+            if item not in attribute_filter_value_dict:
+                raise ValueError(f"""
+                The attribute {item} is missing form the given attribute
+                attribute dictionary.""")
 
 
 # Todo: Add error handler that can revert changes and such if error occurs.
@@ -229,145 +379,6 @@ class DatabaseHandler:
         self.database = None
         return
 
-    def __app_to_db_string_conv(self, in_string: str) -> str:
-        """Returns a string copy of the given string that can be stored in the
-        database. "/" characters are converted to "|" and "." is converted to
-        ":".
-
-        :param in_string: Given string to be converted.
-
-        :return: String suitable for mongoDB databases.
-        """
-        in_string = in_string.replace('/', '|')
-        in_string = in_string.replace('.', ':')
-        return in_string
-
-    def __db_to_app_string_conv(self, db_string: str) -> str:
-        """converts a string that has been stored in the database (and
-        therefore conforms to mongoDBs naming restrictions) to a string that
-        can be used in the application.
-
-        :param db_string: Given string to be converted.
-
-        :return: String suitable for the application.
-        """
-
-        app_string = db_string.replace('|', '/')
-        app_string = app_string.replace(':', '.')
-        return app_string
-
-    def __function_info_app_to_db_conv(self, function_info: dict) -> dict:
-        """Converts strings in the given function info object to conform to
-        the mongoDB naming restrictions.
-
-        :param function_info: The function info document representation to be
-            converted.
-
-        :return: Function info document suitable for mongoDB databases
-        """
-
-        for item in FUNCTION_INFO_BAD_ATTRIBUTES:
-            if item in function_info:
-                function_info[item] = self.__app_to_db_string_conv(
-                    function_info[item])
-        if '_id' in function_info:
-            function_info['_id'] = ObjectId(function_info['_id'])
-        return function_info
-
-    def __test_info_app_to_db_conv(self, test_info: dict) -> dict:
-        """Converts strings in the given test info object to conform to
-         the mongoDB naming restrictions.
-
-         :param test_info: The test info document representation to be
-             converted.
-
-         :return: Test info document suitable for mongoDB databases
-         """
-
-        for item in TEST_INFO_BAD_ATTRIBUTES:
-            if item in test_info:
-                test_info[item] = self.__app_to_db_string_conv(test_info[item])
-        if '_id' in test_info:
-            test_info['_id'] = ObjectId(test_info['_id'])
-        return test_info
-
-    def __function_coupling_app_to_db_conv(
-            self,
-            function_coupling: dict) -> dict:
-        """Converts strings in the given function coupling object to conform to
-         the mongoDB naming restrictions.
-
-         :param function_coupling: The test info document representation to be
-             converted.
-
-         :return: Function coupling document suitable for mongoDB databases
-         """
-        if 'function' in function_coupling:
-            function_coupling['function'] = self.__app_to_db_string_conv(
-                function_coupling['function'])
-        if 'dependentFunctions' in function_coupling:
-            function_coupling['dependentFunctions'] = [
-                self.__app_to_db_string_conv(item) for item in
-                function_coupling['dependentFunctions']]
-        if '_id' in function_coupling:
-            function_coupling['_id'] = ObjectId(function_coupling['_id'])
-        return function_coupling
-
-    def __function_info_db_to_app_conv(self, function_info: dict) -> dict:
-        """Converts strings in the given function info object in order to
-        be used in the rest of the application.
-
-        :param function_info: The function info document representation to be
-            converted.
-
-        :return: No return value.
-        """
-
-        for item in FUNCTION_INFO_BAD_ATTRIBUTES:
-            if item in function_info:
-                function_info[item] = self.__db_to_app_string_conv(
-                    function_info[item])
-        function_info['_id'] = str(function_info['_id'])
-
-        return function_info
-
-    def __test_info_db_to_app_conv(self, test_info: dict) -> dict:
-        """Converts strings in the given test info object in order to
-        be used in the rest of the application.
-
-        :param test_info: The test info document representation to be
-            converted.
-
-        :return: No return value.
-        """
-
-        for item in TEST_INFO_BAD_ATTRIBUTES:
-            if item in test_info:
-                test_info[item] = self.__db_to_app_string_conv(test_info[item])
-        test_info['_id'] = str(test_info['_id'])
-        return test_info
-
-    def __function_coupling_db_to_app_conv(
-            self,
-            function_coupling: dict) -> dict:
-        """Converts strings in the given function coupling object in order to
-         be used in the rest of the application.
-
-         :param function_coupling: The function coupling document
-            representation to be converted.
-
-         :return: No return value.
-         """
-        if 'function' in function_coupling:
-            function_coupling['function'] = self.__db_to_app_string_conv(
-                function_coupling['function'])
-        if 'dependentFunctions' in function_coupling:
-            function_coupling['dependentFunctions'] = [
-                self.__db_to_app_string_conv(item) for item in
-                function_coupling['dependentFunctions']]
-        function_coupling['_id'] = str(function_coupling['_id'])
-        return function_coupling
-
     def __check_connection(self) -> None:
         """Checks if the instance is connected to a database.
 
@@ -382,140 +393,73 @@ class DatabaseHandler:
 
     def __get_query(
             self,
-            /, collection: str, attribute_value: any, attribute_dict: dict,
-            bad_attribute_list: list, db_to_app_conv: any,
-            *, document_attribute: str, query_function: any = None,
+            /, collection: str,
+            attribute_filter_dict: dict,
+            attribute_property_checker: dict,
+            *, query_function: any = None,
             act_on_first_match: bool = False
     ) -> any:
-        """Sends a get query to connected database.
-
-        :param collection:
-            The collection from which the document should be
-            fetched from.
-        :param attribute_value:
-            The value of the attribute that is used to
-            identify the sought after document in the database.
-        :param attribute_dict:
-            A dictionary used to check that the given attribute_value and
-            document_attribute conforms to the document type specified by the
-            collection argument.
-        :param bad_attribute_list:
-            Contains a list of attribute that need to be
-            converted before being used to query the database.
-        :param db_to_app_conv:
-            Function used to convert the resulting document in order to be used
-            in the application.
-        :param document_attribute:
-            The attribute used to specify which attribute will be used to
-            identify the sought after document in the database.
-        :param query_function:
-            An optional function that can be used to specify a custom query
-            to the database.
-        :param act_on_first_match:
-            An optional argument that can be used to specify if only the first
-            document that conforms to the query condition should be returned or
-            if all documents that fulfills the query condition should be
-            returned.
-
-        :return: An list containing the documents corresponding to the given
-            attribute_value and document_attribute value. If no document could
-            be found, None is returned.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the given document_attribute isn't a valid string or if
-            attribute_dict isn't a valid attribute document specified by the
-            attribute_dict dictionary. It's also raised if the given
-            attribute_value doesn't conform to the condition of the
-            document_attribute which is also specified by the attribute_dict.
-        :raises TypeError:
-            If the given document_attribute isn't a string or if the given
-            document_attribute's typ isn't equal to that specified by the
-            attribute_dict for the given document_attribute.
-        """
 
         self.__check_connection()
-        check_valid_attribute_filter(document_attribute, attribute_dict)
-        check_valid_document_attribute(
-            document_attribute,
-            attribute_value,
-            attribute_dict
-        )
 
-        if document_attribute == '_id':
-            db_attribute_value = ObjectId(attribute_value)
-        elif document_attribute in bad_attribute_list:
-            if isinstance(attribute_value, list):
-                db_attribute_value = [self.__app_to_db_string_conv(attr_val)
-                                      for attr_val in attribute_value]
-            else:
-                db_attribute_value = self.__app_to_db_string_conv(
-                    attribute_value)
-        else:
-            db_attribute_value = attribute_value
+        check_valid_document_attributes(
+            attribute_filter_dict,
+            attribute_property_checker)
+
+        db_attribute_filter_dict = app_to_db_doc_conv(
+            attribute_filter_dict,
+            attribute_property_checker)
 
         if not query_function:
-            if act_on_first_match or (document_attribute == '_id'):
-                db_documents = self.database[collection].find_one({
-                    document_attribute: db_attribute_value
-                })
+
+            # TODO: Fix it so that is _id is only attribute then used find one.
+            #   or maybe just change act_on_first_match accrdingly.
+
+            if act_on_first_match:
+                db_documents = self.database[
+                    collection] \
+                    .find_one(
+                    db_attribute_filter_dict)
 
                 if not db_documents:
                     return None
 
                 db_documents = [db_documents]
             else:
-                db_documents = self.database[collection].find({
-                    document_attribute: db_attribute_value
-                })._compute_results()
+                db_documents = self.database[
+                    collection] \
+                    .find(
+                    db_attribute_filter_dict) \
+                    ._compute_results()
 
             if not db_documents:
                 return None
 
-            return [db_to_app_conv(docs) for docs in db_documents]
+            return [
+                db_to_app_doc_conv(docs, attribute_property_checker)
+                for docs in db_documents
+            ]
         else:
-            return query_function(db_attribute_value)
+            return query_function(db_attribute_filter_dict)
 
-    def __query_add_one(
+    def __add_query(
             self,
-            /, collection: str, document: any, attribute_dict: dict,
-            app_to_db_conv: any,
+            /, collection: str,
+            document: any,
+            attribute_property_checker: dict,
             *, query_function: any = None
     ) -> str:
-        """Query that adds one document to the database.
-
-        :param collection:
-            The collection to which the document should be added.
-        :param document:
-            The document that should be added.
-        :param attribute_dict:
-            A dictionary used to check that the given document conforms to the
-            document type specified by the collection argument.
-        :param app_to_db_conv:
-            A function used to convert the document in order to be stored in
-            the database.
-        :param query_function:
-            An optional function that can be used to specify a custom query
-            to the database.
-
-        :return: The document id is returned as a string.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the document contains attribute that doesn't exist in the
-            attribute_dict or if any of the attribute values doesn't
-            conform the condition specified in the attribute_dict.
-        :raises TypeError:
-            If any of the attribute's values in the documents has an incorrect
-            type.
-        """
 
         self.__check_connection()
-        check_valid_document(document, attribute_dict)
 
-        db_document = app_to_db_conv(document.copy())
+        check_valid_document_attributes(
+            document,
+            attribute_property_checker,
+            strict_compare=True)
+
+        db_document = app_to_db_doc_conv(
+            document,
+            attribute_property_checker)
 
         if not query_function:
             db_result = self.database[collection].insert_one(db_document)
@@ -523,574 +467,176 @@ class DatabaseHandler:
         else:
             return query_function(db_document)
 
-    def __query_set_one(
+    def __set_query(
             self,
             /, collection: str, updated_document_data: any,
-            filter_attribute: str, attribute_dict: dict, app_to_db_conv: any,
-            bad_attribute_list: list,
-            *, query_function: any = None, filter_attribute_value: any = None
+            attribute_filter_dict: dict, attribute_property_checker: dict,
+            *, query_function: any = None
     ) -> None:
-        """Query that updates a document in the database.
-
-        :param collection:
-            The collection containing the element that should be updated.
-        :param updated_document_data:
-            The updated document data.
-        :param filter_attribute:
-            The document used to specify which document should be updated.
-        :param attribute_dict:
-            A dictionary used to check that the given updated document and
-             filer_attribute conforms to the document type specified by the
-             collection argument.
-        :param app_to_db_conv:
-            Function used to convert the resulting document in order to be used
-            in the application.
-        :param bad_attribute_list:
-            Contains a list of attribute that need to be converted before being
-            used to query the database.
-        :param query_function:
-            An optional function that can be used to specify a custom query
-            to the database.
-        :param filter_attribute_value:
-            An optional value that is used if the data used to search for the
-            document isn't included in the updated document data.
-
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises TypeError:
-            If the types of the attribute values in the updated document is
-            invalid or if the filter_attribute_value is invalid according to
-            the attribute_dict.
-        : raises ValueError:
-            If the values in the updated documents or
-            the filter_attribute_value are invalid according to the
-            attribute_dict.
-        """
 
         self.__check_connection()
-        check_valid_attribute_filter(filter_attribute, attribute_dict)
-        check_valid_document(updated_document_data, attribute_dict)
 
-        db_document = app_to_db_conv(updated_document_data.copy())
+        check_valid_document_attributes(
+            attribute_filter_dict,
+            attribute_property_checker)
 
-        if not filter_attribute_value:
-            db_document_filter = db_document[filter_attribute]
-        else:
-            check_valid_document_attribute(
-                filter_attribute,
-                filter_attribute_value,
-                attribute_dict)
+        check_valid_document_attributes(
+            updated_document_data,
+            attribute_property_checker)
 
-            if filter_attribute == '_id':
-                db_document_filter = ObjectId(filter_attribute_value)
-            elif filter_attribute in bad_attribute_list:
-                db_document_filter = self.__app_to_db_string_conv(
-                    filter_attribute_value)
-            else:
-                db_document_filter = filter_attribute_value
+        db_updated_document = app_to_db_doc_conv(
+            updated_document_data,
+            attribute_property_checker)
+
+        db_attribute_filter_dict = app_to_db_doc_conv(
+            attribute_filter_dict,
+            attribute_property_checker)
 
         if not query_function:
             self.database[collection].update_one(
-                {filter_attribute: db_document_filter},
-                {'$set': db_document})
+                db_attribute_filter_dict,
+                {'$set': db_updated_document})
         else:
-            query_function(db_document, filter_attribute, db_document_filter)
+            query_function(db_updated_document, db_attribute_filter_dict)
 
-    def __query_remove_one(
+    def __remove_query(
             self,
-            /, collection: str, filter_attribute: str,
-            filter_attribute_value: any, attribute_dict: dict,
-            bad_attribute_list: any,
-            *, query_function: any = None, act_on_first_match: bool = True
+            /, collection: str,
+            attribute_filter_dict: dict,
+            attribute_property_checker: dict,
+            *, query_function: any = None,
+            act_on_first_match: bool = False
     ) -> None:
-        """Removes one or more documents from the database.
-
-        :param collection:
-            The collection in which the document to be removed resides.
-        :param filter_attribute:
-            The attribute used to indentify the document to be removed.
-        :param filter_attribute_value:
-            The value of the filter attribute.
-        :param attribute_dict:
-            A dictionary used to check that the given updated document and
-             filer_attribute conforms to the document type specified by the
-             collection argument.
-        :param bad_attribute_list:
-            Contains a list of attribute that need to be converted before being
-            used to query the database.
-        :param query_function:
-            An optional function that can be used to specify a custom query
-            to the database.
-        :param act_on_first_match:
-            An optional argument that, is set to true, will only remove the
-            first found document that conforms to the query. If it's set to
-            false, then all documents found by the query will be removed.
-
-        :return: No return value
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the filter_attribute isn't in attribute_dict or the
-            filter_attribute_value doesn't conform to the attribute_dict.
-        :raises TypeError:
-            If the type of the filter_attribute or filter_attribute_value are
-            invalid.
-
-        """
 
         self.__check_connection()
-        check_valid_attribute_filter(filter_attribute, attribute_dict)
-        check_valid_document_attribute(
-            filter_attribute,
-            filter_attribute_value,
-            attribute_dict
-        )
 
-        if filter_attribute == '_id':
-            db_attribute_filter = ObjectId(filter_attribute_value)
-        elif filter_attribute in bad_attribute_list:
-            if isinstance(filter_attribute_value, list):
-                db_attribute_filter = [self.__app_to_db_string_conv(attr_val)
-                                       for attr_val in filter_attribute_value]
-            else:
-                db_attribute_filter = self.__app_to_db_string_conv(
-                    filter_attribute_value)
-        else:
-            db_attribute_filter = filter_attribute_value
+        check_valid_document_attributes(
+            attribute_filter_dict,
+            attribute_property_checker)
 
+        db_attribute_filter = app_to_db_doc_conv(
+            attribute_filter_dict,
+            attribute_property_checker)
+
+        # TODO: make it so delete_one is called when attribute is the only
+        #   ket in attribute_filter_dict
         if not query_function:
             if act_on_first_match:
-                self.database[collection].delete_one({
-                    filter_attribute: db_attribute_filter})
+                self.database[collection].delete_one(db_attribute_filter)
             else:
-                self.database[collection].delete_many({
-                    filter_attribute: db_attribute_filter})
+                self.database[collection].delete_many(db_attribute_filter)
         else:
-            query_function(filter_attribute, db_attribute_filter)
+            query_function(db_attribute_filter)
 
     def get_function_info(
             self,
-            /, attribute_value: any,
-            *, document_attribute: str = '_id'
+            /, attribute_filter_dict: any,
     ) -> any:
-        """Returns one or more function info documents from the database based
-        on the given attribute value.
-
-        :param attribute_value:
-            Value of the document attribute used to identify the document in
-            the database
-        :param document_attribute:
-            The document attribute that used to indentify the document in the
-            database.
-
-        :return: An array containing the found documents.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the value of attribute_value is invalid for the corresponding
-            document_attribute, or if the document_attribute isn't a string.
-        """
         return self.__get_query(
-            collection='function_info',
-            attribute_value=attribute_value,
-            attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-            bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-            db_to_app_conv=self.__function_info_db_to_app_conv,
-            document_attribute=document_attribute
-        )
+            collection=FUNCTION_INFO_COLLECTION,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
     def get_test_info(
             self,
-            /, attribute_value: any,
-            *, document_attribute: str = '_id'
+            /, attribute_filter_dict
     ) -> any:
-        """Returns one or more test info documents from the database based
-        on the given attribute value.
-
-        :param attribute_value:
-            Value of the document attribute used to identify the document in
-            the database
-        :param document_attribute:
-            The document attribute that used to indentify the document in the
-            database.
-
-        :return: An array containing the found documents.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the value of attribute_value is invalid for the corresponding
-            document_attribute, or if the document_attribute isn't a string.
-        """
         return self.__get_query(
-            collection='test_info',
-            attribute_value=attribute_value,
-            attribute_dict=TEST_INFO_ATTRIBUTES_CHECKER,
-            bad_attribute_list=TEST_INFO_BAD_ATTRIBUTES,
-            db_to_app_conv=self.__test_info_db_to_app_conv,
-            document_attribute=document_attribute
+            collection=TEST_INFO_COLLECTION,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=TEST_INFO_ATTRIBUTES_CHECKER
         )
 
-    def get_function_coupling(
+    def get_function_dependency(
             self,
-            /, attribute_value: any,
-            *, document_attribute: str = '_id'
+            /, attribute_filter_dict
     ) -> any:
-        """Returns one or more function coupling documents from the database
-        based on the given attribute value.
-
-        :param attribute_value:
-            Value of the document attribute used to identify the document in
-            the database
-        :param document_attribute:
-            The document attribute that used to indentify the document in the
-            database.
-
-        :return: An array containing the found documents.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the value of attribute_value is invalid for the corresponding
-            document_attribute, or if the document_attribute isn't a string.
-        """
-        if document_attribute == 'dependentFunctions':
-            def dependent_function_query(db_attribute_value):
-                db_documents = self.database['coupling'].find({
-                    'dependentFunctions': db_attribute_value[0]
-                })
-                if not db_documents:
-                    return None
-
-                return [self.__db_to_app_string_conv(docs['function']) for docs
-                        in db_documents]
-
-            return self.__get_query(
-                collection='coupling',
-                attribute_value=attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                db_to_app_conv=self.__function_coupling_db_to_app_conv,
-                document_attribute=document_attribute,
-                query_function=dependent_function_query
-            )
-        else:
-            return self.__get_query(
-                collection='coupling',
-                attribute_value=attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                db_to_app_conv=self.__function_coupling_db_to_app_conv,
-                document_attribute=document_attribute
-            )
+        return self.__get_query(
+            collection=FUNCTION_DEPENDENCY_COLLECTION,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER
+        )
 
     def add_function_info(self, function_info: any) -> str:
-        """Adds a function info document to the database.
-
-        :param function_info:
-            The document that should be added to the database.
-
-        :return:
-           The document id represented as a string.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the values of the attributes in the function_info document
-            doesn't conform to the document types condition.
-        :raises TypeError:
-            If the types of the attribute values in the function_info document
-            doesn't conform to the document attribute values specifications.
-        """
-        return self.__query_add_one(
-            'function_info',
-            function_info,
-            FUNCTION_INFO_ATTRIBUTE_CHECKER,
-            self.__function_info_app_to_db_conv
-        )
+        return self.__add_query(
+            collection=FUNCTION_INFO_COLLECTION,
+            document=function_info,
+            attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
     def add_test_info(self, test_info: any) -> str:
-        """Adds a test info document to the database.
+        return self.__add_query(
+            collection=TEST_INFO_COLLECTION,
+            document=test_info,
+            attribute_property_checker=TEST_INFO_ATTRIBUTES_CHECKER)
 
-        :param test_info:
-            The document that should be added to the database.
-
-        :return:
-            The document id represented as a string.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the values of the attributes in the test_info document
-            doesn't conform to the document types condition.
-        :raises TypeError:
-            If the types of the attribute values in the test_info document
-            doesn't conform to the document attribute values specifications.
-        """
-        return self.__query_add_one(
-            'test_info',
-            test_info,
-            TEST_INFO_ATTRIBUTES_CHECKER,
-            self.__test_info_app_to_db_conv
-        )
-
-    def add_function_coupling(self, function_coupling: any) -> str:
-        """Adds a function coupling document to the database.
-
-        :param function_coupling:
-            The document that should be added to the database.
-
-        :return:
-            The document id represented as a string.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the values of the attributes in the function_coupling document
-            doesn't conform to the document types condition.
-        :raises TypeError:
-            If the types of the attribute values in the function_coupling
-            document doesn't conform to the document attribute values
-            specifications.
-        """
-        return self.__query_add_one(
-            'coupling',
-            function_coupling,
-            FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-            self.__function_coupling_app_to_db_conv
-        )
+    def add_function_dependency(self, function_dependency):
+        return self.__add_query(
+            collection=FUNCTION_DEPENDENCY_COLLECTION,
+            document=function_dependency,
+            attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER)
 
     def set_function_info(
             self,
-            /, update_function_info: any,
-            *, filter_attribute: any = '_id', filter_attribute_value=None
+            /, update_function_info: dict, attribute_filter_dict
     ) -> None:
-        """Updates the value of a function info document.
 
-        :param update_function_info:
-            Contains the updated function info data.
-        :param filter_attribute:
-            The attribute used to locate the document in the database.
-        :param filter_attribute_value:
-            The value of filter_attribute.
-
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the value of filter_attribute_value, the values in the
-             update_function_info, or the filter_attribute are invalid.
-        :raises TypeError:
-            If the type of filter_attribute_value, the values in the
-             update_function_info, or the filter_attribute are invalid.
-        """
-        self.__query_set_one(
-            collection='function_info',
+        self.__set_query(
+            collection=FUNCTION_INFO_COLLECTION,
             updated_document_data=update_function_info,
-            filter_attribute=filter_attribute,
-            attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-            app_to_db_conv=self.__function_info_app_to_db_conv,
-            filter_attribute_value=filter_attribute_value,
-            bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER
         )
 
     def set_test_info(
             self,
-            /, update_test_info: any,
-            *, filter_attribute: any = '_id', filter_attribute_value=None
+            /, update_test_info: dict, attribute_filter_dict: dict
     ) -> None:
-        """Updates the value of a test info document.
 
-        :param update_test_info:
-            Contains the updated test info data.
-        :param filter_attribute:
-            The attribute used to locate the document in the database.
-        :param filter_attribute_value:
-            The value of filter_attribute.
-
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the value of filter_attribute_value, the values in the
-             update_test_info, or the filter_attribute are invalid.
-        :raises TypeError:
-            If the type of filter_attribute_value, the values in the
-             update_test_info, or the filter_attribute are invalid.
-        """
-        self.__query_set_one(
-            collection='test_info',
+        self.__set_query(
+            collection=TEST_INFO_COLLECTION,
             updated_document_data=update_test_info,
-            filter_attribute=filter_attribute,
-            attribute_dict=TEST_INFO_ATTRIBUTES_CHECKER,
-            app_to_db_conv=self.__test_info_app_to_db_conv,
-            filter_attribute_value=filter_attribute_value,
-            bad_attribute_list=TEST_INFO_BAD_ATTRIBUTES
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=TEST_INFO_ATTRIBUTES_CHECKER
         )
 
-    def set_function_coupling(
+    def set_function_dependency(
             self,
-            /, update_function_coupling: any,
-            *, filter_attribute: any = '_id', filter_attribute_value=None
+            /, update_function_dependency: dict, attribute_filter_dict: dict
     ) -> None:
-        """Updates the value of a function coupling document.
 
-        :param update_function_coupling:
-            Contains the updated test info data.
-        :param filter_attribute:
-            The attribute used to locate the document in the database.
-        :param filter_attribute_value:
-            The value of filter_attribute.
-
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the value of filter_attribute_value, the values in the
-             update_function_coupling, or the filter_attribute are invalid.
-        :raises TypeError:
-            If the type of filter_attribute_value, the values in the
-             update_function_coupling, or the filter_attribute are invalid.
-        """
-        self.__query_set_one(
-            collection='coupling',
-            updated_document_data=update_function_coupling,
-            filter_attribute=filter_attribute,
-            attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-            app_to_db_conv=self.__function_coupling_app_to_db_conv,
-            filter_attribute_value=filter_attribute_value,
-            bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES
+        self.__set_query(
+            collection=FUNCTION_DEPENDENCY_COLLECTION,
+            updated_document_data=update_function_dependency,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER
         )
 
-    def delete_function_info(
+    def remove_function_info(
             self,
-            /, filter_attribute_value: any,
-            *, filter_attribute: str = '_id', act_on_first_match: bool = True
+            /, attribute_filter_dict: dict
     ) -> None:
-        """Removes a function info document from the database.
 
-        :param filter_attribute_value:
-            The value of filter_attribute.
-        :param filter_attribute:
-            The attribute used to locate the document in the database.
-        :param act_on_first_match:
-            If this is set to ture, then only the first found document will be
-            deleted. If it's set to false, then all fund documents will be
-            deleted.
+        self.__remove_query(
+            collection=FUNCTION_INFO_COLLECTION,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=FUNCTION_INFO_ATTRIBUTE_CHECKER)
 
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the given filter_attribute_value is invalid or if
-            filter_attribute isn̈́'t part of the document type.
-        :raises TypeError:
-            If the type of filter_attribute_value is invalid or
-            if filter_attribute isn't a string.
-        """
-        self.__query_remove_one(
-            collection='function_info',
-            filter_attribute=filter_attribute,
-            filter_attribute_value=filter_attribute_value,
-            attribute_dict=FUNCTION_INFO_ATTRIBUTE_CHECKER,
-            bad_attribute_list=FUNCTION_INFO_BAD_ATTRIBUTES,
-            act_on_first_match=act_on_first_match
-        )
-
-    def delete_test_info(
+    def remove_test_info(
             self,
-            /, filter_attribute_value: any,
-            *, filter_attribute: str = '_id', act_on_first_match: bool = True
+            /, attribute_filter_dict: dict
     ) -> None:
-        """Removes a test info document from the database.
 
-        :param filter_attribute_value:
-            The value of filter_attribute.
-        :param filter_attribute:
-            The attribute used to locate the document in the database.
-        :param act_on_first_match:
-            If this is set to ture, then only the first found document will be
-            deleted. If it's set to false, then all fund documents will be
-            deleted.
+        self.__remove_query(
+            collection=TEST_INFO_COLLECTION,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=TEST_INFO_ATTRIBUTES_CHECKER)
 
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the given filter_attribute_value is invalid or if
-            filter_attribute isn̈́'t part of the document type.
-        :raises TypeError:
-            If the type of filter_attribute_value is invalid or
-            if filter_attribute isn't a string.
-        """
-        self.__query_remove_one(
-            collection='test_info',
-            filter_attribute=filter_attribute,
-            filter_attribute_value=filter_attribute_value,
-            attribute_dict=TEST_INFO_ATTRIBUTES_CHECKER,
-            bad_attribute_list=TEST_INFO_BAD_ATTRIBUTES,
-            act_on_first_match=act_on_first_match
-        )
-
-    def delete_function_coupling(
+    def remove_function_dependency(
             self,
-            /, filter_attribute_value: any,
-            *, filter_attribute: str = '_id', act_on_first_match: bool = True
+            /, attribute_filter_dict: dict,
     ) -> None:
-        """Removes a function coupling document from the database.
 
-        :param filter_attribute_value:
-            The value of filter_attribute.
-        :param filter_attribute:
-            The attribute used to locate the document in the database.
-        :param act_on_first_match:
-            If this is set to ture, then only the first found document will be
-            deleted. If it's set to false, then all fund documents will be
-            deleted.
-
-        :return: No return value.
-
-        :raises RuntimeError:
-            If instance is not connected to a database.
-        :raises ValueError:
-            If the given filter_attribute_value is invalid or if
-            filter_attribute isn̈́'t part of the document type.
-        :raises TypeError:
-            If the type of filter_attribute_value is invalid or
-            if filter_attribute isn't a string.
-        """
-
-        if filter_attribute == 'dependentFunctions':
-            def delete_dependents(filter_attribute_str, db_attribute_filter):
-                self.database['coupling'].delete_many({
-                    filter_attribute_str: db_attribute_filter[0]
-                })
-
-            self.__query_remove_one(
-                collection='coupling',
-                filter_attribute=filter_attribute,
-                filter_attribute_value=filter_attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                act_on_first_match=act_on_first_match,
-                query_function=delete_dependents
-            )
-
-        else:
-            self.__query_remove_one(
-                collection='coupling',
-                filter_attribute=filter_attribute,
-                filter_attribute_value=filter_attribute_value,
-                attribute_dict=FUNCTION_COUPLING_ATTRIBUTES_CHECKER,
-                bad_attribute_list=FUNCTION_COUPLING_BAD_ATTRIBUTES,
-                act_on_first_match=act_on_first_match
-            )
+        self.__remove_query(
+            collection=FUNCTION_DEPENDENCY_COLLECTION,
+            attribute_filter_dict=attribute_filter_dict,
+            attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER)

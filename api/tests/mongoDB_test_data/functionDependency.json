@@ -1,0 +1,32 @@
+[
+  {
+    "_id":{
+      "$oid": "0123456789ab0123456789ab"
+    },
+    "pathToProject": "|path|to|project|proj1",
+    "fileId": "shared|utils|api",
+    "functionId": "api",
+    "callerFileId": "TokenHandler",
+    "callerFunctionId": "getToken"
+  },
+    {
+    "_id":{
+      "$oid": "0123456789ab0123456789ac"
+    },
+    "pathToProject": "|path|to|project|proj1",
+    "fileId": "shared|utils|api",
+    "functionId": "api",
+    "callerFileId": "TokenHandler",
+    "callerFunctionId": "removeToken"
+  },
+  {
+    "_id":{
+      "$oid": "0123456789ab0123456789ad"
+    },
+    "pathToProject": "|path|to|project|proj1",
+    "fileId": "shared|utils|api",
+    "functionId": "api",
+    "callerFileId": "TokenHandler",
+    "callerFunctionId": "setToken"
+  }
+]

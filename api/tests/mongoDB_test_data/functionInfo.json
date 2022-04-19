@@ -1,0 +1,71 @@
+[
+  {
+    "_id": {
+      "$oid": "0123456789ab0123456789ab"
+    },
+    "pathToProject": "|home|user|web_dev_projects|jira_clone|client|src",
+    "fileId": "shared|utils|api",
+    "functionId": "default:get",
+    "arguments": [{"args": "" }],
+    "functionRange": [1,10],
+    "functionHash": "sdg7sdfg98fsd7g98dfs7df",
+    "dependents": 24,
+    "dependencies": 10,
+    "numberOfTests": 90,
+    "haveFunctionChanged": false,
+    "exportInfo": "export default",
+    "exportName": ""
+  },
+  {
+    "_id": {
+      "$oid": "0123456789ab0123456789ac"
+    },
+    "pathToProject": "|home|user|web_dev_projects|jira_clone|client|src",
+    "fileId": "shared|utils|tokenize",
+    "functionId": "getToken",
+    "arguments": [{"args": "" }],
+    "functionRange": [1,10],
+    "functionHash": "sdg7sdfg98fsd7g98dfs7df",
+    "dependents": 24,
+    "dependencies": 10,
+    "numberOfTests": 90,
+    "haveFunctionChanged": false,
+    "exportInfo": "export",
+    "exportName": ""
+  },
+  {
+    "_id": {
+      "$oid": "0123456789ab0123456789ad"
+    },
+    "pathToProject": "|home|user|web_dev_projects|jira_clone|client|src",
+    "fileId": "shared|utils|tokenize",
+    "functionId": "deleteToken",
+    "arguments": [{"args": "" }],
+    "functionRange": [1,10],
+    "functionHash": "sdg7sdfg98fsd7g98dfs7df",
+    "dependents": 24,
+    "dependencies": 10,
+    "numberOfTests": 90,
+    "haveFunctionChanged": true,
+    "exportInfo": "export",
+    "exportName": ""
+  },
+  {
+    "_id": {
+      "$oid": "0123456789ab0123456789ae"
+    },
+    "pathToProject": "|home|user|web_dev_projects|trello_clone|client|src",
+    "fileId": "shared|utils|tokenize",
+    "functionId": "getToken",
+    "arguments": [{"args": "" }],
+    "functionRange": [1,10],
+    "functionHash": "sdg7sdfg98fsd7g98dfs7df",
+    "dependents": 24,
+    "dependencies": 10,
+    "numberOfTests": 90,
+    "haveFunctionChanged": false,
+    "exportInfo": "export",
+    "exportName": ""
+  }
+]
+

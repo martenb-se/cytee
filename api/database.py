@@ -460,19 +460,16 @@ class DatabaseHandler:
                 db_documents = self.database[
                     collection] \
                     .find(
-                    db_attribute_filter_dict)
+                    db_attribute_filter_dict) \
+                    ._compute_results()
 
             if not db_documents:
                 return None
 
-            ret_list = [
+            return [
                 db_to_app_doc_conv(docs, attribute_property_checker)
-                for docs in db_documents]
-
-            if len(ret_list) == 0:
-                return None
-
-            return ret_list
+                for docs in db_documents
+            ]
         else:
             return query_function(db_attribute_filter_dict)
 

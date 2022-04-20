@@ -4,7 +4,16 @@ import esprima
 import re
 from api.analyzer.logging_analyzer import logging
 from api.cache import save_file
-from api.database import database_handler
+from api.instances.database_main import database_handler
+from api.websocket_constants import *
+
+# TODO: Move all of the below to a common file to be imported where it's
+#  needed.
+WEBSOCKET_STATUS_URL = "sock_choose_files"
+WEBSOCKET_ERR_FILE_EMPTY = "ERR_FILE_EMPTY"
+WEBSOCKET_ERR_FILE_MISSING = "ERR_FILE_MISSING"
+WEBSOCKET_ERR_PARSE_FAILURE = "ERR_PARSE_FAILURE"
+WEBSOCKET_ERR_UNEXPECTED = "ERR_UNEXPECTED"
 
 
 class AnalyzeJS:
@@ -1209,17 +1218,70 @@ def __save_data_to_db(
 def __save_data_to_cache(
         project_root="",
         file_source="",
-        analyzer=None):
+        analyzer=None
+):
     save_file(project_root, analyzer.get_file_identity(), file_source)
 
 
-def analyze_files(list_of_files, project_root=""):
+def __socket_announce_progress(
+        shared_socket_handlers=None,
+        total_files=0,
+        current_file=0
+):
+    if shared_socket_handlers is None:
+        shared_socket_handlers = {}
+
+    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
+        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
+            "status": "OK",
+            "statusCode": "BUSY",
+            "totalFiles": total_files,
+            "currentFile": current_file
+        })
+
+
+def __socket_announce_completion(shared_socket_handlers=None):
+    if shared_socket_handlers is None:
+        shared_socket_handlers = {}
+
+    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
+        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
+            "status": "OK",
+            "statusCode": "DONE"
+        })
+
+
+def __socket_announce_error(
+        shared_socket_handlers=None,
+        error_code="",
+        message="",
+        affected_file=""
+):
+    if shared_socket_handlers is None:
+        shared_socket_handlers = {}
+
+    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
+        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
+            "status": "ERROR",
+            "statusCode": error_code,
+            "message": message,
+            "affectedFile": affected_file
+        })
+
+
+def analyze_files(
+        list_of_files,
+        project_root="",
+        shared_socket_handlers=None):
     """Analyze list of files
 
     :param list_of_files: The list of files to analyze
     :type list_of_files: list
     :param project_root: The project root directory
     :type project_root: str
+    :param shared_socket_handlers: Object containing the shared WebSocket
+    handlers.
+    :type shared_socket_handlers: dict
 
     :raises:
         TypeError: If the passed 'list_of_files' is of the wrong type.
@@ -1227,6 +1289,8 @@ def analyze_files(list_of_files, project_root=""):
 
     :return: Nothing
     """
+    if shared_socket_handlers is None:
+        shared_socket_handlers = {}
     if not isinstance(list_of_files, list):
         raise TypeError("'list_of_files' must be a LIST")
     elif len(list_of_files) < 1:
@@ -1245,15 +1309,58 @@ def analyze_files(list_of_files, project_root=""):
 
         if len(file_source) < 1:
             logging.info(f"File '{current_file}' is empty, skipping.")
+            __socket_announce_error(
+                shared_socket_handlers=shared_socket_handlers,
+                error_code=WEBSOCKET_ERR_FILE_EMPTY,
+                message=f"File '{current_file}' is empty, skipping.",
+                affected_file=current_file
+            )
             continue
 
-        analyzer = AnalyzeJS(current_file, project_root=project_root)
+        try:
+            analyzer = AnalyzeJS(current_file, project_root=project_root)
 
-        # TODO: Announce to callback or something that file X of Y is being
-        #  analyzed (needed for loading info)
-        print(
-            "(WEBSOCKET-ANNOUNCE)",
-            f"Analyzing file {file_num + 1}/{len(list_of_files)}")
+        except FileNotFoundError:
+            logging.warning(f"File '{current_file}' is not found.")
+            __socket_announce_error(
+                shared_socket_handlers=shared_socket_handlers,
+                error_code=WEBSOCKET_ERR_FILE_MISSING,
+                message=f"File '{current_file}' is not found.",
+                affected_file=current_file
+            )
+            continue
+
+        except SyntaxError as e:
+            logging.warning(
+                f"File '{current_file}' cannot be parsed. More information: "
+                f"{e}")
+
+            __socket_announce_error(
+                shared_socket_handlers=shared_socket_handlers,
+                error_code=WEBSOCKET_ERR_PARSE_FAILURE,
+                message=f"File '{current_file}' cannot be parsed.",
+                affected_file=current_file
+            )
+            continue
+
+        except Exception as e:
+            logging.warning(
+                f"Unexpected error when handling file '{current_file}'. "
+                f"More information: {e}")
+
+            __socket_announce_error(
+                shared_socket_handlers=shared_socket_handlers,
+                error_code=WEBSOCKET_ERR_UNEXPECTED,
+                message=f"An unexpected error occurred while handling "
+                        f"'{current_file}'.",
+                affected_file=current_file
+            )
+            continue
+
+        __socket_announce_progress(
+            shared_socket_handlers=shared_socket_handlers,
+            total_files=len(list_of_files),
+            current_file=file_num+1)
 
         analyzer.begin_analyze()
 
@@ -1266,3 +1373,6 @@ def analyze_files(list_of_files, project_root=""):
             project_root=project_root,
             file_source=file_source,
             analyzer=analyzer)
+
+    __socket_announce_completion(
+        shared_socket_handlers=shared_socket_handlers)

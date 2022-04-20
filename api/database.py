@@ -316,11 +316,11 @@ def check_valid_document_attributes(
             type(attribute_value)}.""")
 
         if attribute_property_checker[
-                attribute_key]['cond']:
+            attribute_key]['cond']:
             if not attribute_property_checker[
-                    attribute_key][
-                    'cond'](
-                    attribute_value):
+                attribute_key][
+                'cond'](
+                attribute_value):
                 raise ValueError(f"""
                 Attribute {attribute_key} has the value {attribute_value} which 
                 doesn't conform to the conditions for that attribute.""")
@@ -460,16 +460,19 @@ class DatabaseHandler:
                 db_documents = self.database[
                     collection] \
                     .find(
-                    db_attribute_filter_dict) \
-                    ._compute_results()
+                    db_attribute_filter_dict)
 
             if not db_documents:
                 return None
 
-            return [
+            ret_list = [
                 db_to_app_doc_conv(docs, attribute_property_checker)
-                for docs in db_documents
-            ]
+                for docs in db_documents]
+
+            if len(ret_list) == 0:
+                return None
+
+            return ret_list
         else:
             return query_function(db_attribute_filter_dict)
 
@@ -673,4 +676,3 @@ class DatabaseHandler:
             collection=FUNCTION_DEPENDENCY_COLLECTION,
             attribute_filter_dict=attribute_filter_dict,
             attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER)
-        

@@ -29,6 +29,12 @@ MOCK_FILES_AND_CONTENTS = [
     ("/project/src/global_function.js",
      "global_function.js"),
 
+    # Dependency
+    ("/project/src/dependency_import_default.js",
+     "dependency/dependency_import_default.js"),
+    ("/project/src/dependency_import_named.js",
+     "dependency/dependency_import_named.js"),
+
     # Export
     ("/project/src/export_default.js",
      "export/export_default.js"),
@@ -85,7 +91,14 @@ def mock_project_files(mocker_open):
     yield
 
 
-def __debug_created_functions(created_functions):
+def __debug_created_functions(analyzer=None):
+    WIN_SIZE = 150
+
+    created_functions = analyzer.get_functions()
+
+    if created_functions is None:
+        created_functions = {}
+
     for created_function in created_functions:
         export_info = created_functions[created_function]['export_info']
         export_name = created_functions[created_function]['export_name']
@@ -94,7 +107,7 @@ def __debug_created_functions(created_functions):
                 enumerate(created_functions[created_function].keys()):
             created_function_keys += \
                 f"{index:>3} " \
-                f"{' ' + key:.>75}\n"
+                f"{' ' + key:.>{WIN_SIZE - 4}}\n"
 
         call_chain = ""
         for index, call in \
@@ -105,17 +118,30 @@ def __debug_created_functions(created_functions):
                 call_args = ""
 
             call_chain += \
-                f"{index:>3} " \
-                f"{' ' + call['name'] + call_args:.>75}\n"
+                f"{index + 1:>3} " \
+                f"{' ' + call['name'] + call_args:.>{WIN_SIZE - 4}}\n"
 
         print()
-        print(f"{'- [ ' + created_function + ' ]':-<79}")
+        print(f"{'- [ ' + created_function + ' ]':-<{WIN_SIZE}}")
         print(f"created_functions.keys():\n{created_function_keys}")
         print(f"call chain:\n{call_chain}")
-        print(f"export_info {'> ' + export_info:->67}")
 
+        function_dependencies_list = ""
+        function_dependencies = analyzer.get_method_calls(created_function)
+        for index_file, file_identity in enumerate(function_dependencies):
+            for index_func, string_identity in \
+                    enumerate(function_dependencies[file_identity]):
+                if string_identity != '!unknown' and \
+                        string_identity != '!ignore':
+                    function_dependencies_list += \
+                        f"{index_file + 1:0>2}.{index_func + 1:0>3} " \
+                        f"{' ' + file_identity + ' : ' + string_identity:.>{WIN_SIZE - 7}}\n"
+
+        print(f"function dependencies:\n{function_dependencies_list}")
+
+        print(f"export_info {'> ' + export_info:->{WIN_SIZE - 12}}")
         if len(export_name) > 0:
-            print(f"export_name {'> ' + export_name:->67}")
+            print(f"export_name {'> ' + export_name:->{WIN_SIZE - 12}}")
 
         print()
 
@@ -304,6 +330,50 @@ def test_analyzejs_begin_analyze_global_function(
     assert \
         expected_found_number_functions == len(created_functions) and \
         expected_found_function in created_functions
+
+
+#
+# TESTING SYNTAX "DEPENDENCY"
+#
+
+def test_analyzejs_begin_analyze_dependency_import_default(
+        mock_project_files):
+    file_location = "/project/src/dependency_import_default.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer.begin_analyze()
+
+    expected_dependent_method_id = "dependentFunction"
+    expected_dependency_import_file_id = "shared/importedDefault"
+    expected_dependency_import_function_id = "importedFunctionDependency"
+
+    function_dependencies = \
+        analyzer.get_method_calls(expected_dependent_method_id)
+
+    assert \
+        expected_dependency_import_file_id in function_dependencies and \
+        expected_dependency_import_function_id in \
+        function_dependencies[expected_dependency_import_file_id]
+
+
+def test_analyzejs_begin_analyze_dependency_import_named(
+        mock_project_files):
+    file_location = "/project/src/dependency_import_named.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer.begin_analyze()
+
+    expected_dependent_method_id = "dependentFunction"
+    expected_dependency_import_file_id = "shared/importedNamed"
+    expected_dependency_import_function_id = "importedNamedFunctionDepency"
+
+    function_dependencies = \
+        analyzer.get_method_calls(expected_dependent_method_id)
+
+    assert \
+        expected_dependency_import_file_id in function_dependencies and \
+        expected_dependency_import_function_id in \
+        function_dependencies[expected_dependency_import_file_id]
 
 
 #

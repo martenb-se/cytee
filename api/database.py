@@ -316,11 +316,11 @@ def check_valid_document_attributes(
             type(attribute_value)}.""")
 
         if attribute_property_checker[
-            attribute_key]['cond']:
+                attribute_key]['cond']:
             if not attribute_property_checker[
-                attribute_key][
-                'cond'](
-                attribute_value):
+                    attribute_key][
+                    'cond'](
+                    attribute_value):
                 raise ValueError(f"""
                 Attribute {attribute_key} has the value {attribute_value} which 
                 doesn't conform to the conditions for that attribute.""")
@@ -673,11 +673,4 @@ class DatabaseHandler:
             collection=FUNCTION_DEPENDENCY_COLLECTION,
             attribute_filter_dict=attribute_filter_dict,
             attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER)
-
-
-if __name__ != '__main__':
-    try:
-        database_handler = DatabaseHandler('mongodb://127.0.0.1:27017')
-        database_handler.connect_to_db()
-    except RuntimeError:
-        pass
+        

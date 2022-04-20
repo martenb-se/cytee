@@ -1,6 +1,10 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from pymongo.errors import ConnectionFailure
+from pprint import pprint
+from pathlib import Path
+
+import yaml
 
 FUNCTION_INFO_COLLECTION = 'functionInfo'
 TEST_INFO_COLLECTION = 'testInfo'
@@ -104,6 +108,16 @@ def db_to_app_doc_conv(db_document, document_attribute_checker):
     return app_document
 
 
+def add_default_values(document, document_attribute_checker):
+    for attribute_key in document_attribute_checker:
+        if attribute_key not in document:
+            if 'standard_value' in document_attribute_checker[attribute_key]:
+                if attribute_key not in document:
+                    document[attribute_key] = document_attribute_checker[
+                        attribute_key][
+                        'standard_value']
+
+
 FUNCTION_INFO_ATTRIBUTE_CHECKER = {
     '_id': {
         'type': str,
@@ -151,25 +165,29 @@ FUNCTION_INFO_ATTRIBUTE_CHECKER = {
         'type': int,
         'cond': __check_for_valid_number,
         'app_to_db_conv': None,
-        'db_to_app_conv': None
+        'db_to_app_conv': None,
+        'standard_value': 0
     },
     'dependencies': {
         'type': int,
         'cond': __check_for_valid_number,
         'app_to_db_conv': None,
-        'db_to_app_conv': None
+        'db_to_app_conv': None,
+        'standard_value': 0
     },
     'numberOfTests': {
         'type': int,
         'cond': __check_for_valid_number,
         'app_to_db_conv': None,
-        'db_to_app_conv': None
+        'db_to_app_conv': None,
+        'standard_value': 0
     },
     'haveFunctionChanged': {
         'type': bool,
         'cond': None,
         'app_to_db_conv': None,
-        'db_to_app_conv': None
+        'db_to_app_conv': None,
+        'standard_value': False
     },
     'exportInfo': {
         'type': str,
@@ -249,13 +267,13 @@ FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER = {
         'app_to_db_conv': __app_to_db_string_conv,
         'db_to_app_conv': __db_to_app_string_conv
     },
-    'callerFileId': {
+    'calledFileId': {
         'type': str,
         'cond': __check_for_valid_string,
         'app_to_db_conv': __app_to_db_string_conv,
         'db_to_app_conv': __db_to_app_string_conv
     },
-    'callerFunctionId': {
+    'calledFunctionId': {
         'type': str,
         'cond': __check_for_valid_string,
         'app_to_db_conv': __app_to_db_string_conv,
@@ -295,7 +313,7 @@ def check_valid_document_attributes(
             raise TypeError(f"""The value of the attribute {attribute_key},
                 should be a {attribute_property_checker[attribute_key]['type']}
                 type, but was given a value of type {
-                type(attribute_value)}.""")
+            type(attribute_value)}.""")
 
         if attribute_property_checker[
                 attribute_key]['cond']:
@@ -309,12 +327,18 @@ def check_valid_document_attributes(
 
     if strict_compare:
         for item in attribute_property_checker:
-            if item is '_id':
+            if item == '_id':
                 continue
             if item not in attribute_filter_value_dict:
                 raise ValueError(f"""
                 The attribute {item} is missing form the given attribute
                 attribute dictionary.""")
+
+
+def _import_auth_info():
+    path = Path(__file__).parent / "../db.config.yml"
+    config = yaml.safe_load(path.open())
+    return config
 
 
 # Todo: Add error handler that can revert changes and such if error occurs.
@@ -356,8 +380,15 @@ class DatabaseHandler:
         if self.client is not None or self.database is not None:
             raise RuntimeError('Try to connect while already connected')
         try:
-            self.client = MongoClient(self.db_url)
-            self.client.admin.command('ismaster')
+
+            auth_info = _import_auth_info()
+
+            self.client = MongoClient(
+                self.db_url,
+                username=auth_info['auth']['username'],
+                password=auth_info['auth']['password'])
+
+            self.client.admin.command('hello')
         except ConnectionFailure as exc:
             raise RuntimeError('Failed to open database') from exc
         self.database = self.client.urangutest
@@ -415,7 +446,7 @@ class DatabaseHandler:
             # TODO: Fix it so that is _id is only attribute then used find one.
             #   or maybe just change act_on_first_match accrdingly.
 
-            if act_on_first_match:
+            if act_on_first_match or '_id' in attribute_filter_dict:
                 db_documents = self.database[
                     collection] \
                     .find_one(
@@ -455,11 +486,13 @@ class DatabaseHandler:
         check_valid_document_attributes(
             document,
             attribute_property_checker,
-            strict_compare=True)
+            strict_compare=False)
 
         db_document = app_to_db_doc_conv(
             document,
             attribute_property_checker)
+
+        add_default_values(db_document, attribute_property_checker)
 
         if not query_function:
             db_result = self.database[collection].insert_one(db_document)
@@ -640,8 +673,4 @@ class DatabaseHandler:
             collection=FUNCTION_DEPENDENCY_COLLECTION,
             attribute_filter_dict=attribute_filter_dict,
             attribute_property_checker=FUNCTION_DEPENDENCY_ATTRIBUTES_CHECKER)
-
-
-if __name__ != '__main__':
-    database_handler = DatabaseHandler('mongodb://127.0.0.1:27017')
-    database_handler.connect_to_db()
+        

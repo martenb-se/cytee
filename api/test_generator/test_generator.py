@@ -139,6 +139,7 @@ TYPE_MATCHER_DICT = {
     },
 }
 
+
 UNIQUE_NUMBER = 0
 
 
@@ -185,9 +186,9 @@ def __generate_imports(test_file_path, test_info):
 
     # Determine the export type and generate the corresponding name
     match function_info['exportInfo']:
-        case 'export default':
+        case 'export ':
             exported_function_name = "{" + function_info['exportName'] + "}"
-        case 'export':
+        case 'export default':
             exported_function_name = function_info['exportName']
         case _:
             raise RuntimeError(
@@ -199,7 +200,7 @@ def __generate_imports(test_file_path, test_info):
                                            test_file_path)
 
     # Generate the import string
-    import_expression = (f"import {exported_function_name} from"
+    import_expression = (f"import {exported_function_name} from "
                          f"\'{relative_import_path}\';")
 
     return import_expression
@@ -344,7 +345,9 @@ def __generate_function_call(test_info, func_arg_var_map):
     function_call_string = ""
 
     # Iterate over each element
+    expression_list_index = 0
     first_expr = True
+    db_query_string = ""
     for expr in sub_expression_list:
 
         expression_string = ""
@@ -353,7 +356,9 @@ def __generate_function_call(test_info, func_arg_var_map):
             first_expr = False
         else:
             expression_string += '.'
+            db_query_string += '.'
 
+        db_query_string += expr
         # Check if the expression is a class
         regex_result = re.search(r"^(?:\(new )(.*)(?:\(\)\))", expr)
 
@@ -361,9 +366,11 @@ def __generate_function_call(test_info, func_arg_var_map):
             expression_name = regex_result.group(1)
             expression_string += f"(new {expression_name}"
 
-            # Iterate over the function info arguments and ad corresponding arguments from the test_info
-
-            arg_list = expression_arg_list.pop(0)[expression_name]
+            # Iterate over the function info arguments and ad corresponding
+            # arguments from the test_info
+            pprint(expression_name)
+            expr_arg_list = expression_arg_list[expression_list_index]
+            arg_list = expr_arg_list[expression_name]
 
             # Generate the arguments
             expression_string += "("
@@ -372,12 +379,15 @@ def __generate_function_call(test_info, func_arg_var_map):
                 expression_name,
                 func_arg_var_map)
             expression_string += ")"
+            expression_list_index += 1
         else:
+            # TODO: have to concatenate the previous expression string when
+            #  searching.
 
             # Look if expr is has a function info document in db
             expr_func_info = database_handler.get_function_info({
                 'pathToProject': test_info['pathToProject'],
-                'functionId': expr,
+                'functionId': db_query_string,
                 'fileId': test_info['fileId']
             })
 
@@ -385,7 +395,7 @@ def __generate_function_call(test_info, func_arg_var_map):
             if expr_func_info is None:
                 expression_string += expr
             else:
-                arg_list = expression_arg_list.pop(0)[expr]
+                arg_list = expression_arg_list[expression_list_index][expr]
 
                 # Generate the arguments
                 expression_string += expr
@@ -395,8 +405,11 @@ def __generate_function_call(test_info, func_arg_var_map):
                     expr,
                     func_arg_var_map)
                 expression_string += ")"
+                expression_list_index += 1
 
         function_call_string += expression_string
+
+
 
     func_return_variable = "r_1"
 

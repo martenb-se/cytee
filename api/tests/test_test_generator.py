@@ -40,7 +40,7 @@ TEST_INFO_DATA = [
                     "type": "undefined"
                 },
                 {
-                    "argument": "null",
+                    "argument": "null_arg",
                     "type": "null"
                 },
                 {
@@ -48,9 +48,24 @@ TEST_INFO_DATA = [
                     "type": "object",
                     "value": [
                         {
-                            "argument": "inner_array_arg",
+                            "argument": "inner_object_arg_1",
                             "type": "string",
                             "value": "asdasd"
+                        },
+                        {
+                            "argument": "inner_object_arg_2",
+                            "type": "undefined",
+                        },
+                        {
+                            "argument": "inner_object_arg_3",
+                            "type": "object",
+                            "value": [
+                                {
+                                    "argument": "inner_inner_object_arg_1",
+                                    "type": "number",
+                                    "value": 73
+                                },
+                            ]
                         }
                     ]
                 },

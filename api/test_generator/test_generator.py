@@ -28,58 +28,69 @@ def boolean_var_formatter(bool_arg):
     return "false"
 
 
-# TODO: Nename to something related to javascript
-# TODO: Remove the dependency on type_matcher_dict
-def object_var_formatter(object_arg, type_matcher_dict):
-    var_string = ""
-    var_string += __object_var_formatter_recur(
-        {'value': object_arg},
-        type_matcher_dict,
-        "{")
-    var_string += "}"
-    return var_string
+def object_var_formatter(object_arg):
+    # Add opening {
+    object_string = "{"
 
+    # Check if there is no keys in the object
+    if len(object_arg) > 0:
 
-def __object_var_formatter_recur(
-        object_arg,
-        type_matcher_dict,
-        var_string):
-    first = True
-    for item in object_arg['value']:
-        if first:
-            first = False
-        else:
-            var_string += ","
+        # Iterate of the arguments
+        first = True
+        for argument_data in object_arg:
+            if first:
+                first = False
+            else:
+                object_string += ","
 
-        var_string += item['argument'] + ":"
+            object_string += argument_data['argument'] + ":"
 
-        if item['type'] is 'object':
-            var_string += '{'
-            var_string += __object_var_formatter_recur(
-                {'value': item['value']},
-                type_matcher_dict,
-                "")
-            var_string += '}'
-        elif isinstance(type_matcher_dict[item['type']]['var_formatter'], str):
-            var_string += type_matcher_dict[item['type']]['var_formatter']
-        else:
-            var_string += type_matcher_dict[
-                item['type']][
-                'var_formatter'](
-                item['value'])
-    return var_string
+            # Get the argument formatter
+            argument_var_formatter = TYPE_MATCHER_DICT[
+                argument_data['type']][
+                'var_formatter']
+
+            # Check if the formatter is a function or string
+            if isinstance(argument_var_formatter, str):
+                object_string += argument_var_formatter
+            else:
+                object_string += argument_var_formatter(argument_data['value'])
+
+    # Add closing }
+    object_string += "}"
+    return object_string
 
 
 def array_var_formatter(array_arg):
-    pprint(array_arg)
-    var_string = ""
+    # Add opening square bracket
+    array_string = "["
 
-    return var_string
+    # Check if the array list is empty
+    if len(array_arg) > 0:
 
-def __array_var_formatter_recur(array_arg):
+        # Iterate through the array_arg_list
+        first = True
+        for argument_data in array_arg:
+            if first:
+                first = False
+            else:
+                array_string += ","
 
-    pass
+            # Get the argument formatter
+            argument_var_formatter = TYPE_MATCHER_DICT[
+                argument_data['type']][
+                'var_formatter']
 
+            # Check if the formatter is a function or string
+            if isinstance(argument_var_formatter, str):
+                array_string += argument_var_formatter
+            else:
+                array_string += argument_var_formatter(argument_data['value'])
+
+    # Add closing square bracket
+    array_string += "]"
+
+    return array_string
 
 
 # check the number of arguemnts a function takes
@@ -128,14 +139,14 @@ TYPE_MATCHER_DICT = {
     },
 }
 
+UNIQUE_NUMBER = 0
+
 
 def __argument_formatter(argument):
     argument_var_formatter = TYPE_MATCHER_DICT[
         argument['type']]['var_formatter']
-    if argument['type'] == 'object':
-        arg_string = argument_var_formatter(argument['value'],
-                                            TYPE_MATCHER_DICT)
-    elif isinstance(argument_var_formatter, str):
+
+    if isinstance(argument_var_formatter, str):
         arg_string = argument_var_formatter
     else:
         arg_string = argument_var_formatter(argument['value'])
@@ -208,8 +219,33 @@ def __variable_assignment_standard(variable_name, variable_value):
     return f"""let {variable_name}={variable_value};"""
 
 
+def __generate_variable_declarations_recur(
+        complex_argument_data,
+        func_arg_var_map):
+
+    argument_list = complex_argument_data['value']
+
+    # iterate over the value list of argument data
+    for argument_data in argument_list:
+
+        # Check if argument_data is object or array
+        if argument_data['type'] == 'object' or \
+                argument_data['type'] == 'array':
+            __generate_variable_declarations_recur(
+                argument_data,
+                func_arg_var_map)
+        else:
+
+            global UNIQUE_NUMBER
+            variable_name = f"a_{UNIQUE_NUMBER}"
+            UNIQUE_NUMBER += 1
+
+            func_arg_var_map[argument_data['argument']] = variable_name
+
+
 def __generate_variable_declarations(test_info):
     # Check if there is any defined arguments
+
     if 'argumentList' not in test_info['moduleData']:
         return "", None
 
@@ -217,26 +253,41 @@ def __generate_variable_declarations(test_info):
     arguments = test_info['moduleData']['argumentList']
 
     # Declare func_var_arg_map and string
-    argument_declaration_string = ""
     func_arg_var_map = {}
+    argument_declaration_string = ""
 
-    uniqunes_number = 0
     # Iterate over the arguments
     for argument_data in arguments:
         # TODO: have global unique variable number
 
         # Generate the variable name
-        variable_name = f"a_{uniqunes_number}"
-        uniqunes_number += 1
+        global UNIQUE_NUMBER
+        variable_name = f"a_{UNIQUE_NUMBER}"
+        UNIQUE_NUMBER += 1
 
         # Format variable value
         variable_value = __argument_formatter(argument_data)
 
         # update argument declaration string and func_var_arg_map
         argument_declaration_string += f"let {variable_name}={variable_value};"
+
         # TODO: Make it so when variable is and object, that the object is
         #  added instead.
-        func_arg_var_map[argument_data['argument']] = variable_name
+
+        if argument_data['type'] == 'object' or \
+                argument_data['type'] == 'array':
+            __generate_variable_declarations_recur(
+                argument_data,
+                func_arg_var_map)
+        elif argument_data['argument'] == '...':
+            # Check if ... is already in func_var_arg_map
+            if '...' not in func_arg_var_map:
+                func_arg_var_map['...'] = []
+
+            # Append the new variable to the func_var_arg_map at ...
+            func_arg_var_map['...'].append(variable_name)
+        else:
+            func_arg_var_map[argument_data['argument']] = variable_name
 
     return argument_declaration_string, func_arg_var_map
 
@@ -329,6 +380,8 @@ def __generate_function_call(test_info, func_arg_var_map):
 
             # Iterate over the function info arguments and ad corresponding arguments from the test_info
 
+
+
             arg_list = expression_arg_list.pop(0)[expression_name]
 
             # Generate the arguments
@@ -408,16 +461,22 @@ def generate_test(test_info):
     pprint(test_file)
     os.makedirs(test_dir, exist_ok=True)
     """
+    global UNIQUE_NUMBER
+    UNIQUE_NUMBER = 0
 
     test_file_path = __generate_test_file_path(test_info)
-    #pprint(f"test_file_path: {test_file_path}")
+    # pprint(f"test_file_path: {test_file_path}")
     import_string = __generate_imports(test_file_path, test_info)
-    #pprint(f"import_string: {import_string}")
+    # pprint(f"import_string: {import_string}")
     variable_declaration_string, func_var_arg_map = \
         __generate_variable_declarations(test_info)
     #pprint(f"variable_declaration_string: {variable_declaration_string}")
     #pprint(f"func_var_arg_map: {func_var_arg_map}")
 
+    function_call_string = __generate_function_call(
+                                test_info,
+                                func_var_arg_map)
+    pprint(f"function_call_string: {function_call_string}")
     # test_code_string = ""
     # test_code_string += __generate_imports(test_file_path, test_info)
     # test_code_string += __generate_test_start(test_info)
@@ -426,7 +485,7 @@ def generate_test(test_info):
     # string_bing, ret_val = __generate_function_call(test_info, variable_dict)
     # test_code_string += string_bing
 
-    #with open(test_file_path, 'w') as f:
+    # with open(test_file_path, 'w') as f:
     # __generate_meta_data(f)
     # __generate_imports(f, test_file_path, test_info)
 
@@ -435,4 +494,6 @@ def generate_test(test_info):
     # __generate_setup(f, test_info)
 
     # __generate_test_end(f)
-     #f.write(test_code_string)
+    # f.write(test_code_string)
+
+

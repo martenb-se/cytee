@@ -199,8 +199,8 @@ def __generate_imports(test_file_path, test_info):
                                            test_file_path)
 
     # Generate the import string
-    import_expression = (f"import {exported_function_name} from" +
-                         f"\'{relative_import_path}\'")
+    import_expression = (f"import {exported_function_name} from"
+                         f"\'{relative_import_path}\';")
 
     return import_expression
 
@@ -211,8 +211,8 @@ def __generate_test_start(test_info):
     return ("""test("", () =>  {""")
 
 
-def __generate_test_end(file_handler):
-    file_handler.write("""});""")
+def __generate_test_end():
+    return """});"""
 
 
 def __variable_assignment_standard(variable_name, variable_value):
@@ -317,6 +317,9 @@ def __generate_arguments(arg_list, expression_name, func_arg_var_map):
     return argument_string
 
 
+# TODO: Check that chain calling works
+# TODO: Check that non-function expressions work in chain calls
+# TODO: Check that classes in chain calling works
 def __generate_function_call(test_info, func_arg_var_map):
     # Get function info
     function_info_documents = database_handler.get_function_info({
@@ -399,12 +402,12 @@ def __generate_function_call(test_info, func_arg_var_map):
 
     # TODO: Format the string
 
-    result_string = (f"let {func_return_variable}={function_call_string}")
+    result_string = (f"let {func_return_variable}={function_call_string};")
 
     return result_string, func_return_variable
 
 
-def __generate_assert(f, test_info):
+def __generate_assert(test_info, return_variable):
     # toBe is used to test exact equality
     # ToEqual recursively checks every field of an object or array.
     # For float points, use toBeCloseTo instead fo to equal
@@ -413,8 +416,24 @@ def __generate_assert(f, test_info):
     # For exception, use toThrow
     # For null, use toBeNull
     # For undefined, used toBeUndefined, or
-    pass
 
+    # Get the return value from test_info
+    if 'returnValue' not in test_info['moduleData']:
+        raise RuntimeError('test info is missing return value ')
+
+    expected_data = test_info['moduleData']['returnValue']
+    match_expression = TYPE_MATCHER_DICT[expected_data['type']]['matcher']
+    expected_value = (
+        TYPE_MATCHER_DICT
+        [expected_data['type']]
+        ['var_formatter']
+        (expected_data['value'])
+        )
+
+    assert_string = (f"expect({return_variable})"
+                     f".{match_expression}({expected_value});")
+
+    return assert_string
 
 # TODO: Create the test file
 # TODO: Import the right function
@@ -457,6 +476,17 @@ def generate_test(test_info):
         func_var_arg_map)
     pprint(f"function_call_string: {function_call_string}")
 
+    assert_string = __generate_assert(test_info, return_var)
+    pprint(assert_string)
+
+    test_string = (
+            import_string +
+            __generate_test_start(test_info) +
+            variable_declaration_string +
+            function_call_string +
+            assert_string +
+            __generate_test_end()
+    )
     # test_code_string = ""
     # test_code_string += __generate_imports(test_file_path, test_info)
     # test_code_string += __generate_test_start(test_info)
@@ -465,13 +495,13 @@ def generate_test(test_info):
     # string_bing, ret_val = __generate_function_call(test_info, variable_dict)
     # test_code_string += string_bing
 
-    # with open(test_file_path, 'w') as f:
-    # __generate_meta_data(f)
-    # __generate_imports(f, test_file_path, test_info)
+    with open(test_file_path, 'w') as f:
+        # __generate_meta_data(f)
+        # __generate_imports(f, test_file_path, test_info)
 
-    # __generate_test_start(f, test_info)
+        # __generate_test_start(f, test_info)
 
-    # __generate_setup(f, test_info)
+        # __generate_setup(f, test_info)
 
-    # __generate_test_end(f)
-    # f.write(test_code_string)
+        # __generate_test_end(f)
+        f.write(test_string)

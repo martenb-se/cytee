@@ -190,79 +190,44 @@ class AnalyzeJS:
 
         return method_calls
 
-    def __handle_and_append_argument(self, arguments, current_parameter):
-        """Handle specific argument types when creating an ordered list of
-        arguments, alters the 'arguments' list to include the handled
-        arguments.
+    def __simplify_esprima_ast(self, current_node=None):
+        """Convert esprima AST data to a simple AST with objects, arrays,
+        strings and numbers. The simple AST will not contain anything of type
+        esprima.nodes.* and is compatible with anything supporting objects,
+        arrays, strings and numbers.
 
-        :param arguments: The handled arguments.
-        :type arguments: list
-        :param current_parameter: The current method parameter to handle.
-        :type current_parameter: esprima.nodes.Property|
-        esprima.nodes.ObjectExpression|esprima.nodes.RestElement
-
-        :return: Nothing
+        :param current_node: The current node to convert from.
+        :type current_node: Any
+        :return: The simplified AST.
         """
-        if isinstance(current_parameter, esprima.nodes.Identifier):
-            arguments.append(current_parameter.name)
+        if current_node is None:
+            current_node = []
 
-        elif isinstance(current_parameter, esprima.nodes.Property):
-            self.__handle_and_append_argument(arguments, current_parameter.key)
+        object_data = ""
+        if isinstance(current_node, list):
+            object_data = []
+            for node_index, sub_node in enumerate(current_node):
+                object_data.append(
+                    self.__simplify_esprima_ast(
+                        sub_node))
 
-        elif isinstance(current_parameter, esprima.nodes.ObjectExpression):
-            object_argument = []
-            for current_property in current_parameter.properties:
-                self.__handle_and_append_argument(
-                    object_argument,
-                    current_property)
-            arguments.append(object_argument)
+        elif hasattr(current_node, '__dict__'):
+            object_data = {}
+            for sub_node_key in current_node.__dict__:
+                object_data[sub_node_key] = \
+                    self.__simplify_esprima_ast(
+                        current_node.__dict__[sub_node_key])
 
-        elif isinstance(current_parameter, esprima.nodes.RestElement):
-            arguments.append(['...'])
+        elif isinstance(current_node, str) or isinstance(current_node, int):
+            object_data = current_node
 
-        # TODO: Must be expanded to handle the crazy arguments like:
-        #   https://github.com/oldboyxx/jira_clone/blob/26a9e77b1789fef9cb43edb5d6018cf1663cf035/client/src/shared/utils/styles.js#L140
-        #   What this is: https://stackoverflow.com/questions/26578167/es6-object-destructuring-default-parameters
-        #   To implement:
-        #     - Must support: left hand
-        #       <class 'esprima.nodes.ObjectExpression'>
-        #     - Must support: right hand
-        #       <class 'esprima.nodes.StaticMemberExpression'>
-        #   Code should be moved to own method...
-        #
-        elif isinstance(current_parameter, esprima.nodes.AssignmentExpression):
-            if 'left' in current_parameter.__dict__ and \
-                    'right' in current_parameter.__dict__:
-                if isinstance(
-                        current_parameter.left,
-                        esprima.nodes.Identifier):
-                    if isinstance(
-                            current_parameter.right,
-                            esprima.nodes.Literal):
-                        arguments.append(
-                            {
-                                current_parameter.left.name:
-                                    current_parameter.right.value
-                            })
-                    else:
-                        logging.warning(
-                            "AssignmentExpression right hand assignment type "
-                            "not understood: " +
-                            str(type(current_parameter.right)))
-                else:
-                    logging.warning(
-                        "AssignmentExpression left hand assignment type not "
-                        "understood: " +
-                        str(type(current_parameter.left)))
-            else:
-                logging.warning(
-                    "AssignmentExpression variant not yet implemented and "
-                    "cannot be analyzed: " +
-                    str(type(current_parameter)))
         else:
             logging.warning(
-                "Argument type not yet implemented and cannot be analyzed: " +
-                str(type(current_parameter)))
+                "Object not complete because of unknown data could not be "
+                "handled in parameter tree: "
+                f"{type(current_node)}")
+
+        return object_data
 
     def __make_argument_list(self, argument_node_list):
         """Create a simple ordered argument list from an argument list
@@ -273,11 +238,15 @@ class AnalyzeJS:
         :return: The ordered argument list.
         """
         arguments = []
+
         if isinstance(argument_node_list, list):
-            for current_node_argument in argument_node_list:
-                self.__handle_and_append_argument(
-                    arguments,
-                    current_node_argument)
+            arguments = self.__simplify_esprima_ast(argument_node_list)
+
+        else:
+            logging.warning(
+                "Cannot create argument list for non list type: "
+                f"{type(argument_node_list)}")
+
         return arguments
 
     def __find_method_arguments(self, current_node):

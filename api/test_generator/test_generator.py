@@ -219,30 +219,6 @@ def __variable_assignment_standard(variable_name, variable_value):
     return f"""let {variable_name}={variable_value};"""
 
 
-def __generate_variable_declarations_recur(
-        complex_argument_data,
-        func_arg_var_map):
-
-    argument_list = complex_argument_data['value']
-
-    # iterate over the value list of argument data
-    for argument_data in argument_list:
-
-        # Check if argument_data is object or array
-        if argument_data['type'] == 'object' or \
-                argument_data['type'] == 'array':
-            __generate_variable_declarations_recur(
-                argument_data,
-                func_arg_var_map)
-        else:
-
-            global UNIQUE_NUMBER
-            variable_name = f"a_{UNIQUE_NUMBER}"
-            UNIQUE_NUMBER += 1
-
-            func_arg_var_map[argument_data['argument']] = variable_name
-
-
 def __generate_variable_declarations(test_info):
     # Check if there is any defined arguments
 
@@ -274,12 +250,7 @@ def __generate_variable_declarations(test_info):
         # TODO: Make it so when variable is and object, that the object is
         #  added instead.
 
-        if argument_data['type'] == 'object' or \
-                argument_data['type'] == 'array':
-            __generate_variable_declarations_recur(
-                argument_data,
-                func_arg_var_map)
-        elif argument_data['argument'] == '...':
+        if argument_data['argument'] == '...':
             # Check if ... is already in func_var_arg_map
             if '...' not in func_arg_var_map:
                 func_arg_var_map['...'] = []
@@ -297,42 +268,51 @@ def __generate_arguments(arg_list, expression_name, func_arg_var_map):
     argument_string = ""
 
     # make a copy of the relevant func_arg_var_map list and pop
-    func_arg_var_map_copy = func_arg_var_map.copy()
 
-    for arg in arg_list:
+    for argument_data in arg_list:
 
         if first_arg:
             first_arg = False
         else:
             argument_string += ','
 
-        if isinstance(arg, list):
+        argument_type = argument_data['type']
 
-            ## Determine if it's an object or '...'
-            if arg[0] == "...":
-
-                ## Add the remaining of the args in the arg list
-                rem_arg_first = True
-                for rem_arg in func_arg_var_map_copy:
-
-                    if rem_arg_first:
-                        rem_arg_first = False
+        # TODO: Handle default values
+        match argument_type:
+            case 'Identifier':
+                argument_string += (
+                    func_arg_var_map
+                    [argument_data['name']])
+            case 'Property':
+                argument_string += (
+                    func_arg_var_map
+                    [argument_data['key']['name']])
+            case 'ObjectPattern':
+                obj_string = __generate_arguments(
+                    argument_data['properties'],
+                    expression_name,
+                    func_arg_var_map)
+                argument_string += "{" + obj_string + "}"
+            case 'ArrayPattern':
+                array_string = __generate_arguments(
+                    argument_data['elements'],
+                    expression_name,
+                    func_arg_var_map)
+                argument_string += "[" + array_string + "]"
+            case 'RestElement':
+                rest_string = ""
+                rest_first = True
+                for rest_arg in func_arg_var_map['...']:
+                    if rest_first:
+                        rest_first = False
                     else:
-                        argument_string += ','
-
-                    argument_string += rem_arg
-
-            else:
-
-                ## call this function again with arg as new argument list
-                argument_string += "{"
-                argument_string += __generate_arguments(arg, expression_name,
-                                                        func_arg_var_map_copy)
-                argument_string += "}"
-        else:
-
-            ## variable isn't a list
-            argument_string += func_arg_var_map_copy[expression_name].pop(arg)
+                        rest_string += ','
+                    rest_string += rest_arg
+                argument_string += rest_string
+            case _:
+                # log warning message
+                pass
 
     return argument_string
 
@@ -376,11 +356,9 @@ def __generate_function_call(test_info, func_arg_var_map):
 
         if regex_result is not None:
             expression_name = regex_result.group(1)
-            expression_string += f"(new {expression_name}("
+            expression_string += f"(new {expression_name}"
 
             # Iterate over the function info arguments and ad corresponding arguments from the test_info
-
-
 
             arg_list = expression_arg_list.pop(0)[expression_name]
 
@@ -407,6 +385,7 @@ def __generate_function_call(test_info, func_arg_var_map):
                 arg_list = expression_arg_list.pop(0)[expr]
 
                 # Generate the arguments
+                expression_string += expr
                 expression_string += "("
                 expression_string += __generate_arguments(
                     arg_list,
@@ -420,7 +399,7 @@ def __generate_function_call(test_info, func_arg_var_map):
 
     # TODO: Format the string
 
-    result_string = f"let {func_return_variable}={function_call_string}"
+    result_string = (f"let {func_return_variable}={function_call_string}")
 
     return result_string, func_return_variable
 
@@ -470,13 +449,14 @@ def generate_test(test_info):
     # pprint(f"import_string: {import_string}")
     variable_declaration_string, func_var_arg_map = \
         __generate_variable_declarations(test_info)
-    #pprint(f"variable_declaration_string: {variable_declaration_string}")
-    #pprint(f"func_var_arg_map: {func_var_arg_map}")
+    pprint(f"variable_declaration_string: {variable_declaration_string}")
+    pprint(f"func_var_arg_map: {func_var_arg_map}")
 
-    function_call_string = __generate_function_call(
-                                test_info,
-                                func_var_arg_map)
+    function_call_string, return_var = __generate_function_call(
+        test_info,
+        func_var_arg_map)
     pprint(f"function_call_string: {function_call_string}")
+
     # test_code_string = ""
     # test_code_string += __generate_imports(test_file_path, test_info)
     # test_code_string += __generate_test_start(test_info)
@@ -495,5 +475,3 @@ def generate_test(test_info):
 
     # __generate_test_end(f)
     # f.write(test_code_string)
-
-

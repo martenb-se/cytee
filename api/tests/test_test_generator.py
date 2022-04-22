@@ -268,6 +268,20 @@ def test_test_generator2(mock_os_make_dirs, mocker_open):
     print("")
     print(content_drain)
 
+
+def test_super():
+    #test_info = {
+    #    'pathToProject': '/home/jobe/tidab3/exjobb/react_test_project/src/',
+    #    'fileId': 'shared/utils/file1', 'functionId': 'test_function_1',
+    #    'customName': "", 'moduleData': {"argumentList": [
+    #        {'argument': "arg1", 'type': "string", 'value': "thisIsAString"},
+    #        {'argument': "arg2", 'type': "number", 'value': 1},
+    #        {'argument': "arg3", 'type': "boolean", 'value': False}, ],
+    #                                     "returnValue": {"type": "string",
+    #                                                     "value": "ok"}}}
+    #generate_test(test_info)
+    pass
+
 def test_test_test():
     stringo = object_var_formatter(TEST_INFO_DATA[1]['moduleData']['argumentList'], TYPE_MATCHER_DICT)
     print("")

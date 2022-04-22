@@ -156,6 +156,8 @@ def __argument_formatter(argument):
 
 
 def __generate_test_file_path(test_info):
+
+    # TODO: Check if the path already exist
     proj_dir = os.path.split(os.path.normpath(test_info['pathToProject']))[0]
     test_directory_path = proj_dir + "/urangutest"
     os.mkdir(test_directory_path)
@@ -186,7 +188,7 @@ def __generate_imports(test_file_path, test_info):
 
     # Determine the export type and generate the corresponding name
     match function_info['exportInfo']:
-        case 'export ':
+        case 'export':
             exported_function_name = "{" + function_info['exportName'] + "}"
         case 'export default':
             exported_function_name = function_info['exportName']
@@ -279,7 +281,8 @@ def __generate_arguments(arg_list, expression_name, func_arg_var_map):
 
         argument_type = argument_data['type']
 
-        # TODO: Handle default values
+        # TODO: Handle default values, how to handle cases where the argument
+        #  isn't specified
         match argument_type:
             case 'Identifier':
                 argument_string += (
@@ -311,6 +314,9 @@ def __generate_arguments(arg_list, expression_name, func_arg_var_map):
                         rest_string += ','
                     rest_string += rest_arg
                 argument_string += rest_string
+            case 'AssignmentPattern':
+                # check if corresponding argument exists in func_arg_var_map
+                pass
             case _:
                 # log warning message
                 pass
@@ -518,3 +524,7 @@ def generate_test(test_info):
 
         # __generate_test_end(f)
         f.write(test_string)
+
+# TODO: Make it so several tests info instances can be sent int.
+# TODO: Make it so several tests are written to the same file.
+# TODO: Fix path issue

@@ -171,7 +171,7 @@ class AnalyzeJS:
                     file_identity, string_identity = \
                         self.__find_scope_method_identity(
                             method_call_path,
-                            callee_node.property.name)
+                            callee_node.object.name)
                 else:
                     logging.warning("Method call has unknown callee type: " +
                                     str(type(callee_node)))
@@ -190,79 +190,44 @@ class AnalyzeJS:
 
         return method_calls
 
-    def __handle_and_append_argument(self, arguments, current_parameter):
-        """Handle specific argument types when creating an ordered list of
-        arguments, alters the 'arguments' list to include the handled
-        arguments.
+    def __simplify_esprima_ast(self, current_node=None):
+        """Convert esprima AST data to a simple AST with objects, arrays,
+        strings and numbers. The simple AST will not contain anything of type
+        esprima.nodes.* and is compatible with anything supporting objects,
+        arrays, strings and numbers.
 
-        :param arguments: The handled arguments.
-        :type arguments: list
-        :param current_parameter: The current method parameter to handle.
-        :type current_parameter: esprima.nodes.Property|
-        esprima.nodes.ObjectExpression|esprima.nodes.RestElement
-
-        :return: Nothing
+        :param current_node: The current node to convert from.
+        :type current_node: Any
+        :return: The simplified AST.
         """
-        if isinstance(current_parameter, esprima.nodes.Identifier):
-            arguments.append(current_parameter.name)
+        if current_node is None:
+            current_node = []
 
-        elif isinstance(current_parameter, esprima.nodes.Property):
-            self.__handle_and_append_argument(arguments, current_parameter.key)
+        object_data = ""
+        if isinstance(current_node, list):
+            object_data = []
+            for node_index, sub_node in enumerate(current_node):
+                object_data.append(
+                    self.__simplify_esprima_ast(
+                        sub_node))
 
-        elif isinstance(current_parameter, esprima.nodes.ObjectExpression):
-            object_argument = []
-            for current_property in current_parameter.properties:
-                self.__handle_and_append_argument(
-                    object_argument,
-                    current_property)
-            arguments.append(object_argument)
+        elif hasattr(current_node, '__dict__'):
+            object_data = {}
+            for sub_node_key in current_node.__dict__:
+                object_data[sub_node_key] = \
+                    self.__simplify_esprima_ast(
+                        current_node.__dict__[sub_node_key])
 
-        elif isinstance(current_parameter, esprima.nodes.RestElement):
-            arguments.append(['...'])
+        elif isinstance(current_node, str) or isinstance(current_node, int):
+            object_data = current_node
 
-        # TODO: Must be expanded to handle the crazy arguments like:
-        #   https://github.com/oldboyxx/jira_clone/blob/26a9e77b1789fef9cb43edb5d6018cf1663cf035/client/src/shared/utils/styles.js#L140
-        #   What this is: https://stackoverflow.com/questions/26578167/es6-object-destructuring-default-parameters
-        #   To implement:
-        #     - Must support: left hand
-        #       <class 'esprima.nodes.ObjectExpression'>
-        #     - Must support: right hand
-        #       <class 'esprima.nodes.StaticMemberExpression'>
-        #   Code should be moved to own method...
-        #
-        elif isinstance(current_parameter, esprima.nodes.AssignmentExpression):
-            if 'left' in current_parameter.__dict__ and \
-                    'right' in current_parameter.__dict__:
-                if isinstance(
-                        current_parameter.left,
-                        esprima.nodes.Identifier):
-                    if isinstance(
-                            current_parameter.right,
-                            esprima.nodes.Literal):
-                        arguments.append(
-                            {
-                                current_parameter.left.name:
-                                    current_parameter.right.value
-                            })
-                    else:
-                        logging.warning(
-                            "AssignmentExpression right hand assignment type "
-                            "not understood: " +
-                            str(type(current_parameter.right)))
-                else:
-                    logging.warning(
-                        "AssignmentExpression left hand assignment type not "
-                        "understood: " +
-                        str(type(current_parameter.left)))
-            else:
-                logging.warning(
-                    "AssignmentExpression variant not yet implemented and "
-                    "cannot be analyzed: " +
-                    str(type(current_parameter)))
         else:
             logging.warning(
-                "Argument type not yet implemented and cannot be analyzed: " +
-                str(type(current_parameter)))
+                "Object not complete because of unknown data could not be "
+                "handled in parameter tree: "
+                f"{type(current_node)}")
+
+        return object_data
 
     def __make_argument_list(self, argument_node_list):
         """Create a simple ordered argument list from an argument list
@@ -273,11 +238,15 @@ class AnalyzeJS:
         :return: The ordered argument list.
         """
         arguments = []
+
         if isinstance(argument_node_list, list):
-            for current_node_argument in argument_node_list:
-                self.__handle_and_append_argument(
-                    arguments,
-                    current_node_argument)
+            arguments = self.__simplify_esprima_ast(argument_node_list)
+
+        else:
+            logging.warning(
+                "Cannot create argument list for non list type: "
+                f"{type(argument_node_list)}")
+
         return arguments
 
     def __find_method_arguments(self, current_node):
@@ -569,7 +538,9 @@ class AnalyzeJS:
 
             elif current_call['type'] is \
                     esprima.nodes.ImportDefaultSpecifier:
-                identity.append(current_call['name'])
+                if len(call_chain) == 1:
+                    identity.append(current_call['name'])
+
                 file_identity = current_call['file_identity']
 
             else:
@@ -953,7 +924,6 @@ class AnalyzeJS:
             file_identity, string_identity = \
                 self.__create_identity_from_call_chain(call_chain)
 
-            #
             export_info, export_name = \
                 self.__find_export_information_for_asset(
                     call_chain[0]['name'])
@@ -1207,6 +1177,67 @@ def __save_data_to_db(
         })
 
 
+def __database_dependency_cleanup(project_root=""):
+    project_dependencies = \
+        database_handler.get_function_dependency({
+            'pathToProject': project_root
+        })
+
+    if project_dependencies is not None:
+        for project_dependency in project_dependencies:
+            dependency_defined_in_project = \
+                database_handler.get_function_info({
+                    'pathToProject': project_root,
+                    'fileId': project_dependency['calledFileId'],
+                    'functionId': project_dependency['calledFunctionId']
+                })
+
+            if dependency_defined_in_project is None:
+                database_handler.remove_function_dependency({
+                    '_id': project_dependency["_id"]
+                })
+
+
+def __database_dependency_calculation(project_root=""):
+    project_functions = \
+        database_handler.get_function_info({
+            'pathToProject': project_root
+        })
+
+    if project_functions is not None:
+        for project_function in project_functions:
+            function_depends_on = \
+                database_handler.get_function_dependency({
+                    'pathToProject': project_root,
+                    'fileId': project_function['fileId'],
+                    'functionId': project_function['functionId']
+                })
+
+            depends_on_function = \
+                database_handler.get_function_dependency({
+                    'pathToProject': project_root,
+                    'calledFileId': project_function['fileId'],
+                    'calledFunctionId': project_function['functionId']
+                })
+
+            function_depends_on_count = 0
+            depends_on_function_count = 0
+
+            if function_depends_on is not None:
+                function_depends_on_count = len(function_depends_on)
+
+            if depends_on_function is not None:
+                depends_on_function_count = len(depends_on_function)
+
+            if function_depends_on_count > 0 or depends_on_function_count > 0:
+                database_handler.set_function_info({
+                    'dependencies': function_depends_on_count,
+                    'dependents': depends_on_function_count
+                }, {
+                    '_id': project_function["_id"]
+                })
+
+
 def __save_data_to_cache(
         project_root="",
         file_source="",
@@ -1226,9 +1257,24 @@ def __socket_announce_progress(
     if WEBSOCKET_STATUS_URL in shared_socket_handlers:
         shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
             "status": "OK",
-            "statusCode": "BUSY",
+            "statusCode": WEBSOCKET_OK_BUSY_ANALYZE,
             "totalFiles": total_files,
             "currentFile": current_file
+        })
+
+
+def __socket_announce_post_process(
+        shared_socket_handlers=None,
+        message=""
+):
+    if shared_socket_handlers is None:
+        shared_socket_handlers = {}
+
+    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
+        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
+            "status": "OK",
+            "statusCode": WEBSOCKET_OK_BUSY_POST_PROCESS,
+            "message": message
         })
 
 
@@ -1239,7 +1285,7 @@ def __socket_announce_completion(shared_socket_handlers=None):
     if WEBSOCKET_STATUS_URL in shared_socket_handlers:
         shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
             "status": "OK",
-            "statusCode": "DONE"
+            "statusCode": WEBSOCKET_OK_DONE
         })
 
 
@@ -1361,10 +1407,17 @@ def analyze_files(
             file_source=file_source,
             analyzer=analyzer)
 
-        __save_data_to_cache(
-            project_root=project_root,
-            file_source=file_source,
-            analyzer=analyzer)
+    __socket_announce_post_process(
+        shared_socket_handlers=shared_socket_handlers,
+        message="Cleaning up dependency information.")
+
+    __database_dependency_cleanup(project_root=project_root)
+
+    __socket_announce_post_process(
+        shared_socket_handlers=shared_socket_handlers,
+        message="Calculating dependency information.")
+
+    __database_dependency_calculation(project_root=project_root)
 
     __socket_announce_completion(
         shared_socket_handlers=shared_socket_handlers)

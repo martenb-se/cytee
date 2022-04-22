@@ -161,23 +161,24 @@ class SharedWebsockets:
         :type message: str
         :return:
         """
-        self.__sanity_check_identifier(identifier)
+        # self.__sanity_check_identifier(identifier)
 
-        for socket_index, current_socket in \
-                enumerate(self.websockets[identifier.value]):
-            self.__send_message_to_socket(
-                identifier,
-                socket_index,
-                current_socket,
-                WsCategory.PROGRESS.value,
-                {
-                    "status": WsStatus.OK.value,
-                    "statusCode": ws_code.value,
-                    "currentNumber": current_number,
-                    "goalNumber": goal_number,
-                    "message": message
-                }
-            )
+        if identifier.value in self.websockets:
+            for socket_index, current_socket in \
+                    enumerate(self.websockets[identifier.value]):
+                self.__send_message_to_socket(
+                    identifier,
+                    socket_index,
+                    current_socket,
+                    WsCategory.PROGRESS.value,
+                    {
+                        "status": WsStatus.OK.value,
+                        "statusCode": ws_code.value,
+                        "currentNumber": current_number,
+                        "goalNumber": goal_number,
+                        "message": message
+                    }
+                )
 
     def send_success(
             self,
@@ -196,21 +197,22 @@ class SharedWebsockets:
         :type message: str
         :return:
         """
-        self.__sanity_check_identifier(identifier)
+        # self.__sanity_check_identifier(identifier)
 
-        for socket_index, current_socket in \
-                enumerate(self.websockets[identifier.value]):
-            self.__send_message_to_socket(
-                identifier,
-                socket_index,
-                current_socket,
-                WsCategory.SUCCESS.value,
-                {
-                    "status": WsStatus.OK.value,
-                    "statusCode": ws_code.value,
-                    "message": message
-                }
-            )
+        if identifier.value in self.websockets:
+            for socket_index, current_socket in \
+                    enumerate(self.websockets[identifier.value]):
+                self.__send_message_to_socket(
+                    identifier,
+                    socket_index,
+                    current_socket,
+                    WsCategory.SUCCESS.value,
+                    {
+                        "status": WsStatus.OK.value,
+                        "statusCode": ws_code.value,
+                        "message": message
+                    }
+                )
 
     def send_error(
             self,
@@ -229,18 +231,19 @@ class SharedWebsockets:
         :type message: str
         :return:
         """
-        self.__sanity_check_identifier(identifier)
+        # self.__sanity_check_identifier(identifier)
 
-        for socket_index, current_socket in \
-                enumerate(self.websockets[identifier.value]):
-            self.__send_message_to_socket(
-                identifier,
-                socket_index,
-                current_socket,
-                WsCategory.ERROR.value,
-                {
-                    "status": WsStatus.ERROR.value,
-                    "statusCode": ws_code.value,
-                    "message": message
-                }
-            )
+        if identifier.value in self.websockets:
+            for socket_index, current_socket in \
+                    enumerate(self.websockets[identifier.value]):
+                self.__send_message_to_socket(
+                    identifier,
+                    socket_index,
+                    current_socket,
+                    WsCategory.ERROR.value,
+                    {
+                        "status": WsStatus.ERROR.value,
+                        "statusCode": ws_code.value,
+                        "message": message
+                    }
+                )

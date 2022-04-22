@@ -3,6 +3,8 @@
 
 # Cache
 /.analyze_cache
+__pycache__/
+.pytest_cache
 
 # Ignore lock files
 Pipfile.lock

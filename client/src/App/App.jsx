@@ -5,6 +5,12 @@ import LoadingPage from '../Project/pages/LoadingPage';
 import TestCreatorPage from '../Project/pages/TestCreatorPage';
 import {updateTime} from '../util/api'
 
+// Initialize stuff for bootstrap
+// If problems more problems occur with bootstrap try:
+// import 'bootstrap.bundle.js'
+import '@popperjs/core/dist/umd/popper.min.js'
+import 'bootstrap/dist/js/bootstrap.min.js'
+import './App.scss'
 
 function App() {
 

@@ -229,6 +229,64 @@ TEST_INFO_DATA = [
                 "value": "asdasd"
             }
         }
+    },   {
+        'pathToProject': '/home/user/projects/cool_project/src/',
+        'fileId': 'shared/utils/api',
+        'functionId': 'userObject.userFunction.(new userClass()).func2',
+        "customName": "",
+        "moduleData": {
+            "argumentList": [
+                {
+                    "argument": "user_function_arg1",
+                    "type": "string",
+                    "value": "word"
+                },
+                {
+                    "argument": "user_class_arg1",
+                    "type": "number",
+                    "value": 1
+                },
+                {
+                    "argument": "user_class_arg2",
+                    "type": "boolean",
+                    "value": True
+                },
+                {
+                    "argument": "func2_arg1",
+                    "type": "string",
+                    "value": "asdf"
+                },
+                {
+                    "argument": "func2_arg2",
+                    "type": "number",
+                    "value": 73
+                },
+                {
+                    "argument": "func2_arg3",
+                    "type": "array",
+                    "value": [
+                        {
+                            "argument": "",
+                            "type": "number",
+                            "value": 2
+                        },
+                        {
+                            "argument": "",
+                            "type": "number",
+                            "value": 7
+                        },
+                        {
+                            "argument": "",
+                            "type": "number",
+                            "value": 13
+                        }
+                    ]
+                }
+            ],
+            "exception": {
+                "value": "superException"
+            }
+        }
     },
 ]
 
@@ -265,6 +323,21 @@ def test_test_generator2(mock_os_make_dirs, mocker_open):
     )
 
     generate_test(data)
+    print("")
+    print(content_drain)
+
+def test_test_generator3(mock_os_make_dirs, mocker_open):
+    data = TEST_INFO_DATA[3]
+    content_drain = {}
+    mocker_open(
+        'api.test_generator.test_generator.open',
+        file_mocks=MOCKED_FILES,
+        content_drain=content_drain
+    )
+
+    test_string, import_string = generate_test_2(data, '/home/user/projects/cool_project/src/shared/utils/api')
+    pprint(import_string)
+    pprint(test_string)
     print("")
     print(content_drain)
 

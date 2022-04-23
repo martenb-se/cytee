@@ -287,3 +287,7 @@ def test_test_test():
     print("")
     #pprint(stringo)
 
+
+def test_generate_tests():
+    test_list = [{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func1'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func2'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func2'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func3'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/socket','functionId':'func4'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/socket','functionId':'func5'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/socket','functionId':'func5'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/login','functionId':'func6'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/login','functionId':'func7'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/create_account','functionId':'func8'},]
+    generate_tests(test_list)

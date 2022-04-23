@@ -236,8 +236,9 @@ def __generate_test_start(test_info):
         description_string += ("Function is expected to return " +
                                f"{expected_value}")
     else:
-        # Exception handling
-        pass
+
+        exception = test_info['moduleData']['exception']['value']
+        description_string += (f"Function is expected to throw {exception}")
 
     # Check if arguments exists
     if 'argumentList' in test_info['moduleData']:
@@ -505,6 +506,17 @@ def __generate_assert(test_info, return_variable):
     return assert_string
 
 
+def __generate_exception(test_info, function_call_string):
+    exception = test_info['moduleData']['exception']['value']
+
+    exception_string = function_call_string.replace(
+        ";",
+        f".toThrow({exception});",
+        1
+    )
+    return exception_string
+
+
 # TODO: Create the test file
 # TODO: Import the right function
 def generate_test(test_info):
@@ -580,7 +592,6 @@ def generate_test(test_info):
 # TODO: Make it so several tests info instances can be sent int.
 # TODO: Make it so several tests are written to the same file.
 # TODO: Fix path issue
-# TODO: Figure out how tests should be updated
 
 def generate_test_2(test_info, urangutest_file_path):
     global UNIQUE_NUMBER
@@ -595,7 +606,10 @@ def generate_test_2(test_info, urangutest_file_path):
         test_info,
         func_var_arg_map)
 
-    assert_string = __generate_assert(test_info, return_var)
+    if 'returnValue' in test_info['moduleData']:
+        assert_string = __generate_assert(test_info, return_var)
+    else:
+        assert_string = __generate_exception(test_info, function_call_string)
 
     test_string = (
             __generate_test_start(test_info) +
@@ -633,7 +647,7 @@ def generate_tests(test_info_list):
     for file_path, file_test_info_dir in test_file_dict.items():
 
         # Path for urangutest test file
-        urangutest_file = file_path + "urang.spec.js"
+        urangutest_file = file_path + ".urang.spec.js"
         file_imports = []
         file_tests = []
 

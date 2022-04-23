@@ -139,7 +139,6 @@ TYPE_MATCHER_DICT = {
     },
 }
 
-
 UNIQUE_NUMBER = 0
 
 
@@ -156,14 +155,20 @@ def __argument_formatter(argument):
 
 
 def __generate_test_file_path(test_info):
-
     # TODO: Check if the path already exist
-    proj_dir = os.path.split(os.path.normpath(test_info['pathToProject']))[0]
-    test_directory_path = proj_dir + "/urangutest"
-    os.mkdir(test_directory_path)
-    test_file_path = test_directory_path + "/" + test_info['fileId']
-    os.makedirs(os.path.dirname(test_file_path))
-    return test_file_path + ".urang.spec.js"
+
+    # pprint(os.path.split(f"{test_info['pathToProject']}{test_info['fileId']}")[0]+"/")
+    # proj_dir = os.path.split(os.path.normpath(test_info['pathToProject']))[0]
+    # test_directory_path = proj_dir + "/urangutest"
+    # os.mkdir(test_directory_path)
+    # test_file_path = test_directory_path + "/" + test_info['fileId']
+    # os.makedirs(os.path.dirname(test_file_path))
+
+    # return test_file_path + ".urang.spec.js"
+
+    path_to_file = os.path.split(test_info['fileId'])[0]
+    test_file_path = test_info['pathToProject'] + path_to_file + "/"
+    return test_file_path
 
 
 def __generate_meta_data(file_handler):
@@ -198,8 +203,8 @@ def __generate_imports(test_file_path, test_info):
 
     # Generate the path used to import the file being tested
     path_to_function = test_info['pathToProject'] + test_info['fileId']
-    relative_import_path = os.path.relpath(path_to_function,
-                                           test_file_path)
+    relative_import_path = './' + os.path.relpath(path_to_function,
+                                                  test_file_path)
 
     # Generate the import string
     import_expression = (f"import {exported_function_name} from "
@@ -211,7 +216,54 @@ def __generate_imports(test_file_path, test_info):
 # TODO: Write some description for each tests that say something about what
 #  is being tested.
 def __generate_test_start(test_info):
-    return ("""test("", () =>  {""")
+    description_string = ""
+
+    if 'returnValue' in test_info['moduleData']:
+
+        var_formatter = (
+            TYPE_MATCHER_DICT[
+                test_info['moduleData']['returnValue']['type']
+            ]['var_formatter']
+        )
+
+        if isinstance(var_formatter, str):
+            expected_value = var_formatter
+        else:
+            expected_value = var_formatter(
+                test_info['moduleData']['returnValue']['value']
+            )
+
+        description_string += ("Function is expected to return " +
+                               f"{expected_value}")
+    else:
+        # Exception handling
+        pass
+
+    # Check if arguments exists
+    if 'argumentList' in test_info['moduleData']:
+
+        description_string += ", when given the arguments: "
+        first = True
+        for argument_data in test_info['moduleData']['argumentList']:
+            if first:
+                first = False
+            else:
+                description_string += ', '
+            argument_name = argument_data['argument']
+            argument_value = argument_data['value']
+
+            description_string += f"{argument_name} = {argument_value}"
+
+    return (f"""test("{description_string}", () => """ + """ {""")
+
+
+def __generate_description_start(test_info):
+    return ("describe(\"tests generated for function " +
+            f"{test_info['functionId']}\",() => " + "{")
+
+
+def __generate_description_end():
+    return """});"""
 
 
 def __generate_test_end():
@@ -415,8 +467,6 @@ def __generate_function_call(test_info, func_arg_var_map):
 
         function_call_string += expression_string
 
-
-
     func_return_variable = "r_1"
 
     # TODO: Format the string
@@ -447,12 +497,13 @@ def __generate_assert(test_info, return_variable):
         [expected_data['type']]
         ['var_formatter']
         (expected_data['value'])
-        )
+    )
 
     assert_string = (f"expect({return_variable})"
                      f".{match_expression}({expected_value});")
 
     return assert_string
+
 
 # TODO: Create the test file
 # TODO: Import the right function
@@ -482,7 +533,7 @@ def generate_test(test_info):
     UNIQUE_NUMBER = 0
 
     test_file_path = __generate_test_file_path(test_info)
-    # pprint(f"test_file_path: {test_file_path}")
+    pprint(f"test_file_path: {test_file_path}")
     import_string = __generate_imports(test_file_path, test_info)
     # pprint(f"import_string: {import_string}")
     variable_declaration_string, func_var_arg_map = \
@@ -525,6 +576,93 @@ def generate_test(test_info):
         # __generate_test_end(f)
         f.write(test_string)
 
+
 # TODO: Make it so several tests info instances can be sent int.
 # TODO: Make it so several tests are written to the same file.
 # TODO: Fix path issue
+# TODO: Figure out how tests should be updated
+
+def generate_test_2(test_info, urangutest_file_path):
+    global UNIQUE_NUMBER
+    UNIQUE_NUMBER = 0
+
+    import_string = __generate_imports(urangutest_file_path, test_info)
+
+    variable_declaration_string, func_var_arg_map = \
+        __generate_variable_declarations(test_info)
+
+    function_call_string, return_var = __generate_function_call(
+        test_info,
+        func_var_arg_map)
+
+    assert_string = __generate_assert(test_info, return_var)
+
+    test_string = (
+            __generate_test_start(test_info) +
+            variable_declaration_string +
+            function_call_string +
+            assert_string +
+            __generate_test_end()
+    )
+    return test_string, import_string
+
+
+def generate_tests(test_info_list):
+    # group all tests that are applied to the same file
+    # divide test list into sublist baesd on file
+    # then divide the sublist based on functions
+    test_file_dict = {}
+
+    for test_info in test_info_list:
+
+        # Check if corresponding file combination exists in the dict
+        abs_func_path = test_info['pathToProject'] + test_info['fileId']
+
+        if abs_func_path not in test_file_dict:
+            test_file_dict[abs_func_path] = {}
+
+        # Check if corresponding function exist in file dict
+        if test_info['functionId'] not in test_file_dict[abs_func_path]:
+            test_file_dict[abs_func_path][test_info['functionId']] = []
+
+        # Add the test_info to the list corresponding to the file being tested
+        test_file_dict[abs_func_path][test_info['functionId']].append(
+            test_info)
+
+    # Iterate over all file
+    for file_path, file_test_info_dir in test_file_dict.items():
+
+        # Path for urangutest test file
+        urangutest_file = file_path + "urang.spec.js"
+        file_imports = []
+        file_tests = []
+
+        # Iterate over each function for the file
+        for functionId, func_test_info_list in file_test_info_dir.items():
+            func_test_strings = ""
+            # Create a description that encapsulate each unragutest.
+            # func_test_string += __generate_description_start(test_info)
+
+            for func_test_info in func_test_info_list:
+                # Generate the test
+                test_string, import_string = generate_test_2(
+                    func_test_info,
+                    urangutest_file)
+                func_test_strings += test_string
+                file_imports.append(import_string)
+
+            # generate end descriotion
+            # func_test_string += __generate_description_end(test_info)
+
+            file_tests.append(func_test_strings)
+
+        # Create the test file in the same location as the tested file
+        # Overwrites a file if it already exists
+        with open(urangutest_file, 'w') as f:
+            # Write the imports to the file
+            for import_statement in file_imports:
+                f.write(import_statement)
+
+            # Write the tests to the file
+            for function_tests in file_tests:
+                f.write(function_tests)

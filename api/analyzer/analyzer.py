@@ -1,17 +1,121 @@
 import hashlib
+import os
 from copy import deepcopy
+from os.path import exists
 import esprima
 import re
+import yaml
 from api.instances.logging_standard import logging
 from api.cache import save_file
 from api.instances.database_main import database_handler
-from api.websocket_constants import *
+from api.instances.shared_websockets_main import shared_websockets_handler
+from api.websocket import WsIdentity, WsCode
+
+
+METHOD_STRING_IDENTITY_UNKNOWN = "!unknown"
+METHOD_STRING_IDENTITY_IGNORE = "!ignore"
+
+
+class AnalyzerConfig:
+    __STANDARD_CONFIG_LOCATION = \
+        os.path.abspath(
+            os.path.dirname(os.path.abspath(__file__)) +
+            f"/../../analyze.config.yml")
+
+    def __init__(self, config_location=None):
+        if not exists(self.__STANDARD_CONFIG_LOCATION):
+            raise FileNotFoundError(
+                "AnalyzerConfig could not find standard config file "
+                f"'{self.__STANDARD_CONFIG_LOCATION}'.")
+
+        if config_location is not None:
+            if not isinstance(config_location, str):
+                raise TypeError("'config_location' must be a STRING")
+            elif len(config_location) < 1:
+                raise ValueError("'config_location' cannot be empty")
+            elif not exists(config_location):
+                raise FileNotFoundError(
+                    f"Alternative config file '{config_location}' "
+                    "cannot be found")
+
+        if config_location is None:
+            if exists(self.__STANDARD_CONFIG_LOCATION):
+                self.config_location = self.__STANDARD_CONFIG_LOCATION
+
+        else:
+            self.config_location = config_location
+
+        # Thanks: https://stackoverflow.com/a/29809015
+        yaml.SafeLoader.add_constructor(
+            u'tag:yaml.org,2002:python/regexp',
+            lambda l,
+            n: re.compile(l.construct_scalar(n)))
+
+        self.config = yaml.safe_load(open(self.config_location))
+
+    def __regex_list_matcher(self, paths_to_list, string_to_match):
+        """Generalized regex matcher for list of regular expressions found
+        at defined path in the configuration file.
+
+        :param paths_to_list: The path to the list of regular expressions in
+        the configuration file.
+        :type paths_to_list: list
+        :param string_to_match: String to run regex matcher on.
+        :type string_to_match: str
+        :return: True if a pattern matches on the provided string,
+        False otherwise.
+        """
+        found_match = False
+
+        cur_node = self.config
+        for cur_path in paths_to_list:
+            if cur_path in cur_node:
+                cur_node = cur_node[cur_path]
+
+        if isinstance(cur_node, list):
+            for cur_regex in cur_node:
+                matches = cur_regex.findall(string_to_match)
+                if len(matches) > 0:
+                    found_match = True
+                    break
+
+        return found_match
+
+    def whitelist_check(self, file_path):
+        """See if a string matches a whitelisted file name.
+
+        :param file_path: The file path to check the whitelist against.
+        :type file_path: str
+        :return: True if the file path matched against a whitelisted name,
+        False otherwise.
+        """
+        path_to_whitelist_patterns = ['whitelist', 'regex']
+        return self.__regex_list_matcher(path_to_whitelist_patterns, file_path)
+
+    def blacklist_check(self, file_path):
+        """See if a string matches a blacklisted file name.
+
+        :param file_path: The file path to check the blacklist against.
+        :type file_path: str
+        :return: True if the file path matched against a blacklisted name,
+        False otherwise.
+        """
+        path_to_blacklist_patterns = ['blacklist', 'regex']
+        return self.__regex_list_matcher(path_to_blacklist_patterns, file_path)
+
+    def is_file_allowed(self, file_path):
+        """See if a file is okay to be loaded.
+
+        :param file_path: The file path to check if it's allowed to be loaded.
+        :type file_path: str
+        :return: True if the file is okay to be loaded, False otherwise.
+        """
+        return \
+            self.whitelist_check(file_path) and \
+            not self.blacklist_check(file_path)
 
 
 class AnalyzeJS:
-    __METHOD_STRING_IDENTITY_UNKNOWN = "!unknown"
-    __METHOD_STRING_IDENTITY_IGNORE = "!ignore"
-
     def __init__(self, file_location, project_root):
         """Analyzer for JavaScript project files.
 
@@ -40,7 +144,8 @@ class AnalyzeJS:
 
         try:
             self.esprima_tree = esprima.parseModule(self.file_source,
-                                                    {"range": True})
+                                                    {"range": True,
+                                                     "jsx": True})
 
         except esprima.Error as e:
             raise SyntaxError(
@@ -51,10 +156,19 @@ class AnalyzeJS:
 
         self.file_location = file_location
         self.project_root = project_root
+
+        # TODO: Fix better file identity:
+        #  - If index.jsx is used in a Component/index.js manner
         self.file_identity = re.sub(r'' + re.escape(self.project_root) +
                                     r'|\.jsx?$', '', self.file_location)
         self.created_functions = {}
         self.class_information = {}
+
+    def __debug_info_print(self):
+        win_size = 120
+        print(f"file_location : {self.file_location:.>{win_size}}")
+        print(f"project_root  : {self.project_root:.>{win_size}}")
+        print(f"file_identity : {self.file_identity:.>{win_size}}")
 
     def __find_scope_method_identity(self, path, method):
         """Find possible dependency on method starting from current scope
@@ -73,7 +187,7 @@ class AnalyzeJS:
         :rtype: tuple
         """
         file_identity = self.file_identity
-        string_identity = self.__METHOD_STRING_IDENTITY_UNKNOWN
+        string_identity = METHOD_STRING_IDENTITY_UNKNOWN
         pre_call_chain = []
 
         path_search = path
@@ -126,7 +240,7 @@ class AnalyzeJS:
                     is_search_result_a_method_parameter = \
                         'params' in search_result
                     if is_search_result_a_method_parameter:
-                        string_identity = self.__METHOD_STRING_IDENTITY_IGNORE
+                        string_identity = METHOD_STRING_IDENTITY_IGNORE
                     else:
                         file_identity, string_identity = \
                             self.__create_identity_from_call_chain(
@@ -155,7 +269,7 @@ class AnalyzeJS:
                 self.__find_all_by_prop_value("type", "CallExpression", path):
             if 'callee' in \
                     self.__go_to_absolute_path(method_call_path).__dict__:
-                string_identity = self.__METHOD_STRING_IDENTITY_UNKNOWN
+                string_identity = METHOD_STRING_IDENTITY_UNKNOWN
                 file_identity = self.file_identity
                 callee_node = \
                     self.__go_to_absolute_path(method_call_path).callee
@@ -456,6 +570,46 @@ class AnalyzeJS:
                     call_chain_prep['path_search'],
                     call_chain_prep['node_key'])
             call_chain.append(prep_call)
+
+        if len(path_search) > 0 and path_search[-1] == 'right':
+            left_node = \
+                self.__go_to_absolute_path(path_search[:-1] + ['left'])
+
+            if isinstance(left_node, esprima.nodes.StaticMemberExpression):
+                prop_dig = left_node
+                prop_dig_path = path_search[:-1] + ['left']
+                while isinstance(
+                        prop_dig,
+                        esprima.nodes.StaticMemberExpression):
+                    current_call = \
+                        self.__create_call_chain_entry(
+                            prop_dig,
+                            prop_dig_path,
+                            'property')
+                    call_chain.append(current_call)
+
+                    prop_dig = prop_dig.object
+                    prop_dig_path += ['object']
+
+                if isinstance(prop_dig, esprima.nodes.Identifier):
+                    current_call = \
+                        self.__create_call_chain_entry(
+                            self.__go_to_absolute_path(prop_dig_path[:-1]),
+                            prop_dig_path[:-1],
+                            'object')
+                    call_chain.append(current_call)
+
+                else:
+                    logging.warning(
+                        "Call chain initiation from right hand expression "
+                        "cannot handle StaticMember 'object' of type: "
+                        f"{type(prop_dig)}")
+
+            else:
+                logging.warning(
+                    "Call chain initiation from right hand expression "
+                    "cannot handle expression of type: "
+                    f"{type(left_node)}")
 
         while len(path_search) > 0:
             if hasattr(node_search, '__dict__'):
@@ -899,46 +1053,76 @@ class AnalyzeJS:
 
         :return: Nothing
         """
-        if isinstance(
+        is_node_a_methoddefinition = \
+            isinstance(
                 current_node,
-                esprima.nodes.MethodDefinition) or \
-                isinstance(
-                    current_node,
-                    esprima.nodes.ArrowFunctionExpression) or \
-                isinstance(
-                    current_node,
-                    esprima.nodes.AsyncArrowFunctionExpression) or \
-                isinstance(
-                    current_node,
-                    esprima.nodes.AsyncFunctionDeclaration) or \
-                isinstance(
-                    current_node,
-                    esprima.nodes.AsyncFunctionExpression) or \
-                isinstance(
-                    current_node,
-                    esprima.nodes.FunctionDeclaration) or \
-                isinstance(
-                    current_node,
-                    esprima.nodes.FunctionExpression):
+                esprima.nodes.MethodDefinition)
+        is_node_an_arrowfunctionexpression = \
+            isinstance(
+                current_node,
+                esprima.nodes.ArrowFunctionExpression)
+        is_node_an_asyncarrowfunctionexpression = \
+            isinstance(
+                current_node,
+                esprima.nodes.AsyncArrowFunctionExpression)
+        is_node_an_asyncfunctiondeclaration = \
+            isinstance(
+                current_node,
+                esprima.nodes.AsyncFunctionDeclaration)
+        is_node_an_asyncfunctionexpression = \
+            isinstance(
+                current_node,
+                esprima.nodes.AsyncFunctionExpression)
+        is_node_a_functiondeclaration = \
+            isinstance(
+                current_node,
+                esprima.nodes.FunctionDeclaration)
+        is_node_a_functionexpression = \
+            isinstance(
+                current_node,
+                esprima.nodes.FunctionExpression)
+
+        is_node_an_anonymous_callback = \
+            (is_node_an_arrowfunctionexpression or
+             is_node_an_asyncarrowfunctionexpression or
+             is_node_an_asyncfunctionexpression or
+             is_node_a_functionexpression) and \
+            len(path) > 2 and path[-2] == "arguments"
+
+        if (is_node_a_methoddefinition or
+            is_node_an_asyncfunctiondeclaration or
+            is_node_a_functiondeclaration) or \
+                (is_node_an_arrowfunctionexpression or
+                 is_node_an_asyncarrowfunctionexpression or
+                 is_node_an_asyncfunctionexpression or
+                 is_node_a_functionexpression) and \
+                not is_node_an_anonymous_callback:
+
             call_chain = self.__create_call_chain(path)
             file_identity, string_identity = \
                 self.__create_identity_from_call_chain(call_chain)
 
-            export_info, export_name = \
-                self.__find_export_information_for_asset(
-                    call_chain[0]['name'])
+            if len(call_chain) > 0:
+                export_info, export_name = \
+                    self.__find_export_information_for_asset(
+                        call_chain[0]['name'])
 
-            if not (len(call_chain) >= 2 and
-                    call_chain[-1][
-                        'type'] is esprima.nodes.MethodDefinition and
-                    call_chain[-1]['name'] == 'constructor' and
-                    call_chain[-2]['type'] is esprima.nodes.ClassDeclaration):
-                self.__save_created_method(
-                    string_identity,
-                    current_node,
-                    call_chain,
-                    export_info,
-                    export_name)
+                if not (len(call_chain) >= 2 and
+                        call_chain[-1][
+                            'type'] is esprima.nodes.MethodDefinition and
+                        call_chain[-1]['name'] == 'constructor' and
+                        call_chain[-2]['type'] is
+                        esprima.nodes.ClassDeclaration):
+                    self.__save_created_method(
+                        string_identity,
+                        current_node,
+                        call_chain,
+                        export_info,
+                        export_name)
+            else:
+                logging.critical(
+                    "Cannot create call chain to found method at path: "
+                    f"{self.__get_path_string(path)}")
 
     def __get_path_string(self, path):
         """Convert the given AST path to a string.
@@ -964,7 +1148,7 @@ class AnalyzeJS:
         """
         self.__handle_node_method_declaration(path, current_node)
 
-    def __get_sub_paths(self, current_path=None):
+    def __get_sub_paths(self, current_path=None, node_type_blacklist=None):
         """Find all possible sub-paths from the given path.
 
         :param current_path: The path to find all sub-paths from.
@@ -975,23 +1159,26 @@ class AnalyzeJS:
         """
         if current_path is None:
             current_path = []
+        if node_type_blacklist is None:
+            node_type_blacklist = []
 
         possible_paths = []
         current_node = self.__go_to_absolute_path(current_path)
 
-        if hasattr(
-                current_node,
-                '__dict__'):
+        if hasattr(current_node, '__dict__'):
             for node_key in current_node.__dict__:
-                if not isinstance(
-                        current_node.__dict__[node_key],
-                        str) and \
-                        not isinstance(
-                            current_node.__dict__[node_key],
-                            int) and \
-                        not re.match(
-                            r"^(range)$",
-                            node_key):
+                next_node = current_node.__dict__[node_key]
+
+                is_node_blacklisted = False
+                for type_blacklist in node_type_blacklist:
+                    if isinstance(next_node, type_blacklist):
+                        is_node_blacklisted = True
+                        break
+
+                if not is_node_blacklisted and \
+                        not isinstance(next_node, str) and \
+                        not isinstance(next_node, int) and \
+                        not re.match(r"^(range)$", node_key):
                     possible_paths.append(current_path + [node_key])
 
         elif isinstance(current_node, list):
@@ -999,7 +1186,8 @@ class AnalyzeJS:
                 possible_paths.append(current_path + [str(node_index)])
 
         elif current_node is not None and \
-                not isinstance(current_node, re.Pattern):
+                not isinstance(current_node, re.Pattern) and \
+                not isinstance(current_node, float):
             logging.warning(
                 "Type not yet implemented and cannot be analyzed: " +
                 str(type(current_node)))
@@ -1019,7 +1207,17 @@ class AnalyzeJS:
         """
         self.__handle_node(path, current_node)
 
-        for sub_path in self.__get_sub_paths(path):
+        # Don't enter CallExpression, can't test anything created here..
+        # Don't enter JSX, things are not defined there...
+        node_type_blacklist = [
+            esprima.nodes.CallExpression,
+            esprima.jsx_nodes.JSXElement
+        ]
+
+        for sub_path in \
+                self.__get_sub_paths(
+                    current_path=path,
+                    node_type_blacklist=node_type_blacklist):
             sub_node = self.__go_to_absolute_path(sub_path)
             self.__analyze_ast(sub_path, sub_node)
 
@@ -1133,61 +1331,330 @@ class AnalyzeJS:
         return self.__find_method_calls(path_to_function)
 
 
-def __save_data_to_db(
-        project_root="",
-        file_source="",
-        analyzer=None):
+class ProjectDataHandler:
+    def __init__(self, project_root: str):
+        """Project data handler for saving and updating data
 
-    created_functions = analyzer.get_functions()
+        :param project_root: The project root
+        :type project_root: str
+        """
+        if not isinstance(project_root, str):
+            raise TypeError("'project_root' must be a STRING")
+        elif len(project_root) < 1:
+            raise ValueError("'project_root' cannot be empty")
 
-    for created_function in created_functions:
+        self.analyzer_instance = None
+        self.file_source = None
+        self.project_root = project_root
+
+        self.added_function_dependencies = []
+        self.existing_function_dependencies = []
+        self.dead_function_dependencies = []
+
+        self.added_function_info = []
+        self.existing_function_info = []
+        self.dead_function_info = []
+
+    def set_analyzer(self, analyzer_instance):
+        if not isinstance(analyzer_instance, AnalyzeJS):
+            raise TypeError("'analyzer_instance' must be a AnalyzeJS object")
+
+        self.analyzer_instance = analyzer_instance
+        self.file_source = analyzer_instance.file_source
+
+    def unset_analyzer(self):
+        self.analyzer_instance = None
+        self.file_source = None
+
+    def __db_get_project_function_dependencies(self):
+        function_dependencies = []
+        db_function_dependencies = \
+            database_handler.get_function_dependency({
+                "pathToProject": self.project_root
+            })
+
+        if db_function_dependencies is not None:
+            function_dependencies = db_function_dependencies
+
+        return function_dependencies
+
+    def __db_get_project_function_info(self):
+        function_info = []
+        db_function_info = \
+            database_handler.get_function_info({
+                "pathToProject": self.project_root
+            })
+
+        if db_function_info is not None:
+            function_info = db_function_info
+
+        return function_info
+
+    def __db_get_dead_project_function_dependencies_id(self):
+        saved_dependencies = \
+            [dependency["_id"] for dependency in
+             self.__db_get_project_function_dependencies()]
+        found_dependencies = \
+            self.added_function_dependencies + \
+            self.existing_function_dependencies
+        dead_dependencies = \
+            list(set(saved_dependencies).difference(found_dependencies))
+
+        return dead_dependencies
+
+    def __db_get_dead_project_function_info_id(self):
+        saved_functions = \
+            [dependency["_id"] for dependency in
+             self.__db_get_project_function_info()]
+        found_functions = \
+            self.added_function_info + \
+            self.existing_function_info
+        dead_functions = \
+            list(set(saved_functions).difference(found_functions))
+
+        return dead_functions
+
+    def __db_delete_dead_project_function_dependencies(self):
+        dead_dependencies = \
+            self.__db_get_dead_project_function_dependencies_id()
+
+        if len(dead_dependencies) > 0:
+            for dead_dependency in dead_dependencies:
+                database_handler.remove_function_dependency({
+                        '_id': dead_dependency
+                    })
+
+            logging.info(
+                f"Removed {len(dead_dependencies)} dead dependencies from "
+                f"project at: {self.project_root}")
+
+    def __db_delete_dead_project_function_info(self):
+        dead_functions = \
+            self.__db_get_dead_project_function_info_id()
+
+        if len(dead_functions) > 0:
+            for dead_function in dead_functions:
+                database_handler.remove_function_info({
+                        '_id': dead_function
+                    })
+
+            logging.info(
+                f"Removed {len(dead_functions)} dead functions from "
+                f"project at: {self.project_root}")
+
+    def __db_get_function_dependency_id(
+            self,
+            function_id,
+            called_file_id,
+            called_function_id):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file information")
+
+        function_dependency_id = None
+
+        db_function_dependencies = \
+            database_handler.get_function_dependency({
+                "pathToProject": self.project_root,
+                "fileId": self.analyzer_instance.get_file_identity(),
+                "functionId": function_id,
+                "calledFileId": called_file_id,
+                "calledFunctionId": called_function_id
+            })
+
+        if db_function_dependencies is not None:
+            if len(db_function_dependencies) > 1:
+                logging.warning(
+                    "Multiple dependency definitions in database "
+                    "for "
+                    f"{self.project_root} : "
+                    f"{self.analyzer_instance.get_file_identity()} : "
+                    f"{function_id} ->"
+                    f"{called_file_id} : "
+                    f"{called_function_id}")
+
+            function_dependency_id = db_function_dependencies[0]["_id"]
+
+        return function_dependency_id
+
+    def __db_get_function_info(self, function_id):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file information")
+
+        function_info = None
+
+        db_function_info = \
+            database_handler.get_function_info({
+                "pathToProject": self.project_root,
+                "fileId": self.analyzer_instance.get_file_identity(),
+                "functionId": function_id
+            })
+
+        if db_function_info is not None:
+            if len(db_function_info) > 1:
+                logging.warning(
+                    "Multiple function definitions in database "
+                    "for "
+                    f"{self.project_root} : "
+                    f"{self.analyzer_instance.get_file_identity()} : "
+                    f"{function_id}")
+
+            function_info = db_function_info[0]
+
+        return function_info
+
+    def __db_save_function_dependencies(self, created_function):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
+
+        function_dependencies = \
+            self.analyzer_instance.get_method_calls(created_function)
+
+        for file_identity, string_identity in \
+                [(file_identity, string_identity)
+                 for file_identity in function_dependencies
+                 for string_identity in function_dependencies[file_identity]]:
+
+            if string_identity != METHOD_STRING_IDENTITY_UNKNOWN and \
+                    string_identity != METHOD_STRING_IDENTITY_IGNORE:
+
+                existing_dependency_id = \
+                    self.__db_get_function_dependency_id(
+                        created_function, file_identity, string_identity)
+
+                if existing_dependency_id is not None:
+                    self.existing_function_dependencies. \
+                        append(existing_dependency_id)
+
+                else:
+                    added_dependency_id = \
+                        database_handler.add_function_dependency({
+                            "pathToProject": self.project_root,
+                            "fileId": self.analyzer_instance.get_file_identity(),
+                            "functionId": created_function,
+                            "calledFileId": file_identity,
+                            "calledFunctionId": string_identity
+                        })
+
+                    self.added_function_dependencies.\
+                        append(added_dependency_id)
+
+    def __make_function_info_change_list(
+            self,
+            old_function_info,
+            new_function_info):
+        change_list = []
+        for function_info_prop in new_function_info:
+            if new_function_info[function_info_prop] != \
+                    old_function_info[function_info_prop]:
+                change_list.append(function_info_prop)
+
+        return change_list
+
+    def __db_make_function_info_arguments(self, created_function):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
+
+        created_functions = self.analyzer_instance.get_functions()
         col_arguments = []
         for call in created_functions[created_function]['call_chain']:
             col_arguments.append({call['name']: call['arguments']})
+        return col_arguments
 
-        function_dependencies = analyzer.get_method_calls(created_function)
-        for file_identity in function_dependencies:
-            for string_identity in function_dependencies[file_identity]:
-                if string_identity != '!unknown' and \
-                        string_identity != '!ignore':
-                    database_handler.add_function_dependency({
-                        "pathToProject": project_root,
-                        "fileId": analyzer.get_file_identity(),
-                        "functionId": created_function,
-                        "calledFileId": file_identity,
-                        "calledFunctionId": string_identity
-                    })
+    def __db_make_function_info_functionhash(self, current_node):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
 
-        current_node = created_functions[created_function]['current_node']
         function_source = \
-            file_source[current_node.range[0]:current_node.range[1]]
+            self.file_source[current_node.range[0]:current_node.range[1]]
         function_hash = hashlib.sha256(str.encode(function_source))
+        return function_hash.hexdigest()
 
-        database_handler.add_function_info({
-            "pathToProject": project_root,
-            "fileId": analyzer.get_file_identity(),
-            "functionId": created_function,
-            "arguments": col_arguments,
-            "functionRange": (
-                current_node.range[0],
-                current_node.range[1]),
-            "functionHash": function_hash.hexdigest(),
-            "exportInfo": created_functions[created_function]['export_info'],
-            "exportName": created_functions[created_function]['export_name']
-        })
+    def __db_save_function_info(self, created_function):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
 
+        created_functions = self.analyzer_instance.get_functions()
+        current_node = created_functions[created_function]['current_node']
 
-def __database_dependency_cleanup(project_root=""):
-    project_dependencies = \
-        database_handler.get_function_dependency({
-            'pathToProject': project_root
-        })
+        new_function_info = {
+            "arguments":
+                self.__db_make_function_info_arguments(created_function),
+            "functionRange":
+                (current_node.range[0], current_node.range[1]),
+            "functionHash":
+                self.__db_make_function_info_functionhash(current_node),
+            "exportInfo":
+                created_functions[created_function]['export_info'],
+            "exportName":
+                created_functions[created_function]['export_name']
+        }
 
-    if project_dependencies is not None:
-        for project_dependency in project_dependencies:
+        existing_function_info = self.__db_get_function_info(created_function)
+
+        if existing_function_info is not None:
+            self.existing_function_info. \
+                append(existing_function_info["_id"])
+
+            change_list = self.__make_function_info_change_list(
+                existing_function_info,
+                new_function_info
+            )
+
+            if len(change_list) > 0:
+                logging.info(
+                    f"Detected changes were: {', '.join(change_list)}")
+
+                database_handler.set_function_info(
+                    new_function_info,
+                    {'_id': existing_function_info["_id"]}
+                )
+
+        else:
+            added_function_info_id = database_handler.add_function_info({
+                "pathToProject": self.project_root,
+                "fileId": self.analyzer_instance.get_file_identity(),
+                "functionId": created_function,
+                **new_function_info
+            })
+
+            self.added_function_info. \
+                append(added_function_info_id)
+
+    def __db_cleanup_project_function_dependencies(self):
+        """Remove all dependencies on function not defined in the current
+        project. This will remove dependencies on external libraries.
+
+        :return: Nothing
+        """
+        project_dependencies = self.__db_get_project_function_dependencies()
+        for index, project_dependency in enumerate(project_dependencies):
+            shared_websockets_handler.send_progress(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_CLEAN_DEPENDENCY,
+                index + 1,
+                len(project_dependencies),
+                "Checking dependency: "
+                f"{project_dependency['fileId']}:"
+                f"{project_dependency['functionId']} -> "
+                f"{project_dependency['calledFileId']}:"
+                f"{project_dependency['calledFunctionId']}"
+            )
+
             dependency_defined_in_project = \
                 database_handler.get_function_info({
-                    'pathToProject': project_root,
+                    'pathToProject': self.project_root,
                     'fileId': project_dependency['calledFileId'],
                     'functionId': project_dependency['calledFunctionId']
                 })
@@ -1197,25 +1664,31 @@ def __database_dependency_cleanup(project_root=""):
                     '_id': project_dependency["_id"]
                 })
 
+    def __db_save_project_function_dependencies_count(self):
+        project_functions = self.__db_get_project_function_info()
 
-def __database_dependency_calculation(project_root=""):
-    project_functions = \
-        database_handler.get_function_info({
-            'pathToProject': project_root
-        })
+        for index, project_function in enumerate(project_functions):
 
-    if project_functions is not None:
-        for project_function in project_functions:
+            shared_websockets_handler.send_progress(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_COUNT_DEPENDENCY,
+                index + 1,
+                len(project_functions),
+                "Calculating dependency information for: "
+                f"{project_function['fileId']}:"
+                f"{project_function['functionId']}"
+            )
+
             function_depends_on = \
                 database_handler.get_function_dependency({
-                    'pathToProject': project_root,
+                    'pathToProject': self.project_root,
                     'fileId': project_function['fileId'],
                     'functionId': project_function['functionId']
                 })
 
             depends_on_function = \
                 database_handler.get_function_dependency({
-                    'pathToProject': project_root,
+                    'pathToProject': self.project_root,
                     'calledFileId': project_function['fileId'],
                     'calledFunctionId': project_function['functionId']
                 })
@@ -1229,195 +1702,142 @@ def __database_dependency_calculation(project_root=""):
             if depends_on_function is not None:
                 depends_on_function_count = len(depends_on_function)
 
-            if function_depends_on_count > 0 or depends_on_function_count > 0:
-                database_handler.set_function_info({
-                    'dependencies': function_depends_on_count,
-                    'dependents': depends_on_function_count
-                }, {
-                    '_id': project_function["_id"]
-                })
+            new_function_info = {
+                'dependencies': function_depends_on_count,
+                'dependents': depends_on_function_count
+            }
+
+            change_list = \
+                self.__make_function_info_change_list(
+                    project_function, new_function_info)
+
+            if len(change_list) > 0:
+                logging.info(
+                    f"Detected changes were: {', '.join(change_list)}")
+
+                database_handler.set_function_info(
+                    new_function_info,
+                    {'_id': project_function["_id"]}
+                )
+
+    def cache_save(self):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
+
+        save_file(
+            self.project_root,
+            self.analyzer_instance.get_file_identity(),
+            self.file_source)
+
+    def database_save(self):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
+
+        created_functions = self.analyzer_instance.get_functions()
+
+        for created_function in created_functions:
+            self.__db_save_function_dependencies(created_function)
+            self.__db_save_function_info(created_function)
+
+    def database_cleanup(self):
+        self.__db_cleanup_project_function_dependencies()
+        self.__db_save_project_function_dependencies_count()
+        self.__db_delete_dead_project_function_dependencies()
+        self.__db_delete_dead_project_function_info()
 
 
-def __save_data_to_cache(
-        project_root="",
-        file_source="",
-        analyzer=None
-):
-    save_file(project_root, analyzer.get_file_identity(), file_source)
-
-
-def __socket_announce_progress(
-        shared_socket_handlers=None,
-        total_files=0,
-        current_file=0
-):
-    if shared_socket_handlers is None:
-        shared_socket_handlers = {}
-
-    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
-        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
-            "status": "OK",
-            "statusCode": WEBSOCKET_OK_BUSY_ANALYZE,
-            "totalFiles": total_files,
-            "currentFile": current_file
-        })
-
-
-def __socket_announce_post_process(
-        shared_socket_handlers=None,
-        message=""
-):
-    if shared_socket_handlers is None:
-        shared_socket_handlers = {}
-
-    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
-        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
-            "status": "OK",
-            "statusCode": WEBSOCKET_OK_BUSY_POST_PROCESS,
-            "message": message
-        })
-
-
-def __socket_announce_completion(shared_socket_handlers=None):
-    if shared_socket_handlers is None:
-        shared_socket_handlers = {}
-
-    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
-        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
-            "status": "OK",
-            "statusCode": WEBSOCKET_OK_DONE
-        })
-
-
-def __socket_announce_error(
-        shared_socket_handlers=None,
-        error_code="",
-        message="",
-        affected_file=""
-):
-    if shared_socket_handlers is None:
-        shared_socket_handlers = {}
-
-    if WEBSOCKET_STATUS_URL in shared_socket_handlers:
-        shared_socket_handlers[WEBSOCKET_STATUS_URL].send({
-            "status": "ERROR",
-            "statusCode": error_code,
-            "message": message,
-            "affectedFile": affected_file
-        })
-
-
-def analyze_files(
-        list_of_files,
-        project_root="",
-        shared_socket_handlers=None):
+def analyze_files(project_root):
     """Analyze list of files
 
-    :param list_of_files: The list of files to analyze
-    :type list_of_files: list
     :param project_root: The project root directory
     :type project_root: str
-    :param shared_socket_handlers: Object containing the shared WebSocket
-    handlers.
-    :type shared_socket_handlers: dict
 
     :raises:
-        TypeError: If the passed 'list_of_files' is of the wrong type.
-        ValueError: If the passed 'list_of_files' is empty.
+        TypeError: If the passed 'project_root' is of the wrong type.
+        ValueError: If the passed 'project_root' is empty.
 
     :return: Nothing
     """
-    if shared_socket_handlers is None:
-        shared_socket_handlers = {}
-    if not isinstance(list_of_files, list):
-        raise TypeError("'list_of_files' must be a LIST")
-    elif len(list_of_files) < 1:
-        raise ValueError("'list_of_files' cannot be empty")
+    if not isinstance(project_root, str):
+        raise ValueError(
+            "'project_root' must only contain paths to files as STRINGS")
+    elif len(project_root) < 1:
+        raise ValueError(
+            "Paths in 'project_root' cannot be empty strings")
+
+    analyzer_config = AnalyzerConfig()
+    project_data = ProjectDataHandler(project_root)
+
+    list_of_files = []
+    for path, currentDirectory, files in os.walk(project_root):
+        for file in files:
+            file_location = os.path.join(path, file)
+            if analyzer_config.is_file_allowed(file_location):
+                list_of_files.append(file_location)
 
     for file_num, current_file in enumerate(list_of_files):
-        if not isinstance(current_file, str):
-            raise ValueError(
-                "'list_of_files' must only contain paths to files as STRINGS")
-        elif len(current_file) < 1:
-            raise ValueError(
-                "Paths in 'list_of_files' cannot be empty strings")
-
         with open(current_file, 'r') as file:
             file_source = file.read()
 
         if len(file_source) < 1:
-            logging.info(f"File '{current_file}' is empty, skipping.")
-            __socket_announce_error(
-                shared_socket_handlers=shared_socket_handlers,
-                error_code=WEBSOCKET_ERR_FILE_EMPTY,
-                message=f"File '{current_file}' is empty, skipping.",
-                affected_file=current_file
+            shared_websockets_handler.send_error(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_ERR_FILE_EMPTY,
+                f"File '{current_file}' is empty, skipping."
             )
             continue
 
         try:
             analyzer = AnalyzeJS(current_file, project_root=project_root)
 
-        except FileNotFoundError:
-            logging.warning(f"File '{current_file}' is not found.")
-            __socket_announce_error(
-                shared_socket_handlers=shared_socket_handlers,
-                error_code=WEBSOCKET_ERR_FILE_MISSING,
-                message=f"File '{current_file}' is not found.",
-                affected_file=current_file
-            )
-            continue
-
         except SyntaxError as e:
             logging.warning(
                 f"File '{current_file}' cannot be parsed. More information: "
                 f"{e}")
 
-            __socket_announce_error(
-                shared_socket_handlers=shared_socket_handlers,
-                error_code=WEBSOCKET_ERR_PARSE_FAILURE,
-                message=f"File '{current_file}' cannot be parsed.",
-                affected_file=current_file
+            shared_websockets_handler.send_error(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_ERR_PARSE_FAILURE,
+                f"File '{current_file}' cannot be parsed."
             )
-            continue
+            return
 
         except Exception as e:
             logging.warning(
                 f"Unexpected error when handling file '{current_file}'. "
                 f"More information: {e}")
 
-            __socket_announce_error(
-                shared_socket_handlers=shared_socket_handlers,
-                error_code=WEBSOCKET_ERR_UNEXPECTED,
-                message=f"An unexpected error occurred while handling "
-                        f"'{current_file}'.",
-                affected_file=current_file
+            shared_websockets_handler.send_error(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_ERR_UNEXPECTED,
+                f"An unexpected error occurred while handling "
+                f"'{current_file}'."
             )
-            continue
-
-        __socket_announce_progress(
-            shared_socket_handlers=shared_socket_handlers,
-            total_files=len(list_of_files),
-            current_file=file_num+1)
+            return
 
         analyzer.begin_analyze()
 
-        __save_data_to_db(
-            project_root=project_root,
-            file_source=file_source,
-            analyzer=analyzer)
+        shared_websockets_handler.send_progress(
+            WsIdentity.NEW_PROJECT,
+            WsCode.ANALYZE_PROCESS_FILES,
+            file_num + 1,
+            len(list_of_files),
+            f"Analyzed file: '{current_file}'"
+        )
 
-    __socket_announce_post_process(
-        shared_socket_handlers=shared_socket_handlers,
-        message="Cleaning up dependency information.")
+        project_data.set_analyzer(analyzer)
+        project_data.cache_save()
+        project_data.database_save()
 
-    __database_dependency_cleanup(project_root=project_root)
+    project_data.unset_analyzer()
+    project_data.database_cleanup()
 
-    __socket_announce_post_process(
-        shared_socket_handlers=shared_socket_handlers,
-        message="Calculating dependency information.")
-
-    __database_dependency_calculation(project_root=project_root)
-
-    __socket_announce_completion(
-        shared_socket_handlers=shared_socket_handlers)
+    shared_websockets_handler.send_success(
+        WsIdentity.NEW_PROJECT,
+        WsCode.ANALYZE_COMPLETE,
+        "Project analysis complete!"
+    )

@@ -1,11 +1,13 @@
+import json
 from enum import Enum
 import simple_websocket
+
 from api.instances.logging_standard import logging
 
 
 class WsIdentity(Enum):
-    LIST_FILES = "sock_list_files"
-    CHOOSE_FILES = "sock_choose_files"
+    LIST_FILES = "list_files"
+    NEW_PROJECT = "new_project"
 
 
 class WsCategory(Enum):
@@ -22,6 +24,10 @@ class WsStatus(Enum):
 class WsCode(Enum):
     DONE = "DONE"
     WELCOME = "WELCOME"
+
+    ANALYZE_ERR_FILE_EMPTY = "ANALYZE_ERR_FILE_EMPTY"
+    ANALYZE_ERR_PARSE_FAILURE = "ANALYZE_ERR_PARSE_FAILURE"
+    ANALYZE_ERR_UNEXPECTED = "ANALYZE_ERR_UNEXPECTED"
 
     ANALYZE_PROCESS_FILES = "ANALYZE_PROCESS_FILES"
     ANALYZE_CLEAN_DEPENDENCY = "ANALYZE_CLEAN_DEPENDENCY"
@@ -40,11 +46,6 @@ class SharedWebsockets:
         """Used for sharing of WebSocket instances."""
         self.websockets = {}
 
-    def __sanity_check_identifier(self, identifier):
-        if identifier.value not in self.websockets:
-            raise ValueError(
-                f"No socket with identifier '{identifier}' is registered")
-
     def __send_message_to_socket(
             self,
             identifier: WsIdentity,
@@ -53,7 +54,7 @@ class SharedWebsockets:
             message_category: str,
             message_contents: dict):
         try:
-            socket.send(message_contents)
+            socket.send(json.dumps(message_contents))
             logging.info(
                 f"SharedWebsockets: Sent '{message_category}' "
                 "message to client: "
@@ -128,13 +129,13 @@ class SharedWebsockets:
             self,
             socket: simple_websocket.ws.Server
     ) -> None:
-        socket.send({
+        socket.send(json.dumps({
             "status": WsStatus.OK.value,
             "statusCode": WsCode.WELCOME.value,
             "message":
                 f"Welcome {socket.environ['REMOTE_ADDR']}:"
                 f"{socket.environ['REMOTE_PORT']}"
-        })
+        }))
 
     def send_progress(
             self,
@@ -161,8 +162,6 @@ class SharedWebsockets:
         :type message: str
         :return:
         """
-        # self.__sanity_check_identifier(identifier)
-
         if identifier.value in self.websockets:
             for socket_index, current_socket in \
                     enumerate(self.websockets[identifier.value]):
@@ -197,8 +196,6 @@ class SharedWebsockets:
         :type message: str
         :return:
         """
-        # self.__sanity_check_identifier(identifier)
-
         if identifier.value in self.websockets:
             for socket_index, current_socket in \
                     enumerate(self.websockets[identifier.value]):
@@ -231,8 +228,6 @@ class SharedWebsockets:
         :type message: str
         :return:
         """
-        # self.__sanity_check_identifier(identifier)
-
         if identifier.value in self.websockets:
             for socket_index, current_socket in \
                     enumerate(self.websockets[identifier.value]):

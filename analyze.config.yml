@@ -1,0 +1,13 @@
+whitelist:
+  regex:
+    - !!python/regexp '\.jsx?$'                           # Only load JS and JSX files
+
+blacklist:
+  regex:
+    - !!python/regexp '(^|/)node_modules/.*'              # Node Modules
+    - !!python/regexp '(^|/)__test__/'                    # Test files
+    - !!python/regexp '(^|/)[^/]+\.spec\.js$'             # Test files
+    - !!python/regexp '(^|/)[^/]+\.test\.js$'             # Test files
+    - !!python/regexp '(^|/)[^/]*Styles\.js$'             # Style files contains no logic
+    - !!python/regexp '(^|/)styles\.js$'                  # Style files contains no logic
+#    - !!python/regexp '(^|/)[A-Z][A-Za-z]+/index\.jsx?$' # Component/index.js files be analyzed to find dependencies, but should they be tested?

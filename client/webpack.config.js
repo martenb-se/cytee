@@ -46,6 +46,11 @@ module.exports = {
     port: 3000,
     proxy: {
       '/api': 'http://localhost:5000',
+      '/sock': {
+        target: 'ws://localhost:5000',
+        ws: true},
+      // TODO: Only used for testing, remove later.
+      '/test-socket': 'http://localhost:5000'
     },
   },
   resolve: {

@@ -183,7 +183,15 @@ def get_functions_for_project(path_to_project: str) -> dict:
     :return: Operation status data and the project functions if successful.
     :rtype: dict
     """
-    project_functions = __get_function_info_project(path_to_project)
+    if 'directory' in config_urang and 'base' in config_urang['directory']:
+        base_directory = config_urang['directory']['base']
+    else:
+        base_directory = os.path.dirname(os.path.abspath(__file__))
+
+    full_path_to_project = \
+        os.path.abspath(base_directory + "/" + path_to_project)
+
+    project_functions = __get_function_info_project(full_path_to_project)
 
     if project_functions is None:
         return_message = {
@@ -213,11 +221,19 @@ def read_file(
     :return: Operation status data and the file data if successful.
     :rtype: dict
     """
+    if 'directory' in config_urang and 'base' in config_urang['directory']:
+        base_directory = config_urang['directory']['base']
+    else:
+        base_directory = os.path.dirname(os.path.abspath(__file__))
+
+    full_path_to_project = \
+        os.path.abspath(base_directory + "/" + path_to_project)
+
     project_file_functions = \
-        __get_function_info_project_file(path_to_project, file_id)
+        __get_function_info_project_file(full_path_to_project, file_id)
 
     if project_file_functions is None:
-        if __get_function_info_project(path_to_project) is None:
+        if __get_function_info_project(full_path_to_project) is None:
             return_message = {
                 "status": APIStatus.ERROR,
                 "statusCode": APICode.ERROR_PROJECT_NOT_EXISTING.value
@@ -230,7 +246,7 @@ def read_file(
 
     else:
         try:
-            file_contents = cache_read_file(path_to_project, file_id)
+            file_contents = cache_read_file(full_path_to_project, file_id)
             return_message = {
                 "status": APIStatus.OK.value,
                 "fileContents": file_contents
@@ -265,9 +281,17 @@ def get_tests_for_project(path_to_project: str) -> dict:
     :return: Operation status data and the project tests.
     :rtype: dict
     """
+    if 'directory' in config_urang and 'base' in config_urang['directory']:
+        base_directory = config_urang['directory']['base']
+    else:
+        base_directory = os.path.dirname(os.path.abspath(__file__))
+
+    full_path_to_project = \
+        os.path.abspath(base_directory + "/" + path_to_project)
+
     project_tests = \
         database_handler.get_test_info({
-            'pathToProject': path_to_project
+            'pathToProject': full_path_to_project
         })
 
     tests = []
@@ -350,24 +374,32 @@ def save_test(
     :return: Operation status data.
     :rtype: dict
     """
+    if 'directory' in config_urang and 'base' in config_urang['directory']:
+        base_directory = config_urang['directory']['base']
+    else:
+        base_directory = os.path.dirname(os.path.abspath(__file__))
+
+    full_path_to_project = \
+        os.path.abspath(base_directory + "/" + path_to_project)
 
     project_function = __get_function_info_project_file_function(
-        path_to_project, file_id, function_id)
+        full_path_to_project, file_id, function_id)
 
     if project_function is None:
         return_message = \
-            __missing_project_function_return_data(path_to_project, file_id)
+            __missing_project_function_return_data(
+                full_path_to_project, file_id)
 
     else:
         database_handler.add_test_info({
-            'pathToProject': path_to_project,
+            'pathToProject': full_path_to_project,
             'fileId': file_id,
             'functionId': function_id,
             'customName': custom_name,
             'moduleData': test_module
         })
 
-        __update_tests_count(path_to_project, file_id, function_id)
+        __update_tests_count(full_path_to_project, file_id, function_id)
 
         return_message = {
             "status": APIStatus.OK.value

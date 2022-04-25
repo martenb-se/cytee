@@ -66,8 +66,8 @@ def __app_to_db_string_conv(in_string: str) -> str:
 
     :return: String suitable for mongoDB databases.
     """
-    in_string = in_string.replace('/', '|')
-    in_string = in_string.replace('.', ':')
+    #in_string = in_string.replace('/', '|')
+    #in_string = in_string.replace('.', ':')
     return in_string
 
 
@@ -81,9 +81,9 @@ def __db_to_app_string_conv(db_string: str) -> str:
     :return: String suitable for the application.
     """
 
-    app_string = db_string.replace('|', '/')
-    app_string = app_string.replace(':', '.')
-    return app_string
+    #app_string = db_string.replace('|', '/')
+    #app_string = app_string.replace(':', '.')
+    return db_string
 
 
 def app_to_db_doc_conv(app_document, document_attribute_checker):
@@ -200,6 +200,12 @@ FUNCTION_INFO_ATTRIBUTE_CHECKER = {
         'cond': None,
         'app_to_db_conv': __app_to_db_string_conv,
         'db_to_app_conv': __db_to_app_string_conv
+    },
+    'changeList': {
+        'type': list,
+        'cond': None,
+        'app_to_db_conv': None,
+        'db_to_app_conv': None
     }
 }
 

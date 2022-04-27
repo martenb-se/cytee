@@ -1,10 +1,13 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 
-function CustomTab(props) {
+
+function CustomTab({label, children}) {
+
+    //const [tabLabel, setTabLabel] = useState(label);
 
     return (
-        <div className={'tab ' + props.tabName}>
-            {props.children}
+        <div className={'tab ' + label} >
+            {children}
         </div>
     );
 }

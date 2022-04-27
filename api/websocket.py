@@ -1,8 +1,10 @@
 import json
 from enum import Enum
-import simple_websocket
+from json import JSONDecodeError
 
+import simple_websocket
 from api.instances.logging_standard import logging
+from typing import Callable
 
 
 class WsIdentity(Enum):
@@ -28,6 +30,7 @@ class WsCode(Enum):
     ANALYZE_ERR_FILE_EMPTY = "ANALYZE_ERR_FILE_EMPTY"
     ANALYZE_ERR_PARSE_FAILURE = "ANALYZE_ERR_PARSE_FAILURE"
     ANALYZE_ERR_UNEXPECTED = "ANALYZE_ERR_UNEXPECTED"
+    ANALYZE_ERR_CLIENT_STOP = "ANALYZE_ERR_CLIENT_STOP"
 
     ANALYZE_PROCESS_FILES = "ANALYZE_PROCESS_FILES"
     ANALYZE_CLEAN_DEPENDENCY = "ANALYZE_CLEAN_DEPENDENCY"
@@ -41,10 +44,18 @@ class WsCode(Enum):
     FILE_LIST_FAILURE = "FILE_LIST_FAILURE"
 
 
+class WsClientCode(Enum):
+    ANALYZE_STOP = "ANALYZE_STOP"
+
+
 class SharedWebsockets:
+    __MAX_SAVED_MESSAGES = 10
+
     def __init__(self):
         """Used for sharing of WebSocket instances."""
         self.websockets = {}
+        self.receive_history = {}
+        self.receive_listener = {}
 
     def __send_message_to_socket(
             self,
@@ -72,18 +83,73 @@ class SharedWebsockets:
 
     def keep_alive(
             self,
+            identifier: WsIdentity,
             socket: simple_websocket.ws.Server):
+        """Keep the specified socket alive and log received messages to
+        the specified identifier.
 
+        :param identifier: The socket identity.
+        :type identifier: WsIdentity
+        :param socket: The specific socket instance.
+        :type socket: simple_websocket.ws.Server
+        :return: Nothing
+        """
         self.send_welcome_to_socket(socket)
 
         while socket.connected:
-            socket.receive(timeout=10)
+            received_raw = socket.receive(timeout=10)
+            if received_raw is not None:
+                try:
+                    received = json.loads(received_raw)
+
+                    previous_messages = \
+                        self.receive_history[identifier.value][
+                         :(self.__MAX_SAVED_MESSAGES - 1)]
+                    new_message = {
+                        **received,
+                        "_clientId":
+                            f"{socket.environ['REMOTE_ADDR']}:"
+                            f"{socket.environ['REMOTE_PORT']}"}
+
+                    self.receive_history[identifier.value] = \
+                        [new_message] + previous_messages
+
+                    if identifier.value in self.receive_listener:
+                        for callback in \
+                                self.receive_listener[identifier.value]:
+                            callback(new_message)
+
+                except JSONDecodeError as e:
+                    logging.warning(
+                        f"Could not decode JSON from client "
+                        f"({socket.environ['REMOTE_ADDR']}:"
+                        f"{socket.environ['REMOTE_PORT']}). Received data:\n"
+                        f"{received_raw}\nError message from parser:\n{e}")
 
         logging.info(
             "SharedWebsockets: Connection no longer open to client: "
             f"{socket.environ['REMOTE_ADDR']}:"
             f"{socket.environ['REMOTE_PORT']}. "
             "Will no longer wait for messages")
+
+    def add_listener_message(
+            self,
+            identifier: WsIdentity,
+            callback: Callable[[dict], None]):
+        """Add a listener to specified socket identity, multiple listeners
+        may be added to the same identity.
+
+        :param identifier: The socket identity.
+        :type identifier: WsIdentity
+        :param callback: Callback function if data is received.
+        :type callback: Callable[[dict], None]
+
+        :return:
+        """
+        if identifier.value not in self.receive_listener:
+            self.receive_listener[identifier.value] = [callback]
+        else:
+            self.receive_listener[identifier.value].append(callback)
 
     def add_socket(
             self,
@@ -93,9 +159,9 @@ class SharedWebsockets:
         """Add a shared socket to specified identity, multiple sockets
         may be added to the same identity.
 
-        :param identifier:
+        :param identifier: The socket identity.
         :type identifier: WsIdentity
-        :param socket:
+        :param socket: The specific socket instance.
         :type socket: simple_websocket.ws.Server
         :return: Nothing
         """
@@ -111,6 +177,7 @@ class SharedWebsockets:
 
         if identifier.value not in self.websockets:
             self.websockets[identifier.value] = [socket]
+            self.receive_history[identifier.value] = []
 
             logging.info(
                 "SharedWebsockets: Added new socket identifier: "

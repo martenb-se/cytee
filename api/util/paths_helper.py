@@ -14,7 +14,7 @@ def get_base_directory():
 
 def sub_directory_to_full_path(sub_directory):
     base_directory = get_base_directory()
-    full_path = base_directory + "/" + sub_directory
+    full_path = os.path.abspath(base_directory + "/" + sub_directory)
 
     if not re.match(
             re.escape(base_directory),

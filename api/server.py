@@ -79,6 +79,17 @@ def post_choose_project():
     return jsonify(api_return)
 
 
+@server.route('/api/get_existing_projects', methods=['GET'])
+def get_get_existing_projects():
+    """Get existing projects
+
+    :return: JSON with status code.
+    """
+    api_return = get_existing_projects()
+
+    return jsonify(api_return)
+
+
 @server.route('/api/get_functions_for_project', methods=['POST'])
 def post_get_functions_for_project():
     """Get all functions created for a project.
@@ -199,7 +210,7 @@ def sock_list_files(sock):
     :return: Nothing
     """
     shared_websockets_handler.add_socket(WsIdentity.LIST_FILES, sock)
-    shared_websockets_handler.keep_alive(sock)
+    shared_websockets_handler.keep_alive(WsIdentity.LIST_FILES, sock)
 
 
 @socket.route('/sock/new_project')
@@ -211,4 +222,4 @@ def sock_new_project(sock):
     :return: Nothing
     """
     shared_websockets_handler.add_socket(WsIdentity.NEW_PROJECT, sock)
-    shared_websockets_handler.keep_alive(sock)
+    shared_websockets_handler.keep_alive(WsIdentity.NEW_PROJECT, sock)

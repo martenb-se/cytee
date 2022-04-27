@@ -581,52 +581,24 @@ def test_class_esprimaanalyze_begin_analyze_no_export_object_prop_fn(
 # TODO: CONTINUE TESTING MORE SPECIFIC CASES (AS ABOVE)
 
 
-def test_analyze_files_arg_not_list():
-    list_of_files = ""
+def test_analyze_files_arg_not_string():
+    project_root = 1
     try:
-        analyze_files(list_of_files)
-        assert False
-    except TypeError as e:
-        assert str(e) == "'list_of_files' must be a LIST"
-    except Exception:
-        assert False
-
-
-def test_analyze_files_arg_empty_list():
-    list_of_files = []
-    try:
-        analyze_files(list_of_files)
-        assert False
-    except ValueError as e:
-        assert str(e) == "'list_of_files' cannot be empty"
-    except Exception:
-        assert False
-
-
-def test_analyze_files_arg_list_item_not_string():
-    list_of_files = [
-        1,
-        -7
-    ]
-    try:
-        analyze_files(list_of_files)
+        analyze_files(project_root)
         assert False
     except ValueError as e:
         assert str(e) == \
-               "'list_of_files' must only contain paths to files as STRINGS"
+               "'project_root' must be a STRING"
     except Exception:
         assert False
 
 
-def test_analyze_files_arg_list_item_empty_string():
-    list_of_files = [
-        "",
-        ""
-    ]
+def test_analyze_files_arg_empty_string():
+    project_root = ""
     try:
-        analyze_files(list_of_files)
+        analyze_files(project_root)
         assert False
     except ValueError as e:
-        assert str(e) == "Paths in 'list_of_files' cannot be empty strings"
+        assert str(e) == "'project_root' must be a path"
     except Exception:
         assert False

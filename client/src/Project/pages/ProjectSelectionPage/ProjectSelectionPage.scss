@@ -65,9 +65,11 @@ $height-section-project-selection-page-form-new-project-include:
 
     .top-item {
       height: $height-section-project-selection-page-top-item-include;
-      overflow: scroll;
+      overflow-x: hidden;
+      overflow-y: auto;
 
       .item-statistics-pie {
+        overflow: hidden;
         width: 100%;
         padding-top: 100%;
         background-image: conic-gradient($blue-400 35%, $gray-200 10%, $gray-200);
@@ -105,7 +107,8 @@ $height-section-project-selection-page-form-new-project-include:
     transform: translate(-0.75rem, 0);
     height: $height-component-folder-browser-listing-adaptive;
     min-height: 166px;
-    overflow: scroll;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding-left: calc(var(--bs-gutter-x) * 0.5) !important;
     padding-right: calc(var(--bs-gutter-x) * 0.5) !important;
   }

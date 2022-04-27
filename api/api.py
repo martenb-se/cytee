@@ -211,7 +211,7 @@ def get_functions_for_project(sub_directory: str) -> dict:
 
     if project_functions is None:
         return_message = {
-            "status": APIStatus.ERROR,
+            "status": APIStatus.ERROR.value,
             "statusCode": APICode.ERROR_PROJECT_NOT_EXISTING.value
         }
 
@@ -244,12 +244,12 @@ def read_file(
     if project_file_functions is None:
         if __get_function_info_project(full_path_to_project) is None:
             return_message = {
-                "status": APIStatus.ERROR,
+                "status": APIStatus.ERROR.value,
                 "statusCode": APICode.ERROR_PROJECT_NOT_EXISTING.value
             }
         else:
             return_message = {
-                "status": APIStatus.ERROR,
+                "status": APIStatus.ERROR.value,
                 "statusCode": APICode.ERROR_PROJECT_FILE_NOT_EXISTING.value
             }
 
@@ -264,7 +264,7 @@ def read_file(
         except FileNotFoundError:
             return_message = {
                 "status":
-                    APIStatus.ERROR,
+                    APIStatus.ERROR.value,
                 "statusCode":
                     APICode.ERROR_PROJECT_CACHE_FILE_NOT_EXISTING.value
             }
@@ -337,18 +337,18 @@ def __update_tests_count(
 def __missing_project_function_return_data(path_to_project, file_id):
     if __get_function_info_project(path_to_project) is None:
         return_message = {
-            "status": APIStatus.ERROR,
+            "status": APIStatus.ERROR.value,
             "statusCode": APICode.ERROR_PROJECT_NOT_EXISTING.value
         }
     elif __get_function_info_project_file(
             path_to_project, file_id) is None:
         return_message = {
-            "status": APIStatus.ERROR,
+            "status": APIStatus.ERROR.value,
             "statusCode": APICode.ERROR_PROJECT_FILE_NOT_EXISTING.value
         }
     else:
         return_message = {
-            "status": APIStatus.ERROR,
+            "status": APIStatus.ERROR.value,
             "statusCode": APICode.ERROR_PROJECT_FUNCTION_NOT_EXISTING.value
         }
 
@@ -425,7 +425,7 @@ def edit_test(
 
     if project_test is None:
         return_message = {
-            "status": APIStatus.ERROR,
+            "status": APIStatus.ERROR.value,
             "statusCode": APICode.ERROR_PROJECT_TEST_NOT_EXISTING.value
         }
 
@@ -459,7 +459,7 @@ def delete_test(test_id: str) -> dict:
 
     if project_test is None:
         return_message = {
-            "status": APIStatus.ERROR,
+            "status": APIStatus.ERROR.value,
             "statusCode": APICode.ERROR_PROJECT_TEST_NOT_EXISTING.value
         }
 

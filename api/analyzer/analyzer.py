@@ -6,11 +6,11 @@ import esprima
 import re
 import yaml
 from api.instances.logging_standard import logging
-from api.cache import save_file
+from api.cache import save_file, read_file, clear_cache
 from api.instances.database_main import database_handler
 from api.instances.shared_websockets_main import shared_websockets_handler
-from api.websocket import WsIdentity, WsCode
-
+from api.util.paths_helper import full_path_to_correct_sub_directory
+from api.websocket import WsIdentity, WsCode, WsClientCode
 
 METHOD_STRING_IDENTITY_UNKNOWN = "!unknown"
 METHOD_STRING_IDENTITY_IGNORE = "!ignore"
@@ -154,8 +154,8 @@ class AnalyzeJS:
                 "Information from esprima:\n"
                 f"{e}")
 
-        self.file_location = file_location
-        self.project_root = project_root
+        self.file_location = os.path.abspath(file_location)
+        self.project_root = os.path.abspath(project_root)
 
         # TODO: Fix better file identity:
         #  - If index.jsx is used in a Component/index.js manner
@@ -1345,7 +1345,9 @@ class ProjectDataHandler:
 
         self.analyzer_instance = None
         self.file_source = None
-        self.project_root = project_root
+        self.project_root = os.path.abspath(project_root)
+
+        self.__is_project_existing = False
 
         self.added_function_dependencies = []
         self.existing_function_dependencies = []
@@ -1354,6 +1356,110 @@ class ProjectDataHandler:
         self.added_function_info = []
         self.existing_function_info = []
         self.dead_function_info = []
+
+        self.__project_backup()
+
+    def __project_backup_remove(self):
+        project_root_backup = "/BACKUP" + self.project_root
+        backup_info = {"pathToProject": project_root_backup}
+
+        database_handler.remove_function_info(backup_info)
+        database_handler.remove_function_dependency(backup_info)
+        database_handler.remove_test_info(backup_info)
+
+    def __project_backup(self):
+        project_root_backup = "/BACKUP" + self.project_root
+        original_info = {"pathToProject": self.project_root}
+        backup_info = {"pathToProject": project_root_backup}
+
+        self.__project_backup_remove()
+
+        orig_function_info = \
+            database_handler.get_function_info(original_info)
+        orig_function_dependency = \
+            database_handler.get_function_dependency(original_info)
+        orig_test_info = \
+            database_handler.get_test_info(original_info)
+
+        if orig_function_info is not None:
+            self.__is_project_existing = True
+            for function_info in orig_function_info:
+                if '_id' in function_info:
+                    existing_function_info_id = function_info.pop("_id")
+                    self.existing_function_info.\
+                        append(existing_function_info_id)
+
+                database_handler.add_function_info({
+                    **function_info,
+                    **backup_info
+                })
+
+        if orig_function_dependency is not None:
+            for function_dependency in orig_function_dependency:
+                if '_id' in function_dependency:
+                    existing_dependency_id = function_dependency.pop("_id")
+                    self.existing_function_dependencies.\
+                        append(existing_dependency_id)
+
+                database_handler.add_function_dependency({
+                    **function_dependency,
+                    **backup_info
+                })
+
+        if orig_test_info is not None:
+            for test_info in orig_test_info:
+                if '_id' in test_info:
+                    test_info.pop("_id")
+
+                database_handler.add_test_info({
+                    **test_info,
+                    **backup_info
+                })
+
+    def __project_restore(self):
+        project_root_backup = "/BACKUP" + self.project_root
+        original_info = {"pathToProject": self.project_root}
+        backup_info = {"pathToProject": project_root_backup}
+
+        if not self.__is_project_existing:
+            database_handler.remove_function_info(original_info)
+            database_handler.remove_function_dependency(original_info)
+            database_handler.remove_test_info(original_info)
+            clear_cache(self.project_root)
+
+        else:
+            backup_function_info = \
+                database_handler.get_function_info(backup_info)
+            backup_function_dependency = \
+                database_handler.get_function_dependency(backup_info)
+            backup_test_info = \
+                database_handler.get_test_info(backup_info)
+
+            if backup_function_info is not None:
+                database_handler.remove_function_info(original_info)
+                for function_info in backup_function_info:
+                    if '_id' in function_info:
+                        function_info.pop("_id")
+                    database_handler.add_function_info(
+                        {**function_info, **original_info})
+
+            if backup_function_dependency is not None:
+                database_handler.remove_function_dependency(original_info)
+                for function_dependency in backup_function_dependency:
+                    if '_id' in function_dependency:
+                        function_dependency.pop("_id")
+                    database_handler.add_function_dependency(
+                        {**function_dependency, **original_info})
+
+            if backup_test_info is not None:
+                database_handler.remove_test_info(original_info)
+                for test_info in backup_test_info:
+                    if '_id' in test_info:
+                        test_info.pop("_id")
+                    database_handler.add_test_info(
+                        {**test_info, **original_info})
+
+        self.__project_backup_remove()
 
     def set_analyzer(self, analyzer_instance):
         if not isinstance(analyzer_instance, AnalyzeJS):
@@ -1421,8 +1527,8 @@ class ProjectDataHandler:
         if len(dead_dependencies) > 0:
             for dead_dependency in dead_dependencies:
                 database_handler.remove_function_dependency({
-                        '_id': dead_dependency
-                    })
+                    '_id': dead_dependency
+                })
 
             logging.info(
                 f"Removed {len(dead_dependencies)} dead dependencies from "
@@ -1435,8 +1541,8 @@ class ProjectDataHandler:
         if len(dead_functions) > 0:
             for dead_function in dead_functions:
                 database_handler.remove_function_info({
-                        '_id': dead_function
-                    })
+                    '_id': dead_function
+                })
 
             logging.info(
                 f"Removed {len(dead_functions)} dead functions from "
@@ -1535,13 +1641,14 @@ class ProjectDataHandler:
                     added_dependency_id = \
                         database_handler.add_function_dependency({
                             "pathToProject": self.project_root,
-                            "fileId": self.analyzer_instance.get_file_identity(),
+                            "fileId":
+                                self.analyzer_instance.get_file_identity(),
                             "functionId": created_function,
                             "calledFileId": file_identity,
                             "calledFunctionId": string_identity
                         })
 
-                    self.added_function_dependencies.\
+                    self.added_function_dependencies. \
                         append(added_dependency_id)
 
     def __make_function_info_change_list(
@@ -1720,6 +1827,26 @@ class ProjectDataHandler:
                     {'_id': project_function["_id"]}
                 )
 
+    def cache_check(self):
+        if self.analyzer_instance is None:
+            raise ValueError(
+                "No 'analyzer_instance' is set! Cannot handle individual "
+                "project file management")
+
+        new_contents_hash = \
+            hashlib.sha256(str.encode(self.file_source)).hexdigest()
+
+        try:
+            cache_contents_hash = \
+                hashlib.sha256(str.encode(read_file(
+                    self.project_root,
+                    self.analyzer_instance.get_file_identity()))).hexdigest()
+
+        except FileNotFoundError:
+            cache_contents_hash = ""
+
+        return cache_contents_hash == new_contents_hash
+
     def cache_save(self):
         if self.analyzer_instance is None:
             raise ValueError(
@@ -1749,6 +1876,16 @@ class ProjectDataHandler:
         self.__db_delete_dead_project_function_dependencies()
         self.__db_delete_dead_project_function_info()
 
+    def process_cleanup(self):
+        self.__project_backup_remove()
+
+    def restore_backup(self):
+        self.__project_restore()
+
+
+global CLIENT_ACTION_CANCEL
+CLIENT_ACTION_CANCEL = False
+
 
 def analyze_files(project_root):
     """Analyze list of files
@@ -1764,22 +1901,48 @@ def analyze_files(project_root):
     """
     if not isinstance(project_root, str):
         raise ValueError(
-            "'project_root' must only contain paths to files as STRINGS")
+            "'project_root' must be a STRING")
     elif len(project_root) < 1:
         raise ValueError(
-            "Paths in 'project_root' cannot be empty strings")
+            "'project_root' must be a path")
 
     analyzer_config = AnalyzerConfig()
     project_data = ProjectDataHandler(project_root)
 
+    global CLIENT_ACTION_CANCEL
+
+    def callback_client_messages(message: dict):
+        if 'userAction' in message and message['userAction'] == \
+                WsClientCode.ANALYZE_STOP.value:
+            logging.info(
+                "Analyzer received cancellation action from client "
+                f"({message['_clientId']})")
+            global CLIENT_ACTION_CANCEL
+            CLIENT_ACTION_CANCEL = True
+
+    shared_websockets_handler.add_listener_message(
+        WsIdentity.NEW_PROJECT, callback_client_messages)
+
     list_of_files = []
     for path, currentDirectory, files in os.walk(project_root):
         for file in files:
-            file_location = os.path.join(path, file)
+            file_location = os.path.abspath(os.path.join(path, file))
             if analyzer_config.is_file_allowed(file_location):
                 list_of_files.append(file_location)
 
     for file_num, current_file in enumerate(list_of_files):
+        # TODO: Find better solution for a graceful cancellation event at
+        #  specific points..
+        if CLIENT_ACTION_CANCEL:
+            project_data.restore_backup()
+            shared_websockets_handler.send_error(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_ERR_CLIENT_STOP,
+                f"Process cancelled by client"
+            )
+            CLIENT_ACTION_CANCEL = False
+            return
+
         with open(current_file, 'r') as file:
             file_source = file.read()
 
@@ -1819,22 +1982,64 @@ def analyze_files(project_root):
             )
             return
 
-        analyzer.begin_analyze()
+        # TODO: Find better solution for a graceful cancellation event at
+        #  specific points..
+        if CLIENT_ACTION_CANCEL:
+            project_data.restore_backup()
+            shared_websockets_handler.send_error(
+                WsIdentity.NEW_PROJECT,
+                WsCode.ANALYZE_ERR_CLIENT_STOP,
+                f"Process cancelled by client"
+            )
+            CLIENT_ACTION_CANCEL = False
+            return
 
+        analyzed_file_path = full_path_to_correct_sub_directory(current_file)
         shared_websockets_handler.send_progress(
             WsIdentity.NEW_PROJECT,
             WsCode.ANALYZE_PROCESS_FILES,
-            file_num + 1,
+            file_num,
             len(list_of_files),
-            f"Analyzed file: '{current_file}'"
+            f"Analyzing file: '{analyzed_file_path}'"
         )
 
         project_data.set_analyzer(analyzer)
-        project_data.cache_save()
-        project_data.database_save()
 
-    project_data.unset_analyzer()
+        if not project_data.cache_check():
+            print(f"{current_file}: {len(analyzer.get_functions())}")
+            analyzer.begin_analyze()
+
+            # TODO: Find better solution for a graceful cancellation event at
+            #  specific points..
+            if CLIENT_ACTION_CANCEL:
+                project_data.restore_backup()
+                shared_websockets_handler.send_error(
+                    WsIdentity.NEW_PROJECT,
+                    WsCode.ANALYZE_ERR_CLIENT_STOP,
+                    f"Process cancelled by client"
+                )
+                CLIENT_ACTION_CANCEL = False
+                return
+
+            project_data.cache_save()
+            project_data.database_save()
+
+        project_data.unset_analyzer()
+
     project_data.database_cleanup()
+    project_data.process_cleanup()
+
+    # TODO: Find better solution for a graceful cancellation event at
+    #  specific points..
+    if CLIENT_ACTION_CANCEL:
+        project_data.restore_backup()
+        shared_websockets_handler.send_error(
+            WsIdentity.NEW_PROJECT,
+            WsCode.ANALYZE_ERR_CLIENT_STOP,
+            f"Process cancelled by client"
+        )
+        CLIENT_ACTION_CANCEL = False
+        return
 
     shared_websockets_handler.send_success(
         WsIdentity.NEW_PROJECT,

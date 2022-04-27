@@ -1,11 +1,16 @@
+import datetime
 import hashlib
 import os
 import difflib
+import shutil
 
 # TODO: Move configuration to config.urangu.yaml
 CONFIG_LOCATION_CACHE = \
     os.path.abspath(
         os.path.dirname(os.path.abspath(__file__)) + "/../.analyze_cache")
+
+__MEMORY_MAX_TIME = 600  # 10 minutes
+__MEMORY = {}
 
 
 def __get_cache_path(project_root: str) -> str:
@@ -34,6 +39,11 @@ def __get_cache_file(project_root: str, file_id: str) -> str:
     """
     file_id_hash = hashlib.sha256(str.encode(file_id)).hexdigest()
     return f"{__get_cache_path(project_root)}/{file_id_hash}.js"
+
+
+def clear_cache(project_root: str):
+    if os.path.isdir(__get_cache_path(project_root)):
+        shutil.rmtree(__get_cache_path(project_root))
 
 
 def save_file(project_root: str, file_id: str, file_data: str):
@@ -159,3 +169,44 @@ def compare_file_cache(
     differences = \
         differ_handler.compare(cache_contents_lines, new_file_data_lines)
     return '\n'.join(differences)
+
+
+def save_global_session(cache_prop, cache_value):
+    """Save cache to the working memory. Useful for saving output from
+    expensive operations.
+
+    :param cache_prop: The name of the item in memory to save.
+    :type cache_prop: str
+    :param cache_value: The value to save to the memory.
+    :type cache_value: Any
+    :return: Nothing
+    """
+    __MEMORY[cache_prop] = {
+        "value": cache_value,
+        "time": datetime.datetime.now()
+    }
+
+
+def read_global_session(cache_prop):
+    """Read from the working memory cache. If the cache have expired,
+    None will be returned.
+
+    :param cache_prop: The name of the item in memory to read.
+    :type cache_prop: str
+
+    :return: The contents of the cache if it exists, otherwise None. Also
+    if the contents have expired None is returned.
+    """
+    if cache_prop in __MEMORY:
+        cache_age_seconds = \
+            (
+                    datetime.datetime.now() - __MEMORY[cache_prop]["time"]
+            ).total_seconds()
+
+        if cache_age_seconds <= __MEMORY_MAX_TIME:
+            return __MEMORY[cache_prop]["value"]
+
+        else:
+            __MEMORY.pop(cache_prop, None)
+
+    return None

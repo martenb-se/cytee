@@ -23,8 +23,6 @@ function App() {
     return (
         <div className="App">
             <BrowserRouter>
-                <div>{currentTime}</div>
-
                 <Routes>
                     <Route exact path="/" element={<ProjectSelectionPage/>}/>
                     <Route path="/LoadingPage" element={<LoadingPage/>}/>

@@ -2,13 +2,16 @@ import logging
 import os
 import re
 from enum import Enum
+
 from api.analyzer.analyzer import analyze_files
 from threading import Thread
-from api.cache import read_file as cache_read_file
+from api.cache import read_file as cache_read_file, save_global_session, \
+    read_global_session
 from api.instances.database_main import database_handler
 from api.instances.shared_websockets_main import shared_websockets_handler
+from api.util.paths_helper import get_base_directory, \
+    sub_directory_to_full_path, full_path_to_correct_sub_directory
 from api.websocket import WsIdentity, WsCode
-from api.instances.config_urang import config_urang
 
 
 class APIStatus(Enum):
@@ -31,45 +34,54 @@ class APICode(Enum):
     ERROR_PROJECT_TEST_NOT_EXISTING = "PROJECT_TEST_NOT_EXISTING"
 
 
-def list_files(sub_dir: str) -> dict:
+def __get_existing_projects():
+    all_functions = \
+        database_handler.get_function_info({})
+
+    if all_functions is not None:
+        return list(dict.fromkeys(
+            [re.sub(
+                r"^" + re.escape(os.path.abspath(get_base_directory())),
+                '',
+                os.path.abspath(function_info["pathToProject"]))
+                for function_info in all_functions]))
+
+    return []
+
+
+def list_files(sub_directory: str) -> dict:
     """List files in the given sub directory.
 
-    :param sub_dir: The sub directory to list files from.
-    :type sub_dir: str
+    :param sub_directory: The sub directory to list files from.
+    :type sub_directory: str
     :return: Operation status data and the list of files.
     :rtype: dict
     """
-    if 'directory' in config_urang and 'base' in config_urang['directory']:
-        base_directory = config_urang['directory']['base']
-    else:
-        base_directory = os.path.dirname(os.path.abspath(__file__))
-
     try:
-        path_to_dir = base_directory + "/" + sub_dir
+        existing_projects = read_global_session('existing_projects')
+        if existing_projects is None:
+            existing_projects = __get_existing_projects()
+            save_global_session('existing_projects', existing_projects)
 
-        if not re.match(
-                re.escape(base_directory), os.path.abspath(path_to_dir)):
-            sub_dir = ""
-            path_to_dir = base_directory
+        sub_directory_full_path = \
+            sub_directory_to_full_path(sub_directory)
+        correct_sub_directory = \
+            full_path_to_correct_sub_directory(sub_directory_full_path)
 
-        files = os.listdir(path_to_dir)
-
-        sub_dir_fixed = \
-            re.sub(
-                re.escape(os.path.abspath(base_directory)),
-                '',
-                os.path.abspath(path_to_dir))
-
+        files = os.listdir(sub_directory_full_path)
         file_list = [
             {
                 "fileName":
                     f,
                 "subDir":
-                    sub_dir_fixed,
+                    correct_sub_directory,
                 "isDirectory":
-                    os.path.isdir(path_to_dir + "/" + f),
+                    os.path.isdir(sub_directory_full_path + "/" + f),
                 "isFile":
-                    os.path.isfile(path_to_dir + "/" + f)
+                    os.path.isfile(sub_directory_full_path + "/" + f),
+                "isProject":
+                    os.path.abspath(correct_sub_directory + "/" + f) in
+                    existing_projects
             } for f in files]
 
         # TODO: Remove this loop only used for testing purposes.
@@ -91,7 +103,9 @@ def list_files(sub_dir: str) -> dict:
 
         return_message = {
             "status": APIStatus.OK.value,
-            "curDir": sub_dir_fixed,
+            "curDir": correct_sub_directory,
+            "isCurDirProject":
+                correct_sub_directory in existing_projects,
             "fileList": file_list
         }
 
@@ -108,21 +122,15 @@ def list_files(sub_dir: str) -> dict:
     return return_message
 
 
-def new_project(path_to_project: str) -> dict:
+def new_project(sub_directory: str) -> dict:
     """Create a new project from the specified path.
 
-    :param path_to_project:
-    :type path_to_project: str
+    :param sub_directory: The sub directory to create a new project from.
+    :type sub_directory: str
     :return: Operation status data.
     :rtype: dict
     """
-    if 'directory' in config_urang and 'base' in config_urang['directory']:
-        base_directory = config_urang['directory']['base']
-    else:
-        base_directory = os.path.dirname(os.path.abspath(__file__))
-
-    full_path_to_project = \
-        os.path.abspath(base_directory + "/" + path_to_project)
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
 
     thread = Thread(
         target=analyze_files,
@@ -174,23 +182,31 @@ def __get_function_info_project_file_function(
     })
 
 
-def get_functions_for_project(path_to_project: str) -> dict:
-    """Get all functions created for the project at the given path.
-
-    :param path_to_project: Path to existing project.
-    :type path_to_project: str
+def get_existing_projects() -> dict:
+    """Get existing projects
 
     :return: Operation status data and the project functions if successful.
     :rtype: dict
     """
-    if 'directory' in config_urang and 'base' in config_urang['directory']:
-        base_directory = config_urang['directory']['base']
-    else:
-        base_directory = os.path.dirname(os.path.abspath(__file__))
+    existing_projects = __get_existing_projects()
+    save_global_session('existing_projects', existing_projects)
 
-    full_path_to_project = \
-        os.path.abspath(base_directory + "/" + path_to_project)
+    return {
+        "status": APIStatus.OK.value,
+        "existingProjects": existing_projects
+    }
 
+
+def get_functions_for_project(sub_directory: str) -> dict:
+    """Get all functions created for the project at the given path.
+
+    :param sub_directory: Path to existing project.
+    :type sub_directory: str
+
+    :return: Operation status data and the project functions if successful.
+    :rtype: dict
+    """
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
     project_functions = __get_function_info_project(full_path_to_project)
 
     if project_functions is None:
@@ -209,26 +225,19 @@ def get_functions_for_project(path_to_project: str) -> dict:
 
 
 def read_file(
-        path_to_project: str,
+        sub_directory: str,
         file_id: str) -> dict:
     """Read a project file.
 
-    :param path_to_project: Path to existing project.
-    :type path_to_project: str
+    :param sub_directory: Path to existing project.
+    :type sub_directory: str
     :param file_id: The id of the file to get.
     :type file_id: str
 
     :return: Operation status data and the file data if successful.
     :rtype: dict
     """
-    if 'directory' in config_urang and 'base' in config_urang['directory']:
-        base_directory = config_urang['directory']['base']
-    else:
-        base_directory = os.path.dirname(os.path.abspath(__file__))
-
-    full_path_to_project = \
-        os.path.abspath(base_directory + "/" + path_to_project)
-
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
     project_file_functions = \
         __get_function_info_project_file(full_path_to_project, file_id)
 
@@ -273,22 +282,15 @@ def read_file(
     return return_message
 
 
-def get_tests_for_project(path_to_project: str) -> dict:
+def get_tests_for_project(sub_directory: str) -> dict:
     """Get all tests for the given project.
 
-    :param path_to_project: Path to existing project.
-    :type path_to_project: str
+    :param sub_directory: Path to existing project.
+    :type sub_directory: str
     :return: Operation status data and the project tests.
     :rtype: dict
     """
-    if 'directory' in config_urang and 'base' in config_urang['directory']:
-        base_directory = config_urang['directory']['base']
-    else:
-        base_directory = os.path.dirname(os.path.abspath(__file__))
-
-    full_path_to_project = \
-        os.path.abspath(base_directory + "/" + path_to_project)
-
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
     project_tests = \
         database_handler.get_test_info({
             'pathToProject': full_path_to_project
@@ -354,15 +356,15 @@ def __missing_project_function_return_data(path_to_project, file_id):
 
 
 def save_test(
-        path_to_project: str,
+        sub_directory: str,
         file_id: str,
         function_id: str,
         test_module: dict,
         custom_name: str) -> dict:
     """Save a test for the given function.
 
-    :param path_to_project: Path to existing project.
-    :type path_to_project: str
+    :param sub_directory: Path to existing project.
+    :type sub_directory: str
     :param file_id: The id of the file containing the function.
     :type file_id: str
     :param function_id: The id of the function to test.
@@ -374,14 +376,7 @@ def save_test(
     :return: Operation status data.
     :rtype: dict
     """
-    if 'directory' in config_urang and 'base' in config_urang['directory']:
-        base_directory = config_urang['directory']['base']
-    else:
-        base_directory = os.path.dirname(os.path.abspath(__file__))
-
-    full_path_to_project = \
-        os.path.abspath(base_directory + "/" + path_to_project)
-
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
     project_function = __get_function_info_project_file_function(
         full_path_to_project, file_id, function_id)
 
@@ -499,7 +494,8 @@ def test_socket(socket_identifier):
             f"<a href='/test-socket/{socket_id}'>{socket_id}</a>", values)
 
     if socket_identifier not in values:
-        return '<!doctype html><html><head><title>Socket: Unavailable</title>' \
+        return '<!doctype html><html><head>' \
+               '<title>Socket: Unavailable</title>' \
                '</head><body>' \
                '<h1>Socket: Unavailable</h1>' + \
                f'<p>Available sockets are: {", ".join(socket_links)}</p>' \
@@ -515,8 +511,9 @@ def test_socket(socket_identifier):
            '<label for="text">Input:</label>' \
            '<input type="text" id="text" autofocus></form>' \
            '<script>$( document ).ready(function() {const log = ' \
-           '(text, color) => {document.getElementById("log").innerHTML += ' \
-           '`<span style="color: ${color}">${text}</span><br>`;};' \
+           '(text, color) => {document.getElementById("log").innerHTML = ' \
+           '`<span style="color: ${color}">${text}</span><br>` + ' \
+           'document.getElementById("log").innerHTML;};' \
            'const socket = new WebSocket("ws://" + location.host + ' \
            f'"/sock/{socket_identifier}");' + \
            'socket.addEventListener("message", ev => ' \

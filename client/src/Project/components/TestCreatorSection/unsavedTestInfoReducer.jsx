@@ -44,10 +44,51 @@ export function parseFunction(args) {
     return fullArgumentList;
 }
 
+function generateInitTestState() {
+    const funcArguments =  parseFunction(store.getState().activeFunction.activeFunction.arguments);
+    const moduleArguments = [];
+
+    for (const argumentData of funcArguments) {
+
+        const subFunctionName = argumentData.functionName;
+        for (const argument of argumentData['arguments']) {
+
+            moduleArguments.push({
+                subFunctionName: subFunctionName,
+                argument: argument,
+                type: 'undefined',
+            });
+        }
+    }
+
+    let newModuleData = {};
+
+    if (moduleArguments.length !== 0) {
+        newModuleData.argumentList = moduleArguments;
+    }
+
+    newModuleData.returnValue = {type: 'undefined'};
+    return newModuleData;
+}
+
+
 export function unsavedTestInfoReducer(state, action) {
 
     const initialCommand = (new RegExp('^[^/]*')).exec(action.type)[0];
     switch (initialCommand) {
+        case 'setModuleData':
+            return cloneDeep(action.payload);
+        case 'clearModelData':
+            const clearTestInfoClone = cloneDeep(state);
+            clearTestInfoClone.moduleData = generateInitTestState();
+            if (clearTestInfoClone._id !== undefined) {
+                delete clearTestInfoClone._id;
+            }
+            return clearTestInfoClone;
+        case 'discardModuleDataChanges':
+            const discardTestInfoClone = cloneDeep(state);
+            discardTestInfoClone.moduleData = cloneDeep(store.getState().activeTest.test.moduleData);
+            return discardTestInfoClone;
         case 'moduleData':
             return moduleDataSubReducer(state, action);
         case 'argumentList':

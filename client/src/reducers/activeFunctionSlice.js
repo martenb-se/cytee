@@ -15,6 +15,6 @@ export const activeFunctionSlice = createSlice({
     }
 })
 
-export const selectActiveFunction = state => state.activeFunction;
+export const selectActiveFunction = state => state.activeFunction.activeFunction;
 export const {setActiveFunction} = activeFunctionSlice.actions;
 export default activeFunctionSlice.reducer;

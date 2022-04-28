@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import './TestCreatorPage.scss';
 
 import ProjectExplorerSidebar from '../../components/ProjectExplorerSidebar'
 import CodeViewingSection from "../../components/CodeViewerSection";
@@ -39,24 +40,28 @@ function TestCreatorPage({}){
     }, [])
 
     useEffect(() => {
-        if (functionListStatus === 'succeeded') {
-            setLoadingMessage('Retrieving tests...');
-            dispatch(fetchTestList(projectPath));
+        if (loadingState !== 'done') {
+            if (functionListStatus === 'succeeded') {
+                setLoadingMessage('Retrieving tests...');
+                dispatch(fetchTestList(projectPath));
 
-        } else if (functionListStatus === 'failed') {
-            setLoadingState('failed');
-            setLoadingMessage(functionListError);
+            } else if (functionListStatus === 'failed') {
+                setLoadingState('failed');
+                setLoadingMessage(functionListError);
+            }
         }
     }, [functionListStatus])
 
     // Load in tests' info
     useEffect(() => {
-        if (testListStatus === 'succeeded') {
-            setLoadingState('done');
-            setLoadingMessage('');
-        } else if (testListStatus === 'failed') {
-            setLoadingState('failed');
-            setLoadingMessage(testListError);
+        if (loadingState !== 'done') {
+            if (testListStatus === 'succeeded') {
+                setLoadingState('done');
+                setLoadingMessage('');
+            } else if (testListStatus === 'failed') {
+                setLoadingState('failed');
+                setLoadingMessage(testListError);
+            }
         }
     }, [testListStatus]);
 
@@ -73,7 +78,7 @@ function TestCreatorPage({}){
     }
 
     return (
-        <div className = "wrapper">
+        <div className = "test-creator-Page-wrapper">
             <div className = "sidePanel">
                 <ProjectExplorerSidebar />
                 <button className ="btn btn-primary">Generate Tests</button>

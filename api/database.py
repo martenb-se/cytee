@@ -205,7 +205,8 @@ FUNCTION_INFO_ATTRIBUTE_CHECKER = {
         'type': list,
         'cond': None,
         'app_to_db_conv': None,
-        'db_to_app_conv': None
+        'db_to_app_conv': None,
+        'standard_value': []
     }
 }
 

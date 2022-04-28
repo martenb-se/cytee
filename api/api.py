@@ -386,7 +386,7 @@ def save_test(
                 full_path_to_project, file_id)
 
     else:
-        database_handler.add_test_info({
+        test_id = database_handler.add_test_info({
             'pathToProject': full_path_to_project,
             'fileId': file_id,
             'functionId': function_id,
@@ -397,7 +397,8 @@ def save_test(
         __update_tests_count(full_path_to_project, file_id, function_id)
 
         return_message = {
-            "status": APIStatus.OK.value
+            "status": APIStatus.OK.value,
+            "testId": test_id
         }
 
     return return_message

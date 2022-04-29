@@ -8,11 +8,13 @@ import {isEmpty, isEqual} from "lodash";
 import {selectActiveFunction} from '../../../reducers/activeFunctionSlice';
 import {
     deleteTestInfo,
+    discardUnsavedChanges,
     selectActiveTest,
     selectActiveTestLoadingState,
     setActiveTest,
     setActiveTestEmpty,
-    updateTestInfo
+    updateTestInfo,
+
 } from '../../../reducers/activeTestInfoSlice';
 import {fetchTestList, selectTestList, selectTestListLoading} from '../../../reducers/testListSlice'
 
@@ -25,9 +27,194 @@ import argumentsTabGenerator from "./ArgumentTab";
 import returnTabGenerator from "./ReturnTab";
 import generateExceptionTab from "./ExceptionTab";
 import ModulePanel from './ModulePanel';
+import TestCreatorTabGroup from "./TestCreatorTabGroup/TestCreatorTabGroup";
+
+import {
+    selectUnsavedActiveTest,
+    updateUnsavedCustomName,
+    setActiveUnsavedTest
+} from "../../../reducers/activeTestInfoSlice";
 
 import {saveTestInfo} from "../../../reducers/activeTestInfoSlice";
 import cloneDeep from "lodash/cloneDeep";
+import {generateInitTestState} from "../../../util/generateInitTestState";
+
+export const moduleNameMapper= {
+    argumentList: 'Arguments',
+    returnValue: 'Return Value',
+    exception: 'Exception',
+}
+
+function TestCreatorSection() {
+
+    const activeFunction = useSelector(selectActiveFunction);
+
+    if (isEmpty(activeFunction)) {
+        return <WaitingForTestPanel />
+    }
+
+    return (
+        <div className="test-creator-section-wrapper">
+            <ModulePanel />
+            <div>
+                <TestCreatorHeaderSection />
+                <TestCreatorTabGroup />
+            </div>
+        </div>
+    );
+}
+
+function TestCreatorHeaderSection() {
+
+    const unsavedTest = useSelector(selectUnsavedActiveTest);
+    const test = useSelector(selectActiveTest);
+    const testLoadingState = useSelector(selectActiveTestLoadingState);
+    const projectPath = useSelector(state => state.project.path);
+    const dispatch = useDispatch();
+
+    const [createLoadingState, setCreateLoadingState] = useState('');
+    const [updateLoadingState, setUpdateLoadingState] = useState('');
+    const [deleteLoadingState, setDeleteLoadingState] = useState('');
+
+    useEffect(() => {
+        if (createLoadingState === "loading") {
+            if (testLoadingState === "succeeded") {
+                dispatch(setActiveUnsavedTest(test));
+                dispatch(fetchTestList(projectPath));
+                setCreateLoadingState('');
+            }
+
+        } else if (updateLoadingState === "loading") {
+            if (testLoadingState === "succeeded") {
+                dispatch(fetchTestList(projectPath));
+                setUpdateLoadingState('');
+            }
+
+        } else if (deleteLoadingState === "loading") {
+            if (testLoadingState === "succeeded") {
+                dispatch(fetchTestList(projectPath));
+                dispatch(setActiveUnsavedTest({
+                    customName: "",
+                    moduleData: generateInitTestState()
+                }))
+                dispatch(setActiveTest({}));
+                setDeleteLoadingState('');
+            }
+        }
+    }, [testLoadingState])
+
+    function createTestCallback() {
+        dispatch(saveTestInfo({}));
+        setCreateLoadingState("loading");
+    }
+
+    function updateTestCallback() {
+        dispatch(updateTestInfo({}));
+        setUpdateLoadingState("loading");
+    }
+
+    function deleteTestCallback() {
+        dispatch(deleteTestInfo({}));
+        setDeleteLoadingState('loading');
+    }
+
+    function discardTestCallback() {
+        dispatch(discardUnsavedChanges({}));
+    }
+
+    function cancelCallback() {
+        dispatch(setActiveUnsavedTest({
+            customName: "",
+            moduleData: generateInitTestState(),
+        }));
+    }
+
+    function onCustomNameChangeCallback(e) {
+        dispatch(updateUnsavedCustomName(e.target.value));
+    }
+
+    if (isEmpty(test)) {
+        return (
+            <form>
+                <div className="test-creator-section-header">
+                    <div className="btn-group">
+                        <button
+                            className="btn btn-primary"
+                            onClick={createTestCallback}
+                            disabled={testLoadingState==='loading'}
+                        >
+                            Create Test
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={cancelCallback}
+                            disabled={testLoadingState==='loading'}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
+                    <input
+                        className="test-creator-section-custom-name-input form-control"
+                        type="text"
+                        onChange={onCustomNameChangeCallback}
+                        value={unsavedTest.customName}
+                        disabled={testLoadingState==='loading'}
+                    />
+                </div>
+            </form>
+        );
+    }
+
+    return (
+        <form>
+            <div className="test-creator-section-header">
+                <div className="btn-group">
+                    <button
+                        className="btn btn-primary"
+                        onClick={updateTestCallback}
+                        disabled={
+                        (testLoadingState==='loading') || (isEqual(unsavedTest, test))
+                    }
+                    >
+                        Save Test
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={discardTestCallback}
+                        disabled={
+                        (testLoadingState==='loading') || (isEqual(unsavedTest, test))
+                    }
+                    >
+                        Discard Changes
+                    </button>
+                    <button
+                        className="btn btn-danger"
+                        onClick={deleteTestCallback}
+                        disabled={testLoadingState==='loading'}
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+            <div className="mb-3">
+                <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
+                <input
+                    className="test-creator-section-custom-name-input form-control"
+                    type="text"
+                    onChange={onCustomNameChangeCallback}
+                    value={unsavedTest.customName}
+                    disabled={testLoadingState==='loading'}
+                />
+            </div>
+        </form>
+    );
+
+}
+
+/*
 
 // Create the context used by the reducer
 export const unsavedTestInfoContext = createContext();
@@ -60,7 +247,6 @@ function TestCreatorSection(){
 
     useEffect(() => {
         if (!isEmpty(activeFunction)) {
-
             if(isEmpty(activeTest)) {
                 const funcArguments =  parseFunction(activeFunction.arguments);
                 const moduleArguments = [];
@@ -117,7 +303,6 @@ function TestCreatorSection(){
 
 function MainTestCreationContent({initialState}) {
 
-
     const activeTestLoadingStatus = useSelector(selectActiveTestLoadingState);
     const activeTest = useSelector(selectActiveTest);
     const activeFunction = useSelector(selectActiveFunction);
@@ -142,7 +327,7 @@ function MainTestCreationContent({initialState}) {
 
     function deleteTest() {
         setLoadingState('waitingForActiveTestDeleted');
-        dispatch(deleteTestInfo(activeTest._id));
+        dispatch(deleteTestInfo());
     }
 
     function saveTest() {
@@ -161,7 +346,12 @@ function MainTestCreationContent({initialState}) {
             fileId: activeFunction.fileId,
             functionId: activeFunction.functionId,
             testModule: unsavedTestInfoState.moduleData,
+            customName: unsavedTestInfoState.customName
         }))
+    }
+
+    function changeName(e) {
+        unsavedTestInfoDispatch({type: 'customName/rename', payload: e.target.value});
     }
 
     useEffect(() => {
@@ -189,17 +379,10 @@ function MainTestCreationContent({initialState}) {
                         pathToProject: activeFunction.pathToProject,
                         fileId: activeFunction.fileId,
                         functionId: activeFunction.functionId,
-                        customName: "",
+                        customName: unsavedTestInfoState.customName,
                         moduleData: unsavedTestInfoState.moduleData,
+                        _id: activeTest._id,
                     }
-
-                    const newTest = testList.find(testInfo => {
-                        const testInfoClone = cloneDeep(testInfo);
-                        delete testInfoClone._id;
-                        return isEqual(testInfoClone, newActiveTestState);
-                    });
-
-                    newActiveTestState._id = newTest._id;
 
                     dispatch(setActiveTest(newActiveTestState));
                     unsavedTestInfoDispatch({type:'setModuleData', payload: newActiveTestState})
@@ -207,25 +390,14 @@ function MainTestCreationContent({initialState}) {
                     dispatch(setActiveTestEmpty());
                     unsavedTestInfoDispatch({type:'clearModelData'});
                 }
-
             }
         }
     }, [testListLoadingState]);
-
-    useEffect(() => {
-
-    }, [loadingState])
 
     if (unsavedTestInfoState === undefined) {
         return (
             <div>Processing Data...</div>
         );
-    }
-
-    if (activeTestLoadingStatus === 'loading') {
-        return (
-            <div>Saving test...</div>
-        )
     }
 
     return (
@@ -237,6 +409,7 @@ function MainTestCreationContent({initialState}) {
                         createTestFunc={createTest}
                         editTestFunc={saveTest}
                         removeTestFunc={deleteTest}
+                        setCustomNameFunc={changeName}
                     />
                     <TestCreatorTabGroup />
                 </div>
@@ -245,7 +418,7 @@ function MainTestCreationContent({initialState}) {
     )
 }
 
-function TestCreatorSectionHeader({createTestFunc, editTestFunc, removeTestFunc}) {
+function TestCreatorSectionHeader({createTestFunc, editTestFunc, removeTestFunc, setCustomNameFunc}) {
 
     const [state, dispatch] = useContext(unsavedTestInfoContext);
 
@@ -283,6 +456,7 @@ function TestCreatorSectionHeader({createTestFunc, editTestFunc, removeTestFunc}
                 </div>
                 </>
             }
+            <input type='text' value={state.customName} onChange={setCustomNameFunc}/>
         </div>
     );
 }
@@ -308,7 +482,7 @@ function TestCreatorTabGroup() {
       <TabGroup tabList={tabList}/>
     );
 }
-
+*/
 function WaitingForTestPanel() {
     return (
         <div>Please select an function to create a new test or select and existing test to modify it.</div>

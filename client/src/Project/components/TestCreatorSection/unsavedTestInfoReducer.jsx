@@ -5,6 +5,7 @@ import argumentsTabGenerator from "./ArgumentTab";
 import returnTabGenerator from "./ReturnTab";
 import generateExceptionTab from "./ExceptionTab";
 
+
 function parseFunctionArgs(args) {
     const argumentList = [];
 
@@ -198,7 +199,10 @@ function exceptionSubReducer(state, action) {
 function customNameSubReducer(state, action) {
     switch (action.type) {
         case 'customName/rename':
-            break;
+            const renameCustomName = cloneDeep(state);
+            renameCustomName.customName = action.payload;
+            console.log('renameCustomName: ', renameCustomName);
+            return renameCustomName;
         default:
             throw new Error();
     }

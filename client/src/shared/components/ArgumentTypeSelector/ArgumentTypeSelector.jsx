@@ -1,8 +1,13 @@
 import React from "react";
 
-function ArgumentTypeSelector({type, onChangeCallback}) {
+function ArgumentTypeSelector({id, type, onChangeCallback}) {
     return (
-        <select value={type} onChange={onChangeCallback}>
+        <select
+            id={id}
+            value={type}
+            onChange={onChangeCallback}
+            className="form-select"
+        >
             <option value={'array'}>Array</option>
             <option value={'boolean'}>Boolean</option>
             <option value={'null'}>Null</option>

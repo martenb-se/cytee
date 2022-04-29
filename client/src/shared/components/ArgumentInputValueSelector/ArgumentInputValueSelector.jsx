@@ -7,6 +7,7 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
         case 'undefined':
         case 'null':
             return <input
+                className="form-control"
                 type="text"
                 disabled
                 value={type}
@@ -25,6 +26,7 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
         case 'number':
             return (
                 <input
+                    className="form-control"
                     type ="number"
                     value={value}
                     onChange={onChangeCallback}
@@ -32,6 +34,7 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
             )
         case 'string':
             return <input
+                className="form-control"
                 type="text"
                 onChange={onChangeCallback}
                 value={value}
@@ -42,5 +45,7 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
             return <div>[Input]</div>
     }
 }
+
+
 
 export default ArgumentDataFieldInput;

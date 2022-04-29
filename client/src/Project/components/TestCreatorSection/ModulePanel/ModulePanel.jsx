@@ -1,24 +1,30 @@
-import React, {useContext} from "react";
-import {unsavedTestInfoContext, moduleNameMapper} from "../TestCreatorSection";
+import React, {useContext, useEffect} from "react";
+import {addModuleData, removeModuleData, selectUnsavedActiveTest} from "../../../../reducers/activeTestInfoSlice";
+import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
+import {moduleNameMapper} from "../TestCreatorSection";
+import {isEmpty} from "lodash";
 
+import {useSelector, useDispatch} from "react-redux";
 
 function ModulePanel() {
     return (
-        <div className ="modulePanel-wrapper">
+        <div className ="module-panel-wrapper">
             <ModuleSelector />
-            <ModuleList />
+            <ModuleList/>
         </div>
     )
 }
 
 function ModuleSelector() {
-    const [state, dispatch] = useContext(unsavedTestInfoContext);
+
+    const activeFunction = useSelector(selectActiveFunction);
+    const dispatch = useDispatch();
 
     function addModule(moduleName) {
-        dispatch({
-            type: 'moduleData/addModule',
-            payload: moduleName
-        });
+        dispatch(addModuleData({
+            moduleName: moduleName,
+            activeFunction: activeFunction,
+        }));
     }
 
     return (
@@ -37,28 +43,31 @@ function ModuleSelector() {
 }
 
 function ModuleList() {
-    const [state, dispatch] = useContext(unsavedTestInfoContext);
+
+    const unsavedTest = useSelector(selectUnsavedActiveTest);
+    const dispatch = useDispatch();
 
     function deleteModule(moduleName) {
-        dispatch({
-            type: 'moduleData/removeModule',
-            payload: moduleName
-        })
+        dispatch(removeModuleData(moduleName));
     }
 
     return (
-        <table>
+        <table className="table">
             <thead>
             <tr><td>Modules</td></tr>
             </thead>
             <tbody>
-            {
-                Object.keys(state.moduleData).sort().map( moduleName => {
+            { (!isEmpty(unsavedTest)) &&
+                Object.keys(unsavedTest.moduleData).sort().map( moduleName => {
                     return (
                         <tr key={moduleName}><td>{moduleNameMapper[moduleName]}</td>
                             <td>
-                                <button onClick={() => deleteModule(moduleName)}>
-                                    X
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    aria-label="close"
+                                    onClick={() => deleteModule(moduleName)}>
+
                                 </button>
                             </td>
                         </tr>

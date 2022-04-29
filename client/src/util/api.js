@@ -66,19 +66,25 @@
     });
  }
 
- function saveTest(pathToProject, fileId, functionId, testModule) {
+ function saveTest(pathToProject, fileId, functionId, testModule, customName) {
+    let bodyContent = {
+        "pathToProject": pathToProject,
+        "fileId": fileId,
+        "functionId": functionId,
+        "testModule": testModule
+    }
+
+    if (customName !== "") {
+        bodyContent.customName = customName;
+    }
+
      return new Promise((doResolve, doReject) => {
          fetch('/api/save_test', {
              method: 'POST',
              headers: {
                  'Content-Type': 'application/json',
              },
-             body: JSON.stringify({
-                 "pathToProject": pathToProject,
-                 "fileId": fileId,
-                 "functionId": functionId,
-                 "testModule": testModule
-             }),
+             body: JSON.stringify(bodyContent),
          }).then(res => res.json()).then(data => {
              if (data.status === "OK") {
                  doResolve(data);

@@ -37,6 +37,7 @@ function TestCreatorPage({}){
         setLoadingState('loading');
         setLoadingMessage('Retrieving functions...');
         dispatch(fetchFunctionList(projectPath));
+        //dispatch(fetchTestList(projectPath));
     }, [])
 
     useEffect(() => {
@@ -52,8 +53,10 @@ function TestCreatorPage({}){
         }
     }, [functionListStatus])
 
-    // Load in tests' info
+
+
     useEffect(() => {
+
         if (loadingState !== 'done') {
             if (testListStatus === 'succeeded') {
                 setLoadingState('done');
@@ -64,6 +67,7 @@ function TestCreatorPage({}){
             }
         }
     }, [testListStatus]);
+
 
     if (loadingState === 'failed') {
         return (
@@ -84,8 +88,8 @@ function TestCreatorPage({}){
                 <button className ="btn btn-primary">Generate Tests</button>
             </div>
             <div className = "testCreationArea">
-                <CodeViewingSection />
-                <TestCreatorSection />
+                {/*<CodeViewingSection/>*/}
+                {<TestCreatorSection/>}
             </div>
         </div>
     );

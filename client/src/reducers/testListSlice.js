@@ -22,7 +22,6 @@ export const testListSlice = createSlice({
     extraReducers(builder) {
         builder
             .addCase(fetchTestList.pending, (state, action) => {
-                console.log('asdasdkljdfgkjroiåjbrtipjbåiprotj');
                 state.status = 'loading';
             })
             .addCase(fetchTestList.fulfilled, (state, action) => {

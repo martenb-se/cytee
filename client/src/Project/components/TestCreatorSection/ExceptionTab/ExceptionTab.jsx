@@ -1,6 +1,12 @@
 import React from 'react';
-import CustomTab from "../../../../shared/components/Tab";
 
+function ExceptionTab({label}) {
+    return (
+      <h1>Exception Tab</h1>
+    );
+}
+
+/*
 function generateExceptionTab() {
     return (
         <CustomTab label = 'Exception'>
@@ -11,7 +17,7 @@ function generateExceptionTab() {
         </CustomTab>
     )
 }
-
+*/
 /*
 function ExceptionTab() {
     return (
@@ -25,4 +31,4 @@ function ExceptionTab() {
 }
 */
 
-export default generateExceptionTab;
+export default ExceptionTab;

@@ -2,10 +2,9 @@ import React, {useEffect} from 'react';
 import {useSelector, useDispatch} from "react-redux";
 
 import {selectTestList, selectTestListLoading, selectTestListError} from "../../../../reducers/testListSlice";
-import {selectActiveTest, setActiveTest} from "../../../../reducers/activeTestInfoSlice";
+import {selectActiveTest, setActiveTest, setActiveUnsavedTest} from "../../../../reducers/activeTestInfoSlice";
 import {setActiveFunction} from "../../../../reducers/activeFunctionSlice";
 
-import CustomTab from "../../../../shared/components/Tab";
 import {isEmpty} from "lodash";
 
 import store from "../../../../reducers/store";
@@ -20,7 +19,7 @@ function findFunctionInfoByTestInfo(testInfo) {
     }
 }
 
-function testTabGenerator(){
+function TestListTab({label}){
 
     const dispatch = useDispatch();
 
@@ -34,8 +33,22 @@ function testTabGenerator(){
             (activeTest._id === testInfo._id);
     }
 
+    function onClickCallback(testInfo) {
+        dispatch(setActiveFunction(findFunctionInfoByTestInfo(testInfo)));
+        /*
+        dispatch(setActiveTestAndUnsavedTest({
+            unsavedTest: testInfo,
+            test: testInfo,
+        }));
+         */
+        dispatch(setActiveUnsavedTest(testInfo));
+        dispatch(setActiveTest(testInfo));
+
+
+    }
+
     if (testListStateLoading === 'loading') {
-        return <div>Loading</div>
+        return <div>Loading Test...</div>
     }
 
     if (testListStateLoading === 'failed') {
@@ -48,14 +61,13 @@ function testTabGenerator(){
     }
 
     return (
-        <CustomTab label='Test Tab'>
-            <div>Test Tab</div>
-            <table>
+        <div className='test-list-tab'>
+            <table className="table table-hover">
                 <thead>
                 <tr>
-                    <th>File Name</th>
-                    <th>Function Name</th>
-                    <th>Function Description</th>
+                    <th scope="col">File Name</th>
+                    <th scope="col">Function Name</th>
+                    <th scope="col">Function Description</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -64,11 +76,8 @@ function testTabGenerator(){
                         return (
                             <tr
                                 key={testInfo._id}
-                                onClick={() => {
-                                    dispatch(setActiveTest(testInfo));
-                                    dispatch(setActiveFunction(findFunctionInfoByTestInfo(testInfo)));
-                                }}
-                                className={(isActiveTest(testInfo))?"active-test-info":""}
+                                onClick={() => onClickCallback(testInfo)}
+                                className={(isActiveTest(testInfo))?"table-active table-primary":""}
                             >
                                 <td>{testInfo.fileId}</td>
                                 <td>{testInfo.functionId}</td>
@@ -79,8 +88,8 @@ function testTabGenerator(){
                 }
                 </tbody>
             </table>
-        </CustomTab>
+        </div>
     );
 }
 
-export default testTabGenerator;
+export default TestListTab;

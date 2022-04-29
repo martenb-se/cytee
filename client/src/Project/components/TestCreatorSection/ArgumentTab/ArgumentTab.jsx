@@ -1,3 +1,186 @@
+import React, {useEffect} from 'react';
+import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
+import {selectUnsavedActiveTest, updateArgumentList} from "../../../../reducers/activeTestInfoSlice";
+import {useDispatch, useSelector} from "react-redux";
+
+import ArgumentTypeSelector from "../../../../shared/components/ArgumentTypeSelector";
+import ArgumentDataFieldInput from "../../../../shared/components/ArgumentInputValueSelector";
+import ObjectDataFieldInput from "../ObjectDataFieldInput/ObjectDataFieldInput";
+
+import cloneDeep from "lodash/cloneDeep";
+import {isEmpty} from "lodash";
+
+function ArgumentTab({label, addChildFunction}) {
+
+    const activeFunction = useSelector(selectActiveFunction);
+    const unsavedTest = useSelector(selectUnsavedActiveTest);
+    const dispatch = useDispatch();
+
+    function onChangeCallback(argumentData) {
+        dispatch(updateArgumentList(argumentData));
+    }
+
+    function onSubTabChangeCallback(objectData) {
+        console.log(objectData);
+    }
+
+    function openSubTab(argumentData) {
+        addChildFunction({
+            initialValue: {},
+            onObjectChangeCallback: onSubTabChangeCallback,
+            parentLabel: "Argument List",
+            label: argumentData.argument + "-Object editor"
+        })
+    }
+
+    function changeArgumentType(e, argumentData) {
+        const argumentDataClone = cloneDeep(argumentData);
+        argumentDataClone.type = e.target.value;
+        switch(argumentDataClone.type) {
+            case 'undefined':
+            case 'null':
+                delete argumentDataClone.value;
+                break;
+            case 'array':
+                argumentDataClone.value = [];
+                break;
+            case 'boolean':
+                argumentDataClone.value = false;
+                break;
+            case 'number':
+                argumentDataClone.value = 0;
+                break;
+            case 'string':
+                argumentDataClone.value = '';
+                break;
+            case 'object':
+                argumentDataClone.value = {};
+                break;
+        }
+        onChangeCallback(argumentDataClone);
+    }
+
+    function changeArgumentValue(e, argumentData) {
+        const argumentDataClone = cloneDeep(argumentData);
+        argumentDataClone.value = e.target.value;
+        onChangeCallback(argumentDataClone);
+    }
+
+    if (isEmpty(unsavedTest) ||
+        (unsavedTest.moduleData === undefined) ||
+        (unsavedTest.moduleData.argumentList === undefined)
+    ) {
+        return <div className ="test-creator-tab-empty">waiting...</div>
+    }
+
+    return (
+        <div className="argument-tab-wrapper">
+            <form>
+                {
+                    unsavedTest.moduleData.argumentList.map(argumentData => {
+                        return (
+                            <div className ="mb-3" key={argumentData.subFunctionName + '.' + argumentData.argument}>
+                                <div className="argumentField-wrapper">
+                                    <label
+                                        className="form-label"
+                                        htmlFor={argumentData.subFunctionName + "-" + argumentData.argument}
+                                    >
+                                        {argumentData.subFunctionName + ": " + argumentData.argument}
+                                    </label>
+                                    <div className="input-group">
+
+                                        <ArgumentTypeSelector
+                                            id={argumentData.subFunctionName + "-" + argumentData.argument}
+                                            type={argumentData.type}
+                                            onChangeCallback={e => changeArgumentType(e, argumentData)}
+                                        />
+                                        {(argumentData.type === 'object')?
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={() => openSubTab(argumentData)}
+                                            >
+                                                Edit
+                                            </button>
+                                            :
+                                            <ArgumentDataFieldInput
+                                                type={argumentData.type}
+                                                value={argumentData.value}
+                                                onChangeCallback={e => changeArgumentValue(e, argumentData)}
+                                            />
+                                        }
+                                    </div>
+                                    {(argumentData.type === 'object') && (
+                                        <div className="input-group">
+                                            SHOW OBJECT HEAR!
+                                        </div>
+                                        )}
+                                </div>
+                            </div>
+                        )
+                    })
+                }
+
+            </form>
+        </div>
+    );
+}
+
+/*
+function ArgumentField({argumentData, changeArgumentData}) {
+
+    function changeArgumentType(e) {
+        const argumentDataClone = cloneDeep(argumentData);
+        argumentDataClone.type = e.target.value;
+        switch(argumentDataClone.type) {
+            case 'undefined':
+            case 'null':
+                delete argumentDataClone.value;
+                break;
+            case 'array':
+                argumentDataClone.value = [];
+                break;
+            case 'boolean':
+                argumentDataClone.value = false;
+                break;
+            case 'number':
+                argumentDataClone.value = 0;
+                break;
+            case 'string':
+                argumentDataClone.value = '';
+                break;
+            case 'object':
+                argumentDataClone.value = {};
+                break;
+        }
+        changeArgumentData(argumentDataClone);
+    }
+
+    function changeArgumentValue(e) {
+        const argumentDataClone = cloneDeep(argumentData);
+        argumentDataClone.value = e.target.value;
+        changeArgumentData(argumentDataClone);
+    }
+
+    return (
+        <div className="argumentField-wrapper">
+            <label
+                className="form-label"
+                htmlFor={argumentData.subFunctionName + "-" + argumentData.argument}
+            >
+                {argumentData.subFunctionName + ": " + argumentData.argument}
+            </label>
+            <div className="input-group">
+                <ArgumentTypeSelector id={argumentData.subFunctionName + "-" + argumentData.argument} type={argumentData.type} onChangeCallback={changeArgumentType} />
+                <ArgumentDataFieldInput type={argumentData.type} value={argumentData.value} onChangeCallback={changeArgumentValue}/>
+            </div>
+        </div>
+    )
+}
+*/
+
+
+export default ArgumentTab;
+/*
 import React, {useState, useEffect, useContext} from 'react';
 import {unsavedTestInfoContext} from "../TestCreatorSection";
 
@@ -79,7 +262,7 @@ function ArgumentField({argumentData, changeArgumentData}) {
         <div className="argumentField-wrapper">
             <span>{argumentData.argument}</span>
             <ArgumentTypeSelector type={argumentData.type} onChangeCallback={changeArgumentType} />
-            {/*<ArgumentDataFieldInput argumentData={argumentData} changeArgumentData={changeArgumentData}/>*/}
+
             <ArgumentDataFieldInput type={argumentData.type} value={argumentData.value} onChangeCallback={changeArgumentValue}/>
         </div>
     )
@@ -236,7 +419,7 @@ export function ObjectCreator() {
                 <div>
                     <span>Value: </span>
                     <ArgumentDataFieldInput argumentData={{type: type, value: value}} changeArgumentData={onValueChangeCallback}/>
-                    {/*<input type="text" value={value || 'undefined'} onChange={e => setValue(e.target.value)}/>*/}
+
                 </div>
                 <button onClick={() => modifyObject()}>add</button>
             </div>
@@ -256,3 +439,4 @@ export function ObjectCreator() {
 }
 
 export default argumentsTabGenerator;
+*/

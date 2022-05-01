@@ -52,6 +52,7 @@ function ReturnTab({label}) {
     }
 
     function changeReturnValueCallback(e) {
+        e.preventDefault();
         const returnValueClone = cloneDeep(unsavedTest.moduleData.returnValue);
         returnValueClone.value = e.target.value;
         onChangeCallback(returnValueClone);
@@ -59,7 +60,9 @@ function ReturnTab({label}) {
 
     return (
             <div className="return-value-tab-wrapper">
-                <form>
+                <form
+                    onSubmit={e => e.preventDefault()}
+                >
                     <label
                         className="form-label"
                         htmlFor={"return-value-tab-type-field"}

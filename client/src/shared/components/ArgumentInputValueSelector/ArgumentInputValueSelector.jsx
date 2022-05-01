@@ -40,6 +40,7 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
                 value={value}
             />
         case 'object':
+        case 'array':
             /*return <ObjectCreator />*/
         default:
             return <div>[Input]</div>

@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
 import {selectUnsavedActiveTest, updateArgumentList} from "../../../../reducers/activeTestInfoSlice";
 import {useDispatch, useSelector} from "react-redux";
@@ -10,27 +10,49 @@ import ObjectDataFieldInput from "../ObjectDataFieldInput/ObjectDataFieldInput";
 import cloneDeep from "lodash/cloneDeep";
 import {isEmpty} from "lodash";
 
-function ArgumentTab({label, addChildFunction}) {
+function ArgumentTab({label, addChildFunction, removeChildFunction}) {
 
     const activeFunction = useSelector(selectActiveFunction);
     const unsavedTest = useSelector(selectUnsavedActiveTest);
     const dispatch = useDispatch();
 
+    const [activeChildTabs, setActiveChildTabs] = useState([]);
+
     function onChangeCallback(argumentData) {
         dispatch(updateArgumentList(argumentData));
     }
 
+    useEffect(() => {
+        console.log('activeChildTabs: ', activeChildTabs);
+    }, [activeChildTabs])
+
     function onSubTabChangeCallback(objectData) {
-        console.log(objectData);
+        const argumentDataClone = cloneDeep(objectData);
+        const activeChildTabsClone = cloneDeep(activeChildTabs);
+        const childTabIndex = activeChildTabsClone.findIndex(tab => tab.label === objectData.argument + "-Object editor");
+        activeChildTabsClone.splice(childTabIndex, 1);
+        setActiveChildTabs(activeChildTabsClone);
+        removeChildFunction(objectData.argument + "-Object editor");
+        onChangeCallback(argumentDataClone);
     }
 
     function openSubTab(argumentData) {
-        addChildFunction({
-            initialValue: {},
-            onObjectChangeCallback: onSubTabChangeCallback,
-            parentLabel: "Argument List",
-            label: argumentData.argument + "-Object editor"
-        })
+        if (
+            activeChildTabs.findIndex(
+                tab => tab.label === (argumentData.argument + "-Object editor")
+            ) === -1
+        ) {
+            const activeChildTabsClone = cloneDeep(activeChildTabs);
+            activeChildTabsClone.push(argumentData.argument + "-Object editor");
+            setActiveChildTabs(activeChildTabsClone);
+
+            addChildFunction({
+                initValue: argumentData,
+                onObjectChangeCallback: onSubTabChangeCallback,
+                parentLabel: "Argument List",
+                label: argumentData.argument + "-Object editor"
+            });
+        }
     }
 
     function changeArgumentType(e, argumentData) {
@@ -54,8 +76,16 @@ function ArgumentTab({label, addChildFunction}) {
                 argumentDataClone.value = '';
                 break;
             case 'object':
-                argumentDataClone.value = {};
+                argumentDataClone.value = [];
                 break;
+        }
+
+        const activeChildTabsClone = cloneDeep(activeChildTabs);
+        const activeChildTabsIndex = activeChildTabsClone.findIndex(tab => tab.label === (argumentData.argument + "-Object editor"))
+        if (activeChildTabsIndex !== -1) {
+            activeChildTabsClone.splice(activeChildTabsIndex, 1);
+            setActiveChildTabs(activeChildTabsClone);
+            removeChildFunction(argumentData.argument + "-Object editor");
         }
         onChangeCallback(argumentDataClone);
     }
@@ -72,6 +102,8 @@ function ArgumentTab({label, addChildFunction}) {
     ) {
         return <div className ="test-creator-tab-empty">waiting...</div>
     }
+
+
 
     return (
         <div className="argument-tab-wrapper">
@@ -97,7 +129,11 @@ function ArgumentTab({label, addChildFunction}) {
                                         {(argumentData.type === 'object')?
                                             <button
                                                 className="btn btn-secondary"
-                                                onClick={() => openSubTab(argumentData)}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    console.log('argumentData: ', argumentData);
+                                                    openSubTab(argumentData);
+                                                }}
                                             >
                                                 Edit
                                             </button>

@@ -137,4 +137,24 @@
      });
  }
 
- export {updateTime, getProjectFunctions, getProjectTest, getFunction, saveTest, updateTest, deleteTest};
+ function generateTests(pathToProject) {
+     return new Promise((doResolve, doReject) => {
+         fetch('/api/generate_tests', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+                 "pathToProject": pathToProject,
+             }),
+         }).then(res => res.json()).then(data => {
+             if (data.status === "OK") {
+                 doResolve(data);
+             } else {
+                 doReject(data);
+             }
+         });
+     });
+ }
+
+ export {updateTime, getProjectFunctions, getProjectTest, getFunction, saveTest, updateTest, deleteTest, generateTests};

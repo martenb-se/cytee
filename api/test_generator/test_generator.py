@@ -18,7 +18,7 @@ def number_var_formatter(number_arg):
 
 # TODO: Nename to something related to javascript
 def string_var_formatter(string_arg):
-    return f"""\"{string_arg}\""""
+    return f"""\'{string_arg}\'"""
 
 
 # TODO: Nename to something related to javascript
@@ -664,7 +664,9 @@ def generate_tests(test_info_list):
                     func_test_info,
                     urangutest_file)
                 func_test_strings += test_string
-                file_imports.append(import_string)
+                # Check if it's already in the list
+                if import_string not in file_imports:
+                    file_imports.append(import_string)
 
             # generate end descriotion
             # func_test_string += __generate_description_end(test_info)

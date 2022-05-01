@@ -137,6 +137,7 @@ TYPE_MATCHER_DICT = {
         'matcher': 'toBeUndefined',
         'var_formatter': "undefined"
     },
+
 }
 
 UNIQUE_NUMBER = 0
@@ -250,8 +251,13 @@ def __generate_test_start(test_info):
                 first = False
             else:
                 description_string += ', '
+
             argument_name = argument_data['argument']
-            argument_value = argument_data['value']
+            if (argument_data['type'] == 'undefined' or
+                    argument_data['type'] == 'null'):
+                argument_value = argument_data['type']
+            else:
+                argument_value = argument_data['value']
 
             description_string += f"{argument_name} = {argument_value}"
 
@@ -276,12 +282,10 @@ def __variable_assignment_standard(variable_name, variable_value):
 
 
 def __generate_variable_declarations(test_info):
-    # Check if there is any defined arguments
 
     if 'argumentList' not in test_info['moduleData']:
         return "", None
 
-    # Get the argument data
     arguments = test_info['moduleData']['argumentList']
 
     # Declare func_var_arg_map and string
@@ -290,7 +294,6 @@ def __generate_variable_declarations(test_info):
 
     # Iterate over the arguments
     for argument_data in arguments:
-        # TODO: have global unique variable number
 
         # Generate the variable name
         global UNIQUE_NUMBER
@@ -517,8 +520,6 @@ def __generate_exception(test_info, function_call_string):
     return exception_string
 
 
-# TODO: Create the test file
-# TODO: Import the right function
 def generate_test(test_info):
     # Create Directory
     # https://www.geeksforgeeks.org/create-a-directory-in-python/

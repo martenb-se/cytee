@@ -12,7 +12,7 @@ from api.instances.shared_websockets_main import shared_websockets_handler
 from api.util.paths_helper import get_base_directory, \
     sub_directory_to_full_path, full_path_to_correct_sub_directory
 from api.websocket import WsIdentity, WsCode
-
+from api.test_generator.test_generator import generate_tests
 
 class APIStatus(Enum):
     OK = "OK"
@@ -33,6 +33,7 @@ class APICode(Enum):
 
     ERROR_PROJECT_TEST_NOT_EXISTING = "PROJECT_TEST_NOT_EXISTING"
 
+    ERROR_PROJECT_HAS_NO_TESTS = "PROJECT_HAS_NO_TESTS"
 
 def __get_existing_projects():
     all_functions = \
@@ -474,6 +475,35 @@ def delete_test(test_id: str) -> dict:
             project_test[0]["fileId"],
             project_test[0]["functionId"])
 
+        return_message = {
+            "status": APIStatus.OK.value
+        }
+
+    return return_message
+
+
+def generate_project_tests(sub_directory):
+    """ Generates test for that project specified by the given subdirectory.
+
+    :param sub_directory: Path to project.
+    :type sub_directory: str
+
+    :return: Operation status data if successful.
+    :rtype: dict
+    """
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
+    project_tests = database_handler.get_test_info({
+        'pathToProject': full_path_to_project
+    })
+
+    if project_tests is None:
+        return_message = {
+            "status": APIStatus.ERROR,
+            "statusCode": APICode.ERROR_PROJECT_HAS_NO_TESTS
+        }
+
+    else:
+        generate_tests(project_tests)
         return_message = {
             "status": APIStatus.OK.value
         }

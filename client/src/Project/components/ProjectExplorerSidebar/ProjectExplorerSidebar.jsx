@@ -3,6 +3,8 @@ import TabGroup from "../../../shared/components/TabGroup";
 import FunctionListTab from "./FunctionListTab";
 import TestListTab from "./TestListTab";
 
+import './ProjectExplorerSidebar.jsx.scss';
+
 function ProjectExplorerSidebar(){
 
     const [activeTab, setActiveTab] = useState('');
@@ -28,7 +30,6 @@ function ProjectExplorerSidebar(){
     }
 
     return (
-
         <div className="project-explorer-sidebar-wrapper">
             <div className='project-explorer-sidebar-header'>
                 <ul className="nav nav-tabs">

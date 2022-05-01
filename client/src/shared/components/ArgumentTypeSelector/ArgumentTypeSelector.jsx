@@ -1,12 +1,13 @@
 import React from "react";
 
-function ArgumentTypeSelector({id, type, onChangeCallback}) {
+function ArgumentTypeSelector({id, type, onChangeCallback, disabled}) {
     return (
         <select
             id={id}
             value={type}
             onChange={onChangeCallback}
             className="form-select"
+            disabled={disabled}
         >
             <option value={'array'}>Array</option>
             <option value={'boolean'}>Boolean</option>

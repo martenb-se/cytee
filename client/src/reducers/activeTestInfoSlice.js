@@ -111,6 +111,9 @@ export const activeTestSlice = createSlice({
         },
         discardUnsavedChanges: (state, action) => {
             state.unsavedTest = cloneDeep(state.test);
+        },
+        updateException: (state, action) =>{
+            state.unsavedTest.moduleData.exception = action.payload;
         }
     },
     extraReducers(builder) {
@@ -163,6 +166,7 @@ export const {
     removeModuleData,
     updateArgumentList,
     updateReturnValue,
+    updateException,
     updateUnsavedCustomName,
     discardUnsavedChanges} = activeTestSlice.actions;
 export default activeTestSlice.reducer;

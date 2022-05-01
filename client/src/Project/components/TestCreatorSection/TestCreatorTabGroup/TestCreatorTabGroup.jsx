@@ -13,7 +13,6 @@ function TestCreatorTabGroup() {
     const unsavedTest = useSelector(selectUnsavedActiveTest);
     const [tabList, setTabList] = useState([]);
     const [activeTab, setActiveTab] = useState(undefined);
-    //const [childTabs, setChildTabs] = useState([]);
     const [parentToChildTabMap, setParentToChildTabMap] = useState([]);
 
     function onClickCallback(tabLabel) {
@@ -22,23 +21,26 @@ function TestCreatorTabGroup() {
 
     function getActiveTabComponent() {
         if (tabList.length > 0) {
-            // First check tabList
             const tabData = tabList.find(tab => tab.props.label === activeTab);
 
             if (tabData === undefined) {
 
-                // Then check parentToChildTabMap
                 if (parentToChildTabMap.length > 0) {
                     const childTabData = parentToChildTabMap.find(childData => childData.label === activeTab);
 
-                    // TODO: Consider adding the parent label
-                    return (
-                        <ObjectCreationTab
-                            label={childTabData.label}
-                            baseObject={childTabData.initValue}
-                            onChangeCallback={childTabData.onObjectChangeCallback}
-                        />
-                    )
+                    if (childTabData !== undefined) {
+                        // TODO: Consider adding the parent label
+                        return (
+                            <ObjectCreationTab
+                                label={childTabData.label}
+                                initBaseState={childTabData.initValue}
+                                onChangeCallback={childTabData.onObjectChangeCallback}
+                            />
+                        )
+                    } else {
+                        console.log('asdasdasdadsaddkhjdbfgkjdrbk');
+                        return <div></div>
+                    }
                 }
             }
             return tabData;
@@ -51,22 +53,31 @@ function TestCreatorTabGroup() {
 
     function addChildTab(childTabData) {
         const parentToChildTabMapCopy = cloneDeep(parentToChildTabMap);
-        parentToChildTabMapCopy.push(childTabData)
+        parentToChildTabMapCopy.push(childTabData);
         setParentToChildTabMap(parentToChildTabMapCopy);
     }
 
-    useEffect(() => {
-        console.log('parentToChildTabMap: ', parentToChildTabMap);
-    }, [parentToChildTabMap])
+    function removeChildTab(childTab) {
+        const parentToChildTabMapCopy = cloneDeep(parentToChildTabMap);
+        for (let i = 0; i < parentToChildTabMapCopy.length; i++) {
+            if (parentToChildTabMapCopy.label === childTab) {
+                parentToChildTabMapCopy.splice(i, 1);
+                break;
+            }
+        }
+        setParentToChildTabMap(parentToChildTabMapCopy);
+    }
+
+
 
     useEffect(() => {
         if (!isEmpty(unsavedTest)) {
             const tabComponentList = Object.keys(unsavedTest.moduleData).sort().map(moduleName => {
                 switch (moduleName) {
                     case 'argumentList':
-                        return <ArgumentTab label="Argument List" addChildFunction={addChildTab}/>
+                        return <ArgumentTab label="Argument List" addChildFunction={addChildTab} removeChildFunction={removeChildTab}/>
                     case 'returnValue':
-                        return <ReturnTab label="Return Value" addChildFunction={addChildTab}/>
+                        return <ReturnTab label="Return Value" addChildFunction={addChildTab} removeChildFunction={removeChildTab}/>
                     case 'exception':
                         return <ExceptionTab label="Exception"/>
                 }
@@ -77,18 +88,24 @@ function TestCreatorTabGroup() {
 
     useEffect(() => {
         if (tabList.length > 0) {
+
             if (activeTab === undefined) {
                 setActiveTab(tabList[0].props.label);
             } else  {
                 if (tabList.findIndex(tab => tab.props.label === activeTab) === -1) {
-                    setActiveTab(tabList[0].props.label);
+                    if (parentToChildTabMap.findIndex(childTab => childTab.label === activeTab) === -1) {
+                        setActiveTab(tabList[0].props.label);
+                    }
                 }
             }
         } else {
             setActiveTab(undefined);
         }
-    }, [tabList])
+    }, [tabList, parentToChildTabMap])
 
+    useEffect(() => {
+
+    }, [])
 
     return (
         <div className ="test-creator-tab-group-wrapper">

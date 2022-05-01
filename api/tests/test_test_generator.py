@@ -138,11 +138,11 @@ TEST_INFO_DATA = [
                     "argument": "arg4",
                     "type": "null",
                 },
-                #{
+                # {
                 #    "argument": "arg5",
                 #    "type": "bigInt",
                 #    "value": "BigInt(90071999254740991)",
-                #},
+                # },
                 {
                     "argument": "arg6",
                     "type": "object",
@@ -229,7 +229,7 @@ TEST_INFO_DATA = [
                 "value": "asdasd"
             }
         }
-    },   {
+    }, {
         'pathToProject': '/home/user/projects/cool_project/src/',
         'fileId': 'shared/utils/api',
         'functionId': 'userObject.userFunction.(new userClass()).func2',
@@ -288,6 +288,72 @@ TEST_INFO_DATA = [
             }
         }
     },
+    {
+        "_id": {"$oid": "626ec2e1f2c11ac961ca4058"},
+        "customName": "random_test_1",
+        "fileId": "/shared/utils/file1",
+        "functionId": "test_function_1",
+        "moduleData": {
+            "argumentList": [
+                {
+                    "argument": "arg1",
+                    "subFunctionName": "test_function_1",
+                    "type": "number",
+                    "value": "3"
+                },
+                {
+                    "argument": "arg2",
+                    "subFunctionName": "test_function_1",
+                    "type": "number",
+                    "value": "4"
+                },
+                {
+                    "argument": "arg3",
+                    "subFunctionName": "test_function_1",
+                    "type": "number",
+                    "value": "5"
+                }
+            ],
+            "returnValue": {
+                "type": "string",
+                "value": "ok"
+            }
+        },
+        "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
+    },
+    {
+        "_id": {"$oid": "626ec326f2c11ac961ca4059"},
+        "customName": "random_test_2",
+        "fileId": "/shared/utils/file1",
+        "functionId": "test_function_1",
+        "moduleData": {
+            "argumentList": [
+                {
+                    "subFunctionName": "test_function_1",
+                    "argument": "arg1",
+                    "type": "string",
+                    "value": "dfgdfg"
+                },
+                {
+                    "subFunctionName": "test_function_1",
+                    "argument": "arg2",
+                    "type": "boolean",
+                    "value": False
+                },
+                {
+                    "subFunctionName": "test_function_1",
+                    "argument": "arg3",
+                    "type": "undefined"
+                }
+            ],
+            "returnValue": {
+                "type": "string",
+                "value": "ok"
+            }
+        },
+        "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
+    }
+
 ]
 
 
@@ -326,8 +392,9 @@ def test_test_generator2(mock_os_make_dirs, mocker_open):
     print("")
     print(content_drain)
 
+
 def test_test_generator3(mock_os_make_dirs, mocker_open):
-    data = TEST_INFO_DATA[3]
+    data = TEST_INFO_DATA[4]
     content_drain = {}
     mocker_open(
         'api.test_generator.test_generator.open',
@@ -335,15 +402,15 @@ def test_test_generator3(mock_os_make_dirs, mocker_open):
         content_drain=content_drain
     )
 
-    test_string, import_string = generate_test_2(data, '/home/user/projects/cool_project/src/shared/utils/api')
-    pprint(import_string)
-    pprint(test_string)
+    generate_tests([TEST_INFO_DATA[4], TEST_INFO_DATA[5]])
+    # pprint(import_string)
+    # pprint(test_string)
     print("")
     print(content_drain)
 
 
 def test_super():
-    #test_info = {
+    # test_info = {
     #    'pathToProject': '/home/jobe/tidab3/exjobb/react_test_project/src/',
     #    'fileId': 'shared/utils/file1', 'functionId': 'test_function_1',
     #    'customName': "", 'moduleData': {"argumentList": [
@@ -352,15 +419,37 @@ def test_super():
     #        {'argument': "arg3", 'type': "boolean", 'value': False}, ],
     #                                     "returnValue": {"type": "string",
     #                                                     "value": "ok"}}}
-    #generate_test(test_info)
+    # generate_test(test_info)
     pass
 
+
 def test_test_test():
-    stringo = object_var_formatter(TEST_INFO_DATA[1]['moduleData']['argumentList'], TYPE_MATCHER_DICT)
+    stringo = object_var_formatter(
+        TEST_INFO_DATA[1]['moduleData']['argumentList'], TYPE_MATCHER_DICT)
     print("")
-    #pprint(stringo)
+    # pprint(stringo)
 
 
 def test_generate_tests():
-    test_list = [{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func1'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func2'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func2'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/api','functionId':'func3'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/socket','functionId':'func4'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/socket','functionId':'func5'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/socket','functionId':'func5'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/login','functionId':'func6'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/login','functionId':'func7'},{'pathToProject':'/home/jobe/tidab3/exjobb/jira_clone/client/src/','fileId':'shared/utils/create_account','functionId':'func8'},]
+    test_list = [
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/api', 'functionId': 'func1'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/api', 'functionId': 'func2'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/api', 'functionId': 'func2'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/api', 'functionId': 'func3'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/socket', 'functionId': 'func4'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/socket', 'functionId': 'func5'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/socket', 'functionId': 'func5'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/login', 'functionId': 'func6'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/login', 'functionId': 'func7'},
+        {'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
+         'fileId': 'shared/utils/create_account', 'functionId': 'func8'}, ]
     generate_tests(test_list)

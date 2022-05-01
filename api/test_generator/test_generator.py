@@ -177,7 +177,6 @@ def __generate_meta_data(file_handler):
 
 
 def __generate_imports(test_file_path, test_info):
-    # Get the corresponding function info
     function_info_documents = database_handler.get_function_info({
         'pathToProject': test_info['pathToProject'],
         'functionId': test_info['functionId'],
@@ -192,7 +191,6 @@ def __generate_imports(test_file_path, test_info):
 
     function_info = function_info_documents[0]
 
-    # Determine the export type and generate the corresponding name
     match function_info['exportInfo']:
         case 'export':
             exported_function_name = "{" + function_info['exportName'] + "}"
@@ -202,12 +200,10 @@ def __generate_imports(test_file_path, test_info):
             raise RuntimeError(
                 f"{function_info['exportInfo']} is a invalid export type")
 
-    # Generate the path used to import the file being tested
-    path_to_function = test_info['pathToProject'] + test_info['fileId']
-    relative_import_path = './' + os.path.relpath(path_to_function,
-                                                  test_file_path)
+    relative_import_path = './' + os.path.basename(
+        os.path.normpath(test_info['fileId'])
+    )
 
-    # Generate the import string
     import_expression = (f"import {exported_function_name} from "
                          f"\'{relative_import_path}\';")
 

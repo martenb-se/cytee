@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
 import {selectUnsavedActiveTest, updateArgumentList} from "../../../../reducers/activeTestInfoSlice";
 import {useDispatch, useSelector} from "react-redux";
@@ -9,6 +9,7 @@ import ObjectDataFieldInput from "../ObjectDataFieldInput/ObjectDataFieldInput";
 
 import cloneDeep from "lodash/cloneDeep";
 import {isEmpty} from "lodash";
+import {localTabGroupContext} from "../TestCreatorTabGroup/TestCreatorTabGroup";
 
 function ArgumentTab({label, addChildFunction, removeChildFunction}) {
 
@@ -16,47 +17,67 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
     const unsavedTest = useSelector(selectUnsavedActiveTest);
     const dispatch = useDispatch();
 
-    const [activeChildTabs, setActiveChildTabs] = useState([]);
+    const [localTabState, localTabDispatch] = useContext(localTabGroupContext);
 
     function onChangeCallback(argumentData) {
         dispatch(updateArgumentList(argumentData));
     }
 
-    useEffect(() => {
-        console.log('activeChildTabs: ', activeChildTabs);
-    }, [activeChildTabs])
-
     function onSubTabChangeCallback(objectData) {
         const argumentDataClone = cloneDeep(objectData);
-        const activeChildTabsClone = cloneDeep(activeChildTabs);
-        const childTabIndex = activeChildTabsClone.findIndex(tab => tab.label === objectData.argument + "-Object editor");
-        activeChildTabsClone.splice(childTabIndex, 1);
-        setActiveChildTabs(activeChildTabsClone);
-        removeChildFunction(objectData.argument + "-Object editor");
+        //removeChildFunction(objectData.argument);
+        localTabDispatch({
+            type: 'removeChildTab',
+            payload: objectData.argument,
+        });
         onChangeCallback(argumentDataClone);
     }
 
     function openSubTab(argumentData) {
-        if (
-            activeChildTabs.findIndex(
-                tab => tab.label === (argumentData.argument + "-Object editor")
-            ) === -1
-        ) {
-            const activeChildTabsClone = cloneDeep(activeChildTabs);
-            activeChildTabsClone.push(argumentData.argument + "-Object editor");
-            setActiveChildTabs(activeChildTabsClone);
-
-            addChildFunction({
+        localTabDispatch({
+            type: 'addChildTab',
+            payload: {
                 initValue: argumentData,
                 onObjectChangeCallback: onSubTabChangeCallback,
-                parentLabel: "Argument List",
-                label: argumentData.argument + "-Object editor"
-            });
-        }
+                parentEventKey: "argumentList",
+                eventKey: argumentData.argument,
+                title: argumentData.argument + "-Object editor"
+            }
+        });
+        /*
+        addChildFunction({
+            initValue: argumentData,
+            onObjectChangeCallback: onSubTabChangeCallback,
+            parentEventKey: "argumentList",
+            eventKey: argumentData.argument,
+            title: argumentData.argument + "-Object editor"
+        });
+        */
+
+    }
+
+    function onEdit(argumentData) {
+        localTabDispatch({
+            type: 'addChildTab',
+            payload: {
+                initValue: argumentData,
+                onObjectChangeCallback: onSubTabChangeCallback,
+                parentEventKey: "argumentList",
+                eventKey: argumentData.argument,
+                title: argumentData.argument + " - editor"
+            }
+        });
+
     }
 
     function changeArgumentType(e, argumentData) {
         const argumentDataClone = cloneDeep(argumentData);
+        if ((argumentDataClone.type === 'object') || (argumentDataClone.type === 'array')) {
+            localTabDispatch({
+                type: 'removeChildTab',
+                payload: argumentData.argument,
+            });
+        }
         argumentDataClone.type = e.target.value;
         switch(argumentDataClone.type) {
             case 'undefined':
@@ -80,13 +101,6 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
                 break;
         }
 
-        const activeChildTabsClone = cloneDeep(activeChildTabs);
-        const activeChildTabsIndex = activeChildTabsClone.findIndex(tab => tab.label === (argumentData.argument + "-Object editor"))
-        if (activeChildTabsIndex !== -1) {
-            activeChildTabsClone.splice(activeChildTabsIndex, 1);
-            setActiveChildTabs(activeChildTabsClone);
-            removeChildFunction(argumentData.argument + "-Object editor");
-        }
         onChangeCallback(argumentDataClone);
     }
 
@@ -126,30 +140,13 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
                                             type={argumentData.type}
                                             onChangeCallback={e => changeArgumentType(e, argumentData)}
                                         />
-                                        {(argumentData.type === 'object')?
-                                            <button
-                                                className="btn btn-secondary"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    console.log('argumentData: ', argumentData);
-                                                    openSubTab(argumentData);
-                                                }}
-                                            >
-                                                Edit
-                                            </button>
-                                            :
-                                            <ArgumentDataFieldInput
-                                                type={argumentData.type}
-                                                value={argumentData.value}
-                                                onChangeCallback={e => changeArgumentValue(e, argumentData)}
-                                            />
-                                        }
+                                        <ArgumentDataFieldInput
+                                            argumentData={argumentData}
+                                            onChangeCallback={e => changeArgumentValue(e, argumentData)}
+                                            disabled={false}
+                                            onEdit={onEdit}
+                                        />
                                     </div>
-                                    {(argumentData.type === 'object') && (
-                                        <div className="input-group">
-                                            SHOW OBJECT HEAR!
-                                        </div>
-                                        )}
                                 </div>
                             </div>
                         )

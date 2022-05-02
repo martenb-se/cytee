@@ -45,10 +45,6 @@ function FunctionListTab({label}) {
         return <div>Fetching Functions....</div>
     }
 
-    useEffect(() => {
-        console.log('functionList: ', functionList);
-    }, [functionList])
-
     if (functionListLoadingState === 'failed'){
         return (
             <>

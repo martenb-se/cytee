@@ -1,22 +1,33 @@
 import React from 'react';
 import {ObjectCreator} from "../../../Project/components/TestCreatorSection/ArgumentTab/ArgumentTab";
 
-function ArgumentDataFieldInput({type, value, onChangeCallback}) {
+function ArgumentDataFieldInput(
+    {
+        argumentData,
+        onChangeCallback,
+        disabled,
+        onEdit,
+    }) {
 
-    switch(type) {
+    if (argumentData === undefined) {
+        return <div>asdasd</div>
+    }
+
+    switch(argumentData.type) {
         case 'undefined':
         case 'null':
             return <input
                 className="form-control"
                 type="text"
                 disabled
-                value={type}
+                value={argumentData.type}
             />
         case 'boolean':
             return (
                 <select
                     className="form-select"
-                    defaultValue={value}
+                    defaultValue={argumentData.value}
+                    disabled={disabled}
                     onChange={onChangeCallback}
                 >
                     <option value={false}>False</option>
@@ -28,7 +39,8 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
                 <input
                     className="form-control"
                     type ="number"
-                    value={value}
+                    value={argumentData.value}
+                    disabled={disabled}
                     onChange={onChangeCallback}
                 />
             )
@@ -36,12 +48,24 @@ function ArgumentDataFieldInput({type, value, onChangeCallback}) {
             return <input
                 className="form-control"
                 type="text"
+                disabled={disabled}
                 onChange={onChangeCallback}
-                value={value}
+                value={argumentData.value}
             />
         case 'object':
         case 'array':
-            /*return <ObjectCreator />*/
+            return (
+                <button
+                    className="btn btn-secondary"
+                    onClick={e => {
+                        e.preventDefault();
+                        onEdit(argumentData);
+                    }}
+                    disabled={disabled}
+                >
+                    Edit
+                </button>
+            )
         default:
             return <div>[Input]</div>
     }

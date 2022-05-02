@@ -5,8 +5,7 @@ import './ObjectCreationTab.scss';
 
 import cloneDeep from "lodash/cloneDeep";
 
-// Creator Tab
-function ObjectCreationTab({initBaseState, onChangeCallback, label}) {
+function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
     const [baseState, setBaseState] = useState(initBaseState);
 
@@ -123,21 +122,6 @@ function ObjectCreationTab({initBaseState, onChangeCallback, label}) {
         }
 
         return attributeList;
-    }
-
-    function localChangeCallback() {
-        onLocalChangeCallback({
-            baseState: baseState,
-            selectedScope: selectedScope,
-            selectedAttribute: selectedAttribute,
-            scopeList: scopeList,
-            attributeList: attributeList,
-            attributeLabel: attributeLabel,
-            attributeType: attributeType,
-            attributeValue: attributeValue,
-            arrayIndex: arrayIndex,
-            errorMessage: errorMessage,
-        })
     }
 
     function onSelectedScopeChangeCallback(e) {
@@ -473,8 +457,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback, label}) {
                             <>
                                 <span className="input-group-text">Value</span>
                                 <ArgumentDataFieldInput
-                                    type={attributeType}
-                                    value={attributeValue}
+                                    argumentData={{value: attributeValue, type:attributeType}}
                                     onChangeCallback={onAttributeValueChangeCallback}
                                 />
                             </>

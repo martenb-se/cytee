@@ -8,6 +8,8 @@ import {getFunction} from "../../../../util/api";
 import {useSelector} from "react-redux";
 import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
 
+import './FunctionCodeTab.scss';
+
 function FunctionCodeTab() {
 
     const [functionCode, setFunctionCode] = useState(undefined);
@@ -32,7 +34,14 @@ function FunctionCodeTab() {
                     Fetching function code...
                 </div>
                 :
-                <SyntaxHighlighter language="javascript" style={monokai}>
+                <SyntaxHighlighter
+                    language="javascript"
+                    className = "function-code-view"
+                    style={monokai}
+                    showLineNumbers={true}
+                    wrapLines={true}
+
+                >
                     {functionCode}
                 </SyntaxHighlighter>
             }

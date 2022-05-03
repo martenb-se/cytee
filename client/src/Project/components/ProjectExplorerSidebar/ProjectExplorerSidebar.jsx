@@ -5,7 +5,67 @@ import TestListTab from "./TestListTab";
 
 import './ProjectExplorerSidebar.jsx.scss';
 
-function ProjectExplorerSidebar(){
+import Tabs from "react-bootstrap/Tabs";
+import Tab from "react-bootstrap/Tab";
+import TabContainer from 'react-bootstrap/TabContainer'
+import TabContent from 'react-bootstrap/TabContent'
+import TabPane from 'react-bootstrap/TabPane'
+import {Col, Nav, NavLink, NavItem, Row} from "react-bootstrap";
+
+
+function ProjectExplorerSidebar() {
+
+    const [selectedTab, setSelectedTab] = useState('functionList');
+
+    function onSelectCallback(k) {
+        if (k === selectedTab) {
+            console.log('asdasd');
+            setSelectedTab('');
+        } else {
+            setSelectedTab(k);
+        }
+    }
+
+    return (
+        <div className="container project-explorer-sidebar-wrapper">
+            <TabContainer
+                id="project-explorer-sidebar-tab-container"
+                defaultActiveKey={selectedTab}
+                activeKey={selectedTab}
+                onSelect={onSelectCallback}
+            >
+                <Row>
+                    <Col md='auto'>
+                        <Nav className="flex-column" variant={"pills"}>
+                            <NavItem >
+                                <NavLink className="sidebar-nav-link" eventKey="functionList">Function List</NavLink>
+                            </NavItem>
+                            <NavItem>
+                                <NavLink className="sidebar-nav-link" eventKey="testList">Test List</NavLink>
+                            </NavItem>
+                        </Nav>
+                    </Col>
+                    { (selectedTab !== '') &&
+                        <Col>
+                            <TabContent className="sidebar-tab-content">
+                                <TabPane eventKey={'functionList'}>
+                                    <FunctionListTab />
+                                </TabPane>
+                                <TabPane eventKey={'testList'}>
+                                    <TestListTab />
+                                </TabPane>
+                            </TabContent>
+                        </Col>
+                    }
+                </Row>
+            </TabContainer>
+        </div>
+
+    )
+}
+
+
+function ProjectExplorerSidebar2(){
 
     const [activeTab, setActiveTab] = useState('');
 

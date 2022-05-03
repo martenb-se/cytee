@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useContext} from 'react';
 import {selectUnsavedActiveTest, updateReturnValue} from "../../../../reducers/activeTestInfoSlice";
 import {useDispatch, useSelector} from "react-redux";
 
@@ -8,10 +8,16 @@ import ArgumentTypeSelector from "../../../../shared/components/ArgumentTypeSele
 import ArgumentDataFieldInput from "../../../../shared/components/ArgumentInputValueSelector";
 import {isEmpty} from "lodash";
 
+import {localTabGroupContext} from "../TestCreatorTabGroup/TestCreatorTabGroup";
+import {CollapsibleStateViewer} from "../objectCreationTab/ObjectCreationTab";
+
+
 function ReturnTab({label}) {
 
     const dispatch = useDispatch();
     const unsavedTest = useSelector(selectUnsavedActiveTest);
+
+    const [localTabState, localTabDispatch] = useContext(localTabGroupContext);
 
     function onChangeCallback(returnValue) {
         dispatch(updateReturnValue(returnValue));
@@ -23,8 +29,14 @@ function ReturnTab({label}) {
         return <div className ="test-creator-tab-empty">waiting...</div>
     }
 
-    function changeReturnValueTypeCallback(e) {
+    function changeReturnValueTypeCallback(e, returnValueData) {
         const returnValueClone = cloneDeep(unsavedTest.moduleData.returnValue);
+        if ((returnValueClone.type === 'object') || (returnValueClone.type === 'array')) {
+            localTabDispatch({
+                type: 'removeChildTab',
+                payload: returnValueData.argument,
+            });
+        }
         returnValueClone.type = e.target.value;
         switch(returnValueClone.type) {
             case 'undefined':
@@ -44,7 +56,7 @@ function ReturnTab({label}) {
                 returnValueClone.value = '';
                 break;
             case 'object':
-                returnValueClone.value = {};
+                returnValueClone.value = [];
                 break;
         }
 
@@ -56,6 +68,30 @@ function ReturnTab({label}) {
         const returnValueClone = cloneDeep(unsavedTest.moduleData.returnValue);
         returnValueClone.value = e.target.value;
         onChangeCallback(returnValueClone);
+    }
+
+    function onSubTabChangeCallback(objectData) {
+        const argumentDataClone = cloneDeep(objectData);
+        localTabDispatch({
+            type: 'removeChildTab',
+            payload: 'returnValueChild'
+        });
+        onChangeCallback(argumentDataClone);
+    }
+
+    function onEdit(returnValueData) {
+        const returnValueDataClone = cloneDeep(returnValueData);
+        returnValueDataClone['argument'] = 'returnValue';
+        localTabDispatch({
+            type: 'addChildTab',
+            payload: {
+                initValue: returnValueDataClone,
+                onObjectChangeCallback: onSubTabChangeCallback,
+                parentEventKey: "returnValue",
+                eventKey: 'returnValueChild',
+                title:  "return value - editor"
+            }
+        });
     }
 
     return (
@@ -76,11 +112,15 @@ function ReturnTab({label}) {
                             onChangeCallback={changeReturnValueTypeCallback}
                         />
                         <ArgumentDataFieldInput
-                            type={unsavedTest.moduleData.returnValue.type}
-                            value={unsavedTest.moduleData.returnValue.value}
+                            argumentData={unsavedTest.moduleData.returnValue}
                             onChangeCallback={changeReturnValueCallback}
+                            disabled={false}
+                            onEdit={onEdit}
                         />
                     </div>
+                    {(unsavedTest.moduleData.returnValue.type === 'object') &&
+                        <CollapsibleStateViewer stateData={unsavedTest.moduleData.returnValue}/>
+                    }
                 </form>
             </div>
     );

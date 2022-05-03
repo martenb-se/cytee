@@ -39,6 +39,8 @@ import {saveTestInfo} from "../../../reducers/activeTestInfoSlice";
 import cloneDeep from "lodash/cloneDeep";
 import {generateInitTestState} from "../../../util/generateInitTestState";
 
+import './TestCreatorSection.scss'
+
 export const moduleNameMapper= {
     argumentList: 'Arguments',
     returnValue: 'Return Value',
@@ -54,9 +56,11 @@ function TestCreatorSection() {
     }
 
     return (
-        <div className="test-creator-section-wrapper">
-            <ModulePanel />
-            <div>
+        <div className="test-creator-section-wrapper border-top row">
+            <div className = "col-3">
+                <ModulePanel />
+            </div>
+            <div className ="col-9">
                 <TestCreatorHeaderSection />
                 <TestCreatorTabGroup />
             </div>
@@ -103,26 +107,31 @@ function TestCreatorHeaderSection() {
         }
     }, [testLoadingState])
 
-    function createTestCallback() {
+    function createTestCallback(e) {
+        e.preventDefault();
         dispatch(saveTestInfo({}));
         setCreateLoadingState("loading");
     }
 
-    function updateTestCallback() {
+    function updateTestCallback(e) {
+        e.preventDefault();
         dispatch(updateTestInfo({}));
         setUpdateLoadingState("loading");
     }
 
-    function deleteTestCallback() {
+    function deleteTestCallback(e) {
+        e.preventDefault();
         dispatch(deleteTestInfo({}));
         setDeleteLoadingState('loading');
     }
 
-    function discardTestCallback() {
+    function discardTestCallback(e) {
+        e.preventDefault();
         dispatch(discardUnsavedChanges({}));
     }
 
-    function cancelCallback() {
+    function cancelCallback(e) {
+        e.preventDefault();
         dispatch(setActiveUnsavedTest({
             customName: "",
             moduleData: generateInitTestState(),
@@ -130,12 +139,14 @@ function TestCreatorHeaderSection() {
     }
 
     function onCustomNameChangeCallback(e) {
+        e.preventDefault();
         dispatch(updateUnsavedCustomName(e.target.value));
     }
 
     if (isEmpty(test)) {
         return (
             <form>
+
                 <div className="test-creator-section-header">
                     <div className="btn-group">
                         <button
@@ -154,6 +165,7 @@ function TestCreatorHeaderSection() {
                         </button>
                     </div>
                 </div>
+
                 <div className="mb-3">
                     <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
                     <input
@@ -164,6 +176,7 @@ function TestCreatorHeaderSection() {
                         disabled={testLoadingState==='loading'}
                     />
                 </div>
+
             </form>
         );
     }

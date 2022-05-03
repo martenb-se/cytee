@@ -497,9 +497,13 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
 }
 
-function CollapsibleStateViewer({stateData}) {
+export function CollapsibleStateViewer({stateData}) {
 
     const [hidden, setHidden] = useState(false);
+
+    useEffect(() => {
+        console.log('stateData: ', stateData);
+    }, [])
 
     function AttributeField(attribute) {
         switch(attribute.type) {
@@ -535,7 +539,10 @@ function CollapsibleStateViewer({stateData}) {
     return (
         <>
             <span>{(stateData.type === 'object')?"{":"["}</span>
-            <button className ="btn" onClick={() => setHidden(!hidden)}> {(hidden)?"+":"-"} </button>
+            <button className ="btn" onClick={(e) => {
+                e.preventDefault();
+                setHidden(!hidden);
+            }}> {(hidden)?"+":"-"} </button>
             {
                 (hidden)? (
                     <span>{"}"}</span>
@@ -556,67 +563,5 @@ function CollapsibleStateViewer({stateData}) {
     );
 }
 
-function CollapsibleObject({objectData}) {
-
-    const [hidden, setHidden] = useState(false);
-
-    useEffect(() => {
-        console.log('objectData: ', objectData);
-    }, [objectData])
-
-    function AttributeField(objData) {
-
-        switch(objData.type) {
-            case 'array':
-                return <span></span>
-            case 'object':
-                return <CollapsibleObject objectData={objData.value}/>
-            case 'null':
-            case 'undefined':
-                return <pre>{objData.type}</pre>
-            case 'boolean':
-            case 'string':
-            case 'number':
-                return <pre>{objData.value.toString()}</pre>
-            default:
-                return <div>Bruh</div>
-        }
-    }
-
-    function generateObjectComponent(objData) {
-        return (
-            <li key={objData.argument + "-" + objData.type + "-"}>
-                <span>{objData.argument}: </span> {AttributeField(objData)}
-            </li>
-        );
-    }
-
-    if (!Array.isArray(objectData.value)) {
-        return <div>waiting for data</div>
-    }
-
-    return (
-        <>
-            <span>{"{"}</span>
-            <button className ="btn" onClick={() => setHidden(!hidden)}> {(hidden)?"+":"-"} </button>
-            {
-                (hidden)? (
-                    <span>{"}"}</span>
-                ) : (
-                    <>
-                        <ul>
-                            {
-                                objectData.value.map(objData => generateObjectComponent(objData))
-                            }
-                        </ul>
-                        <div>{"}"}</div>
-                    </>
-                )
-            }
-
-        </>
-
-    );
-}
 
 export default ObjectCreationTab;

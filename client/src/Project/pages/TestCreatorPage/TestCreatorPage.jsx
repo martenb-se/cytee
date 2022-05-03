@@ -82,14 +82,16 @@ function TestCreatorPage({}){
     }
 
     return (
-        <div className = "test-creator-Page-wrapper">
-            <div className = "side-panel">
-                <ProjectExplorerSidebar />
-                <button className ="btn btn-primary">Generate Tests</button>
-            </div>
-            <div className = "test-creation-area">
-                <CodeViewingSection/>
-                <TestCreatorSection/>
+        <div className = "container test-creator-Page-wrapper">
+            <div className ="row">
+                <div className = "test-creator-side-panel col-auto">
+                    <ProjectExplorerSidebar />
+                    <button className="btn btn-primary">Generate Tests</button>
+                </div>
+                <div className = "test-creation-area col">
+                    <CodeViewingSection/>
+                    <TestCreatorSection/>
+                </div>
             </div>
         </div>
 

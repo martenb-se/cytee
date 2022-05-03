@@ -5,7 +5,68 @@ import FunctionCodeTab from "./FunctionCodeTab";
 import FunctionCompareTab from "./FunctionCompareTab";
 import {selectActiveFunction} from "../../../reducers/activeFunctionSlice";
 
+import TabContainer from 'react-bootstrap/TabContainer'
+import TabContent from 'react-bootstrap/TabContent'
+import TabPane from 'react-bootstrap/TabPane'
+import {Col, Nav, NavLink, NavItem, Row} from "react-bootstrap";
+
+import './CodeViewingSection.scss'
+
 function CodeViewingSection() {
+
+    const [activeTab, setActiveTab] = useState('functionCode');
+    const activeFunction = useSelector(selectActiveFunction);
+
+    return (
+        <div className="code-view-tab-group-wrapper">
+            <TabContainer
+                defaultActiveKey="functionCode"
+                activeKey={activeTab}
+                onSelect={(k) => setActiveTab(k)}
+                className="code-view-tab-group"
+            >
+                <Row>
+                    <Col>
+                        <Nav variant={"tabs"}>
+                            <NavItem>
+                                <NavLink eventKey="functionCode">
+                                    Function Code
+                                </NavLink>
+                            </NavItem>
+                            {
+                                (activeFunction.haveFunctionChanged) && (
+                                    <NavItem>
+                                        <NavLink eventKey="codeCompare">
+                                            Code Compare
+                                        </NavLink>
+                                    </NavItem>
+                                )
+                            }
+                        </Nav>
+                        <Col>
+                            <TabContent
+                                className="code-view-tab-content"
+                            >
+                                <TabPane eventKey="functionCode">
+                                    <FunctionCodeTab />
+                                </TabPane>
+                                {
+                                    (activeFunction.haveFunctionChanged) && (
+                                        <TabPane eventKey="codeCompare">
+                                            <FunctionCompareTab />
+                                        </TabPane>
+                                    )
+                                }
+                            </TabContent>
+                        </Col>
+                    </Col>
+                </Row>
+            </TabContainer>
+        </div>
+    );
+}
+
+function CodeViewingSection2() {
 
     const [activeTab, setActiveTab] = useState('Function Code');
     const activeFunction = useSelector(selectActiveFunction);

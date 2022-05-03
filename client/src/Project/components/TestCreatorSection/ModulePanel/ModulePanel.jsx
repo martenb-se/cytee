@@ -6,9 +6,11 @@ import {isEmpty} from "lodash";
 
 import {useSelector, useDispatch} from "react-redux";
 
+import './ModulePanel.scss'
+
 function ModulePanel() {
     return (
-        <div className ="module-panel-wrapper">
+        <div className ="module-panel-wrapper border-end">
             <ModuleSelector />
             <ModuleList/>
         </div>

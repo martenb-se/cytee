@@ -7,9 +7,13 @@ import ArgumentTypeSelector from "../../../../shared/components/ArgumentTypeSele
 import ArgumentDataFieldInput from "../../../../shared/components/ArgumentInputValueSelector";
 import ObjectDataFieldInput from "../ObjectDataFieldInput/ObjectDataFieldInput";
 
+import {CollapsibleStateViewer} from "../objectCreationTab/ObjectCreationTab";
+
 import cloneDeep from "lodash/cloneDeep";
 import {isEmpty} from "lodash";
 import {localTabGroupContext} from "../TestCreatorTabGroup/TestCreatorTabGroup";
+
+import './ArgumentTab.scss';
 
 function ArgumentTab({label, addChildFunction, removeChildFunction}) {
 
@@ -67,7 +71,6 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
                 title: argumentData.argument + " - editor"
             }
         });
-
     }
 
     function changeArgumentType(e, argumentData) {
@@ -146,7 +149,11 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
                                             disabled={false}
                                             onEdit={onEdit}
                                         />
+
                                     </div>
+                                    {(argumentData.type === 'object') &&
+                                        <CollapsibleStateViewer stateData={argumentData}/>
+                                    }
                                 </div>
                             </div>
                         )

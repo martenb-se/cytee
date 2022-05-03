@@ -14,6 +14,46 @@ import {isEmpty} from "lodash";
 
 import './FunctionListTab.scss'
 
+function fileNameComponent(functionInfo) {
+
+    let resultingFileName;
+
+    if (functionInfo.fileId.indexOf('/') !== -1 ) {
+        const splitFileName = functionInfo.fileId.split('/');
+        resultingFileName = ((splitFileName.length > 3)?".../":"") + splitFileName[splitFileName.length-2] + '/' + splitFileName[splitFileName.length-1];
+    } else {
+        resultingFileName = functionInfo.fileId;
+    }
+
+    return (
+        <td
+            className="function-list-tab-file-name-col"
+            title={functionInfo.fileId}
+        >
+            {resultingFileName}
+        </td>
+    )
+
+}
+
+function functionNameComponent(functionInfo) {
+    let resultingFunctionName;
+
+    if (functionInfo.functionId.indexOf('.') !== -1) {
+        const splitFunctionName = functionInfo.functionId.split('.');
+        resultingFunctionName = ((splitFunctionName.length > 1)?"...":"") + splitFunctionName[splitFunctionName.length-1];
+    } else {
+        resultingFunctionName = functionInfo.functionId;
+    }
+
+    return (
+        <td
+            className="function-list-tab-function-name-col"
+            title={functionInfo.functionId}
+        >{resultingFunctionName}</td>
+    )
+}
+
 function FunctionListTab({label}) {
 
     const dispatch = useDispatch();
@@ -55,7 +95,7 @@ function FunctionListTab({label}) {
     }
 
     return (
-        <div className={'function-list-tab'}>
+        <div className='function-list-tab'>
 
             <table className="table table-hover function-list-tab-table">
                 <thead>
@@ -89,14 +129,8 @@ function FunctionListTab({label}) {
                                 (isActiveFunction(functionInfo)?"table-active":"") + " "
                             }
                         >
-                            <td
-                                className="function-list-tab-function-name-col"
-                                title={functionInfo.functionId}
-                            >{functionInfo.functionId}</td>
-                            <td
-                                className="function-list-tab-file-name-col"
-                                title={functionInfo.fileId}
-                            >{functionInfo.fileId}</td>
+                            {functionNameComponent(functionInfo)}
+                            {fileNameComponent(functionInfo)}
                             <td
                                 className="function-list-tab-dependencies-col"
                             >{functionInfo.dependencies}</td>

@@ -1,0 +1,15 @@
+.test-creator-Page-wrapper {
+  margin-top: 10px;
+  height: 100%;
+  overflow-y: auto;
+
+  .test-creator-side-panel {
+    //z-index: 1050;
+    //height: 100vh;
+    //overflow-y: auto;
+  }
+
+  .test-creation-area {
+    overflow-x: auto;
+  }
+}

@@ -187,6 +187,20 @@ def post_delete_test():
     return jsonify(api_return)
 
 
+@server.route('/api/generate_tests', methods=['POST'])
+def post_generate_tests():
+    """Generates tests for the project specified by the given path.
+
+
+    :return: JSON with status code.
+    """
+    content = request.json
+    path_to_project = content["pathToProject"]
+    api_return = generate_project_tests(path_to_project)
+
+    return jsonify(api_return)
+
+
 @server.route('/api/time')
 def get_current_time():
     """Display the current time.

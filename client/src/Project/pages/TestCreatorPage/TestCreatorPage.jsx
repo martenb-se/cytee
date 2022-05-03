@@ -17,6 +17,8 @@ import {
     fetchTestList
 } from "../../../reducers/testListSlice";
 
+import {generateTests} from "../../../util/api";
+
 function TestCreatorPage({}){
 
     const dispatch = useDispatch();
@@ -31,6 +33,8 @@ function TestCreatorPage({}){
 
     const [loadingState, setLoadingState] = useState('');
     const [loadingMessage, setLoadingMessage] = useState('');
+
+    const [generateTestLoading, setGenerateTestLoading] = useState('');
 
     // Load in functions' info
     useEffect(() => {
@@ -53,10 +57,7 @@ function TestCreatorPage({}){
         }
     }, [functionListStatus])
 
-
-
     useEffect(() => {
-
         if (loadingState !== 'done') {
             if (testListStatus === 'succeeded') {
                 setLoadingState('done');
@@ -68,6 +69,12 @@ function TestCreatorPage({}){
         }
     }, [testListStatus]);
 
+    function generateProjectTests() {
+        setGenerateTestLoading('loading');
+        generateTests(projectPath).then(data => {
+            setGenerateTestLoading('');
+        })
+    }
 
     if (loadingState === 'failed') {
         return (
@@ -86,7 +93,13 @@ function TestCreatorPage({}){
             <div className ="row">
                 <div className = "test-creator-side-panel col-auto">
                     <ProjectExplorerSidebar />
-                    <button className="btn btn-primary">Generate Tests</button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={generateProjectTests}
+                        disabled={generateTestLoading==='loading'}
+                    >
+                        Generate Tests
+                    </button>
                 </div>
                 <div className = "test-creation-area col">
                     <CodeViewingSection/>
@@ -94,9 +107,7 @@ function TestCreatorPage({}){
                 </div>
             </div>
         </div>
-
     );
-
 }
 
 function LoadingScreen({loadingMessage}) {

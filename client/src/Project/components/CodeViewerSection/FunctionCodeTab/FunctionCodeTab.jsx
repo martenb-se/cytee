@@ -28,24 +28,22 @@ function FunctionCodeTab() {
 
 
     return (
-        <div className={'functionCodeView'}>
-            {(functionCode === undefined) ?
-                <div>
-                    Fetching function code...
+        <>
+            {
+                (functionCode !== undefined) &&
+                <div className={'functionCodeView'}>
+                    <SyntaxHighlighter
+                        language="javascript"
+                        className = "function-code-view"
+                        style={monokai}
+                        showLineNumbers={true}
+                        wrapLines={true}
+                    >
+                        {functionCode}
+                    </SyntaxHighlighter>
                 </div>
-                :
-                <SyntaxHighlighter
-                    language="javascript"
-                    className = "function-code-view"
-                    style={monokai}
-                    showLineNumbers={true}
-                    wrapLines={true}
-
-                >
-                    {functionCode}
-                </SyntaxHighlighter>
             }
-        </div>
+        </>
     )
 }
 

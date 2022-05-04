@@ -1,4 +1,56 @@
 .create-object-tab-wrapper {
-  height: 26vh;
+  //height: 26vh;
+  //display:flex;
+  //flex-direction: row;
+  height: 100%;
   overflow-y: auto;
+}
+
+.creat-object-object-viewer {
+  padding: 10px;
+
+  box-shadow: inset 0 0 5px #b6b6b6;
+  margin: 10px 0;
+
+  button {
+    border: solid 0 #b6b6b6;
+    background-color: white;
+    padding: 0;
+
+  }
+
+  ul {
+    list-style-type: none;
+    padding-left: 15px;
+  }
+
+  li {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+
+
+    pre {
+
+    }
+
+  }
+}
+
+.collapsible-state-expand-button-content {
+  //position: absolute;
+
+  //bottom: 50%;
+}
+
+.collapsible-state-viewer {
+  //display: flex;
+  //flex-direction: row;
+  //justify-content: flex-start;
+}
+
+.collapsible-state-viewer-attribute {
+  font-weight: bold;
+  margin-left: 5px;
+  margin-right: 10px;
 }

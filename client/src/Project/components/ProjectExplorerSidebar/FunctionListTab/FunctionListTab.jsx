@@ -244,6 +244,7 @@ function FunctionListTab({label}) {
 
     return (
         <div className='function-list-tab'>
+
             <table className="table table-hover function-list-tab-table">
                 <thead>
                 <tr className ="table-list-header-row">

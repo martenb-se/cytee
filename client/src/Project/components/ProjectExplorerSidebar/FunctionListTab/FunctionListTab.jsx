@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 
 import {useSelector, useDispatch} from "react-redux";
 import {
@@ -13,46 +13,16 @@ import {generateInitTestState} from "../../../../util/generateInitTestState";
 import {isEmpty} from "lodash";
 
 import './FunctionListTab.scss'
+import '../ProjectExplorerSidebar.jsx.scss'
+import cloneDeep from "lodash/cloneDeep";
 
-function fileNameComponent(functionInfo) {
+import {
+    formatTableString,
+    categorizeList,
+    FileNameTableRow
+} from "../ProjectExplorerSidebar";
 
-    let resultingFileName;
-
-    if (functionInfo.fileId.indexOf('/') !== -1 ) {
-        const splitFileName = functionInfo.fileId.split('/');
-        resultingFileName = ((splitFileName.length > 3)?".../":"") + splitFileName[splitFileName.length-2] + '/' + splitFileName[splitFileName.length-1];
-    } else {
-        resultingFileName = functionInfo.fileId;
-    }
-
-    return (
-        <td
-            className="function-list-tab-file-name-col"
-            title={functionInfo.fileId}
-        >
-            {resultingFileName}
-        </td>
-    )
-
-}
-
-function functionNameComponent(functionInfo) {
-    let resultingFunctionName;
-
-    if (functionInfo.functionId.indexOf('.') !== -1) {
-        const splitFunctionName = functionInfo.functionId.split('.');
-        resultingFunctionName = ((splitFunctionName.length > 1)?"...":"") + splitFunctionName[splitFunctionName.length-1];
-    } else {
-        resultingFunctionName = functionInfo.functionId;
-    }
-
-    return (
-        <td
-            className="function-list-tab-function-name-col"
-            title={functionInfo.functionId}
-        >{resultingFunctionName}</td>
-    )
-}
+import LoadingComponent from "../../../../shared/components/LoadingComponent";
 
 function FunctionListTab({label}) {
 
@@ -63,6 +33,7 @@ function FunctionListTab({label}) {
     const functionListErrorMessage = useSelector(selectFunctionListError);
 
     const activeFunction = useSelector(selectActiveFunction);
+
 
     function isActiveFunction(funcInfo) {
         return (!isEmpty(activeFunction)) &&
@@ -82,7 +53,7 @@ function FunctionListTab({label}) {
 
     if ((functionListLoadingState === 'loading') ||
         (functionListLoadingState === '')) {
-        return <div>Fetching Functions....</div>
+        return <LoadingComponent />
     }
 
     if (functionListLoadingState === 'failed'){
@@ -96,28 +67,53 @@ function FunctionListTab({label}) {
 
     return (
         <div className='function-list-tab'>
-
             <table className="table table-hover function-list-tab-table">
                 <thead>
-                <tr>
-                    <th scope="col">Function Name</th>
-                    <th  scope="col">File Name</th>
-                    <th
-                        className="function-list-tab-dependencies-col"
-                        scope="col">
-                        Dependencies
-                    </th>
-                    <th
-                        className="function-list-tab-number-of-test-col"
-                        scope="col">
-                        Number of tests
-                    </th>
-                    <th>
-                        Have Function Changed
-                    </th>
+                <tr className ="table-list-header-row">
+                    <th id="function-list-header-col" scope="col">Function Name</th>
+                    <th scope="col"># Dep </th>
+                    <th scope="col"># Tests </th>
                 </tr>
                 </thead>
-                <tbody>
+                <tbody className="function-list-table-content">
+                {
+                    Object.keys(categorizeList(functionList, 'fileId')).sort().map( fileName => {
+                        const categorizedFunctionList = categorizeList(functionList, 'fileId');
+                        return (
+                            <React.Fragment key={fileName}>
+                                <FileNameTableRow
+                                    fileName={fileName}
+                                    colSpan={"3"}
+                                    haveFunctionChanged={categorizedFunctionList[fileName].haveFunctionChanged}
+                                />
+                                {
+                                    categorizedFunctionList[fileName].map(funcInf => {
+                                      return (
+                                          <tr
+                                              key={funcInf._id}
+                                              title={funcInf.functionId}
+                                              onClick={() => onClickCallback(funcInf)}
+                                              className={(isActiveFunction(funcInf)?"table-active table-primary":((funcInf.haveFunctionChanged)?"table-warning":""))}
+                                          >
+                                              <td>{formatTableString(funcInf.functionId, 32)}</td>
+                                              <td>{funcInf.dependencies}</td>
+                                              <td>{funcInf.numberOfTests}</td>
+
+                                          </tr>
+                                      )
+                                    })
+                                }
+                            </React.Fragment>
+                        )
+                    })
+                }
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+/*
                 {functionList.map(functionInfo => {
                     return (
                         <tr
@@ -148,10 +144,6 @@ function FunctionListTab({label}) {
                         </tr>
                     );
                 })}
-                </tbody>
-            </table>
-        </div>
-    );
-}
+*/
 
 export default FunctionListTab;

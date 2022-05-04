@@ -1,4 +1,4 @@
-import React, {useState, useEffect, createContext, useReducer} from 'react';
+import React, {useState, useEffect, createContext, useReducer, useContext} from 'react';
 import {selectUnsavedActiveTest} from "../../../../reducers/activeTestInfoSlice";
 import {useSelector} from "react-redux";
 import ArgumentTab from "../ArgumentTab";
@@ -8,38 +8,13 @@ import {isEmpty, cloneDeep} from "lodash";
 
 import ObjectCreationTab from "../objectCreationTab/ObjectCreationTab";
 
+import {localTabGroupContext} from "../TestCreatorSection";
+
 import Tabs from 'react-bootstrap/Tabs'
 import Tab from 'react-bootstrap/Tab'
-import TabContainer from 'react-bootstrap/TabContainer'
-import TabContent from 'react-bootstrap/TabContent'
-import TabPane from 'react-bootstrap/TabPane'
+
 
 import './TestCreatorTabGroup.scss'
-
-const initLocalTabState = [];
-
-export const localTabGroupContext = createContext();
-const { Provider } = localTabGroupContext;
-
-function localTabGroupReducer(state, action) {
-    switch(action.type) {
-        case 'addChildTab':
-            const addChildLocalTabsClone = cloneDeep(state);
-            console.log('addChildLocalTabsClone: ',  addChildLocalTabsClone);
-            if (addChildLocalTabsClone.findIndex(childTab => childTab.eventKey === action.payload.eventKey) === -1) {
-                addChildLocalTabsClone.push(cloneDeep(action.payload));
-            }
-            return addChildLocalTabsClone;
-        case 'removeChildTab':
-            const removeChildLocalTabsClone = cloneDeep(state);
-            console.log('removeChildLocalTabsClone: ',  removeChildLocalTabsClone);
-            const childIndex = removeChildLocalTabsClone.findIndex(childTab => childTab.eventKey === action.payload);
-            if (childIndex !== -1) {
-                removeChildLocalTabsClone.splice(childIndex, 1);
-            }
-            return removeChildLocalTabsClone
-    }
-}
 
 function TestCreatorTabGroup({}) {
 
@@ -47,7 +22,9 @@ function TestCreatorTabGroup({}) {
 
     const [activeTabKey, setActiveTabKey] = useState('');
 
-    const [localTabState, localTabDispatch] = useReducer(localTabGroupReducer, initLocalTabState);
+    //const [localTabState, localTabDispatch] = useReducer(localTabGroupReducer, initLocalTabState);
+
+    const [localTabState, localTabDispatch] = useContext(localTabGroupContext);
 
     useEffect(() => {
 
@@ -126,20 +103,16 @@ function TestCreatorTabGroup({}) {
     }
 
     return (
-        <Provider value={[localTabState, localTabDispatch]}>
-            <div className ="test-creator-tab-group">
-                <Tabs
-                    id="module-tab-group"
-                    className=""
-                    onSelect={onSelectCallback}
-                    activeKey={activeTabKey}
-                >
-                    {generateTabList()}
-                </Tabs>
-            </div>
-
-        </Provider>
-
+        <div className ="test-creator-tab-group">
+            <Tabs
+                id="module-tab-group"
+                className=""
+                onSelect={onSelectCallback}
+                activeKey={activeTabKey}
+            >
+                {generateTabList()}
+            </Tabs>
+        </div>
     );
 }
 

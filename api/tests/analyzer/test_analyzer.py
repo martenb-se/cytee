@@ -2,61 +2,75 @@ import os
 import esprima.nodes
 import pytest
 from api.tests.fixtures.mocking.open import mocker_open
-from api.analyzer.analyzer import analyze_files, AnalyzeJS
+from api.analyzer.analyzer import AnalyzeJS
+from api.analyzer.process import analyze_files
 
-MOCK_PROJECT_ROOT = "/project/src/"
+MOCK_PROJECT_ROOT = "/project/src"
 MOCK_FILES_AND_CONTENTS = [
     # (FAKED FILE,
     # REAL FILE IN "analyzer_test_data" FOLDER)
 
     # Syntax Testing
-    ("/project/src/bad_code.js",
+    (MOCK_PROJECT_ROOT + "/bad_code.js",
      "bad_code.js"),
 
     # Version Check
-    ("/project/src/supported_object_spreading.js",
+    (MOCK_PROJECT_ROOT + "/supported_object_spreading.js",
      "version_check/ecmascript-2018_object_spreading.js"),
-    ("/project/src/unsupported_optional_catch_bind.js",
+    (MOCK_PROJECT_ROOT + "/unsupported_optional_catch_bind.js",
      "version_check/ecmascript-2019_optional_catch_bind.js"),
-    ("/project/src/unsupported_private_class_variable.js",
+    (MOCK_PROJECT_ROOT + "/unsupported_private_class_variable.js",
      "version_check/ecmascript-2020_private_class_variable.js"),
-    ("/project/src/unsupported_logical_assignment.js",
+    (MOCK_PROJECT_ROOT + "/unsupported_logical_assignment.js",
      "version_check/ecmascript-2021_logical_assignment.js"),
-    ("/project/src/unsupported_private_slot_check.js",
+    (MOCK_PROJECT_ROOT + "/unsupported_private_slot_check.js",
      "version_check/ecmascript-2022_private_slot_check.js"),
 
-    # Global
-    ("/project/src/global_function.js",
-     "global_function.js"),
+    # Verify get_file_identity()
+    (MOCK_PROJECT_ROOT + "/App.js",
+     "test_surface/export_default.js"),
+    (MOCK_PROJECT_ROOT + "/api/externalCall.js",
+     "test_surface/export_default.js"),
+    (MOCK_PROJECT_ROOT + "/components/ComponentName/index.js",
+     "test_surface/export_default.js"),
+    (MOCK_PROJECT_ROOT + "/components/ComponentName/ComponentName.js",
+     "test_surface/export_default.js"),
+
+    # Test Surfaces
+    (MOCK_PROJECT_ROOT + "/no_export_multiple.js",
+     "test_surface/no_export_multiple.js"),
+
+    (MOCK_PROJECT_ROOT + "/export_default.js",
+     "test_surface/export_default.js"),
+    (MOCK_PROJECT_ROOT + "/export_default_class.js",
+     "test_surface/export_default_class.js"),
+    (MOCK_PROJECT_ROOT + "/export_default_function.js",
+     "test_surface/export_default_function.js"),
+    (MOCK_PROJECT_ROOT + "/export_default_object.js",
+     "test_surface/export_default_object.js"),
+
+    (MOCK_PROJECT_ROOT + "/export_named.js",
+     "test_surface/export_named.js"),
+    (MOCK_PROJECT_ROOT + "/export_named_same_name.js",
+     "test_surface/export_named_same_name.js"),
+    (MOCK_PROJECT_ROOT + "/export_named_declare_class.js",
+     "test_surface/export_named_declare_class.js"),
+    (MOCK_PROJECT_ROOT + "/export_named_declare_function.js",
+     "test_surface/export_named_declare_function.js"),
+    (
+        MOCK_PROJECT_ROOT + "/export_named_declare_variable_const_arrow_function.js",
+        "test_surface/export_named_declare_variable_const_arrow_function.js"),
+    (
+        MOCK_PROJECT_ROOT + "/export_named_declare_variable_let_arrow_function.js",
+        "test_surface/export_named_declare_variable_let_arrow_function.js"),
 
     # Dependency
-    ("/project/src/dependency_import_default.js",
-     "dependency/dependency_import_default.js"),
-    ("/project/src/dependency_import_named.js",
-     "dependency/dependency_import_named.js"),
-
-    # Export
-    ("/project/src/export_default.js",
-     "export/export_default.js"),
-    ("/project/src/export_default_class.js",
-     "export/export_default_class.js"),
-    ("/project/src/export_default_function.js",
-     "export/export_default_function.js"),
-    ("/project/src/export_default_object.js",
-     "export/export_default_object.js"),
-    ("/project/src/export_named.js",
-     "export/export_named.js"),
-    ("/project/src/export_named_same_name.js",
-     "export/export_named_same_name.js"),
-
-    ("/project/src/no_export_arrow_function.js",
-     "export/no_export_arrow_function.js"),
-    ("/project/src/no_export_class.js",
-     "export/no_export_class.js"),
-    ("/project/src/no_export_function.js",
-     "export/no_export_function.js"),
-    ("/project/src/no_export_object_property_function.js",
-     "export/no_export_object_property_function.js")
+    (MOCK_PROJECT_ROOT + "/import_default.js",
+     "dependency/import_default.js"),
+    (MOCK_PROJECT_ROOT + "/import_named.js",
+     "dependency/import_named.js"),
+    (MOCK_PROJECT_ROOT + "/import_named_renamed.js",
+     "dependency/import_named_renamed.js")
 
 ]
 
@@ -102,7 +116,7 @@ def __debug_created_functions(analyzer=None):
 
         call_chain = ""
         for index, call in \
-                enumerate(created_functions[created_function]['call_chain']):
+                enumerate(created_functions[created_function]['identity']):
             if len(call['arguments']) > 0:
                 call_args = f"({call['arguments']})"
             else:
@@ -137,55 +151,57 @@ def __debug_created_functions(analyzer=None):
         print()
 
 
-def test_class_esprimaanalyze_init_file_location_not_string():
+# Validating AnalyzeJS construction requirements
+
+def test_analyzejs_init_file_location_not_string():
     file_location = False
     project_root = MOCK_PROJECT_ROOT
     try:
         AnalyzeJS(file_location, project_root)
         assert False
     except TypeError as e:
-        assert str(e) == "'file_location' must be a STRING"
+        assert str(e) == "'path_target_file' must be a STRING"
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_file_location_empty():
+def test_analyzejs_init_file_location_empty():
     file_location = ""
     project_root = MOCK_PROJECT_ROOT
     try:
         AnalyzeJS(file_location, project_root)
         assert False
     except ValueError as e:
-        assert str(e) == "'file_location' cannot be empty"
+        assert str(e) == "'path_target_file' cannot be empty"
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_project_root_not_string():
+def test_analyzejs_init_project_root_not_string():
     file_source = "/some/path/to/file.js"
     project_root = False
     try:
         AnalyzeJS(file_source, project_root)
         assert False
     except TypeError as e:
-        assert str(e) == "'project_root' must be a STRING"
+        assert str(e) == "'path_project_root' must be a STRING"
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_project_root_empty():
+def test_analyzejs_init_project_root_empty():
     file_location = "/some/path/to/file.js"
     project_root = ""
     try:
         AnalyzeJS(file_location, project_root)
         assert False
     except ValueError as e:
-        assert str(e) == "'project_root' cannot be empty"
+        assert str(e) == "'path_project_root' cannot be empty"
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_file_nonexistant():
+def test_analyzejs_init_file_nonexistant():
     file_location = "/project/src/missing_file.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -198,15 +214,10 @@ def test_class_esprimaanalyze_init_file_nonexistant():
         assert False
 
 
-# TODO: TEST MORE CLASS METHODS
+# Validating AnalyzeJS dependency integrity
+# Esprima reaction to bad code
 
-
-#
-# TESTING BAD SYNTAX
-#
-
-
-def test_class_esprimaanalyze_init_bad_code(mock_project_files):
+def test_analyzejs_init_bad_code(mock_project_files):
     file_location = "/project/src/bad_code.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -214,20 +225,24 @@ def test_class_esprimaanalyze_init_bad_code(mock_project_files):
         assert False
     except SyntaxError as e:
         assert str(e) == \
-               "Contents in file at 'file_location' string could not be " \
-               "parsed.\nInformation from esprima:\nLine 1: Missing " \
+               "Contents in file at '/project/src/bad_code.js' string could " \
+               "not be parsed.\nInformation from esprima:\nLine 1: Missing " \
                "initializer in const declaration"
     except Exception:
         assert False
 
 
-#
-# TESTING VERSION SUPPORT
-#
+# Validating AnalyzeJS dependency version
+# Esprima reaction to handling newer ECMAScript:
+# Should have support for syntax from:
+# - ES2018
+# Should not have support for syntax from:
+# - ES2019
+# - ES2020
+# - ES2021
+# - ES2022
 
-
-def test_class_esprimaanalyze_init_supported_object_spreading(
-        mock_project_files):
+def test_analyzejs_init_es2018_supported(mock_project_files):
     file_location = "/project/src/unsupported_object_spreading.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -239,8 +254,7 @@ def test_class_esprimaanalyze_init_supported_object_spreading(
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_optional_catch_bind(
-        mock_project_files):
+def test_analyzejs_init_es2019_unsupported(mock_project_files):
     file_location = "/project/src/unsupported_optional_catch_bind.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -248,14 +262,15 @@ def test_class_esprimaanalyze_init_unsupported_optional_catch_bind(
         assert False
     except SyntaxError as e:
         assert str(e) == \
-               "Contents in file at 'file_location' string could not be " \
-               "parsed.\nInformation from esprima:\nLine 4: Unexpected token {"
+               "Contents in file at " \
+               "'/project/src/unsupported_optional_catch_bind.js' string " \
+               "could not be parsed.\nInformation from esprima:\nLine 4: " \
+               "Unexpected token {"
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_private_class_variable(
-        mock_project_files):
+def test_analyzejs_init_es2020_unsupported(mock_project_files):
     file_location = "/project/src/unsupported_private_class_variable.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -263,15 +278,15 @@ def test_class_esprimaanalyze_init_unsupported_private_class_variable(
         assert False
     except SyntaxError as e:
         assert str(e) == \
-               "Contents in file at 'file_location' string could not be " \
-               "parsed.\nInformation from esprima:\nLine 3: Unexpected " \
-               "token ILLEGAL"
+               "Contents in file at " \
+               "'/project/src/unsupported_private_class_variable.js' string " \
+               "could not be parsed.\nInformation from esprima:\nLine 3: " \
+               "Unexpected token ILLEGAL"
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_logical_assignment(
-        mock_project_files):
+def test_analyzejs_init_es2021_unsupported(mock_project_files):
     file_location = "/project/src/unsupported_logical_assignment.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -279,14 +294,15 @@ def test_class_esprimaanalyze_init_unsupported_logical_assignment(
         assert False
     except SyntaxError as e:
         assert str(e) == \
-               "Contents in file at 'file_location' string could not be " \
-               "parsed.\nInformation from esprima:\nLine 4: Unexpected token ="
+               "Contents in file at " \
+               "'/project/src/unsupported_logical_assignment.js' string " \
+               "could not be parsed.\nInformation from esprima:\nLine 4: " \
+               "Unexpected token ="
     except Exception:
         assert False
 
 
-def test_class_esprimaanalyze_init_unsupported_private_slot_check(
-        mock_project_files):
+def test_analyzejs_init_es2022_unsupported(mock_project_files):
     file_location = "/project/src/unsupported_private_slot_check.js"
     project_root = MOCK_PROJECT_ROOT
     try:
@@ -294,292 +310,389 @@ def test_class_esprimaanalyze_init_unsupported_private_slot_check(
         assert False
     except SyntaxError as e:
         assert str(e) == \
-               "Contents in file at 'file_location' string could not be " \
-               "parsed.\nInformation from esprima:\nLine 11: Unexpected " \
-               "token ILLEGAL"
+               "Contents in file at " \
+               "'/project/src/unsupported_private_slot_check.js' string " \
+               "could not be parsed.\nInformation from esprima:\nLine 11: " \
+               "Unexpected token ILLEGAL"
     except Exception:
         assert False
 
 
-#
-# TESTING SYNTAX "GENERAL"
-#
+# Validating AnalyzeJS get_file_identity
+
+def test_analyzejs_get_file_identity_in_root(mock_project_files):
+    path_target_file = MOCK_PROJECT_ROOT + "/App.js"
+    path_project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(path_target_file, path_project_root)
+
+    expected_file_identity = "App"
+    result_file_identity = analyzer.get_file_identity()
+
+    assert result_file_identity == expected_file_identity
 
 
-def test_class_esprimaanalyze_begin_analyze_global_function(
-        mock_project_files):
-    file_location = "/project/src/global_function.js"
+def test_analyzejs_get_file_identity_in_api_dir(mock_project_files):
+    path_target_file = MOCK_PROJECT_ROOT + "/api/externalCall.js"
+    path_project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(path_target_file, path_project_root)
+
+    expected_file_identity = "api/externalCall"
+    result_file_identity = analyzer.get_file_identity()
+
+    assert result_file_identity == expected_file_identity
+
+
+def test_analyzejs_get_file_identity_component_index(mock_project_files):
+    path_target_file = MOCK_PROJECT_ROOT + "/components/ComponentName/index.js"
+    path_project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(path_target_file, path_project_root)
+
+    expected_file_identity = "components/ComponentName/index"
+    result_file_identity = analyzer.get_file_identity()
+
+    assert result_file_identity == expected_file_identity
+
+
+def test_analyzejs_get_file_identity_component(mock_project_files):
+    path_target_file = \
+        MOCK_PROJECT_ROOT + "/components/ComponentName/ComponentName.js"
+    path_project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(path_target_file, path_project_root)
+
+    expected_file_identity = "components/ComponentName/ComponentName"
+    result_file_identity = analyzer.get_file_identity()
+
+    assert result_file_identity == expected_file_identity
+
+
+# Validating AnalyzeJS Post Process get_test_surfaces
+
+def test_ajspp_get_test_surfaces_no_exports(mock_project_files):
+    file_location = "/project/src/no_export_multiple.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_found_number_functions = 1
-    expected_found_function = "noArguments"
+    expected_number_found_test_surfaces = 0
 
-    created_functions = analyzer.get_functions()
-
-    assert \
-        expected_found_number_functions == len(created_functions) and \
-        expected_found_function in created_functions
-
-
-#
-# TESTING SYNTAX "DEPENDENCY"
-#
-
-def test_analyzejs_begin_analyze_dependency_import_default(
-        mock_project_files):
-    file_location = "/project/src/dependency_import_default.js"
-    project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
-    analyzer.begin_analyze()
-
-    expected_dependent_method_id = "dependentFunction"
-    expected_dependency_import_file_id = "shared/importedDefault"
-    expected_dependency_import_function_id = "importedFunctionDependency"
-
-    function_dependencies = \
-        analyzer.get_method_calls(expected_dependent_method_id)
+    result_test_surfaces = analyzer.get_test_surfaces()
 
     assert \
-        expected_dependency_import_file_id in function_dependencies and \
-        expected_dependency_import_function_id in \
-        function_dependencies[expected_dependency_import_file_id]
+        expected_number_found_test_surfaces == len(result_test_surfaces)
 
 
-def test_analyzejs_begin_analyze_dependency_import_named(
-        mock_project_files):
-    file_location = "/project/src/dependency_import_named.js"
-    project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
-    analyzer.begin_analyze()
-
-    expected_dependent_method_id = "dependentFunction"
-    expected_dependency_import_file_id = "shared/importedNamed"
-    expected_dependency_import_function_id = "importedNamedFunctionDepency"
-
-    function_dependencies = \
-        analyzer.get_method_calls(expected_dependent_method_id)
-
-    assert \
-        expected_dependency_import_file_id in function_dependencies and \
-        expected_dependency_import_function_id in \
-        function_dependencies[expected_dependency_import_file_id]
-
-
-#
-# TESTING SYNTAX "EXPORT"
-#
-
-
-def test_class_esprimaanalyze_begin_analyze_export_default(
-        mock_project_files):
+def test_ajspp_get_test_surfaces_export_default(mock_project_files):
     file_location = "/project/src/export_default.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "exportedFunction"
-    expected_export_info = "export default"
+    expected_found_test_surface = {
+        'pathToProject': '/project/src',
+        'fileId': 'export_default',
+        'arguments':
+            [['exportedFunction',
+              [{'type': 'Identifier', 'name': 'argA', 'range': [26, 30]},
+               {'type': 'Identifier', 'name': 'argB', 'range': [32, 36]}]]],
+        'functionRange': (25, 97),
+        'functionHash':
+            '873365059effe0f88849bebd7399b854331de9d82823667d556012710a94a6e2',
+        'exportInfo': 'export default',
+        'exportName': 'exportedFunction',
+        'functionId': 'exportedFunction'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == \
-        expected_method_id
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default_class(
-        mock_project_files):
+def test_ajspp_get_test_surfaces_export_default_class(mock_project_files):
     file_location = "/project/src/export_default_class.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_class = "ExportedClass"
-    expected_method_id = \
-        f"(new {expected_class}()).someOtherFunction"
-    expected_export_info = "export default"
+    expected_found_test_surface = {
+        'pathToProject': '/project/src',
+        'fileId': 'export_default_class',
+        'arguments':
+            [['someOtherFunction',
+              [{'type': 'Identifier',
+                'name': 'someOtherArgument',
+                'range': [59, 76]}]]],
+        'functionRange': (58, 117),
+        'functionHash':
+            '75ebbf1cba3c4ee813b5f6d146a3882db3bc6fa1525f088572cd63691cf14533',
+        'exportInfo': 'export default',
+        'exportName': 'ExportedClass',
+        'functionId': '(new ExportedClass()).someOtherFunction'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == \
-        expected_class
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default_function(
-        mock_project_files):
+def test_ajspp_get_test_surfaces_export_default_function(mock_project_files):
     file_location = "/project/src/export_default_function.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "exportedFunction"
-    expected_export_info = "export default"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedFunction',
+              [{'name': 'arg', 'range': [41, 44],
+                'type': 'Identifier'},
+               {'name': 'argB', 'range': [46, 50],
+                'type': 'Identifier'}]]],
+        'exportInfo': 'export default',
+        'exportName': 'exportedFunction',
+        'fileId': 'export_default_function',
+        'functionHash':
+            'e8d5c198b2e1c5f69507b14326bf8db0e06cae460fb6b217bb15e8abdde0f654',
+        'functionId': 'exportedFunction',
+        'functionRange': (15, 108),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == \
-        expected_method_id
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_export_default_object(
-        mock_project_files):
+def test_ajspp_get_test_surfaces_export_default_object(mock_project_files):
     file_location = "/project/src/export_default_object.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "exportedFunction"
-    expected_export_info = "export default"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedFunction',
+              [{'name': 'argA', 'range': [38, 42],
+                'type': 'Identifier'},
+               {'name': 'argB', 'range': [44, 48],
+                'type': 'Identifier'}]]],
+        'exportInfo': 'export default',
+        'exportName': 'exportedFunction',
+        'fileId': 'export_default_object',
+        'functionHash':
+            'd4c3d6638fec1466f012f3eebb2021069219c38fb1aabade19ab741a412499a4',
+        'functionId': 'exportedFunction',
+        'functionRange': (37, 107),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == \
-        expected_method_id
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_export_named(
-        mock_project_files):
+def test_ajspp_get_test_surfaces_export_named(mock_project_files):
     file_location = "/project/src/export_named.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "exportedOriginalFunction"
-    expected_export_name = "exportedRenamedFunction"
-    expected_export_info = "export"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedOriginalFunction',
+              [{'name': 'argA', 'range': [34, 38], 'type': 'Identifier'},
+               {'name': 'argB', 'range': [40, 44], 'type': 'Identifier'}]]],
+        'exportInfo': 'export',
+        'exportName': 'exportedRenamedFunction',
+        'fileId': 'export_named',
+        'functionHash':
+            '11126c06a034248393b86ade508ae990ff35ef5ff8d4a57e293568b44c399fd4',
+        'functionId': 'exportedOriginalFunction',
+        'functionRange': (33, 97),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == \
-        expected_export_name
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_export_named_same_name(
-        mock_project_files):
+def test_ajspp_get_test_surfaces_export_named_same_name(mock_project_files):
     file_location = "/project/src/export_named_same_name.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "exportedFunction"
-    expected_export_info = "export"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedFunction',
+              [{'name': 'argA', 'range': [26, 30], 'type': 'Identifier'},
+               {'name': 'argB', 'range': [32, 36], 'type': 'Identifier'}]]],
+        'exportInfo': 'export',
+        'exportName': 'exportedFunction',
+        'fileId': 'export_named_same_name',
+        'functionHash':
+            '11126c06a034248393b86ade508ae990ff35ef5ff8d4a57e293568b44c399fd4',
+        'functionId': 'exportedFunction',
+        'functionRange': (25, 89),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == \
-        expected_method_id
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-#
-# TESTING SYNTAX "NO EXPORT"
-#
-
-
-def test_class_esprimaanalyze_begin_analyze_no_export_arrow_function(
-        mock_project_files):
-    file_location = "/project/src/no_export_arrow_function.js"
+def test_ajspp_get_test_surfaces_named_declare_class(mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_class.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "privateFunction"
-    expected_export_info = "private"
+    expected_found_test_surface = {
+        'arguments':
+            [['someOtherFunction',
+              [{'name': 'someOtherArgument',
+                'range': [51, 68],
+                'type': 'Identifier'}]]],
+        'exportInfo': 'export',
+        'exportName': 'ExportedClass',
+        'fileId': 'export_named_declare_class',
+        'functionHash':
+            '75ebbf1cba3c4ee813b5f6d146a3882db3bc6fa1525f088572cd63691cf14533',
+        'functionId': '(new ExportedClass()).someOtherFunction',
+        'functionRange': (50, 109),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == ""
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_class(
-        mock_project_files):
-    file_location = "/project/src/no_export_class.js"
+def test_ajspp_get_test_surfaces_named_declare_function(mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_function.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_class = "PrivateClass"
-    expected_method_id = \
-        f"(new {expected_class}()).someFunction"
-    expected_export_info = "private"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedFunction',
+              [{'name': 'argA', 'range': [33, 37], 'type': 'Identifier'},
+               {'name': 'argB', 'range': [39, 43], 'type': 'Identifier'}]]],
+        'exportInfo': 'export',
+        'exportName': 'exportedFunction',
+        'fileId': 'export_named_declare_function',
+        'functionHash':
+            '342aac762a60d694d49a1dd0895a15de20c78c48f44b2e8eb75339d4b66542d3',
+        'functionId': 'exportedFunction',
+        'functionRange': (7, 93),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == ""
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_function(
-        mock_project_files):
-    file_location = "/project/src/no_export_function.js"
+def test_ajspp_get_test_surfaces_named_const_arrow_fn(mock_project_files):
+    file_location = \
+        "/project/src/export_named_declare_variable_const_arrow_function.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "privateFunction"
-    expected_export_info = "private"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedFunction',
+              [{'name': 'argA', 'range': [33, 37], 'type': 'Identifier'},
+               {'name': 'argB', 'range': [39, 43], 'type': 'Identifier'}]]],
+        'exportInfo': 'export',
+        'exportName': 'exportedFunction',
+        'fileId': 'export_named_declare_variable_const_arrow_function',
+        'functionHash':
+            'aa0ee4e215fc5a0f2095a6f48acc7f8e57acc7eb6d2b93933aaeaac85cf8393c',
+        'functionId': 'exportedFunction',
+        'functionRange': (32, 96),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == ""
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-def test_class_esprimaanalyze_begin_analyze_no_export_object_prop_fn(
+def test_ajspp_get_test_surfaces_named_let_variable_arrow_function(
         mock_project_files):
-    file_location = "/project/src/no_export_object_property_function.js"
+    file_location = \
+        "/project/src/export_named_declare_variable_let_arrow_function.js"
     project_root = MOCK_PROJECT_ROOT
-    analyzer = AnalyzeJS(file_location, project_root=project_root)
+    analyzer = AnalyzeJS(file_location, project_root)
     analyzer.begin_analyze()
 
-    expected_method_id = "privateObject.objectPropertyFunction"
-    expected_export_info = "private"
+    expected_found_test_surface = {
+        'arguments':
+            [['exportedFunction',
+              [{'name': 'argA', 'range': [31, 35], 'type': 'Identifier'},
+               {'name': 'argB', 'range': [37, 41], 'type': 'Identifier'}]]],
+        'exportInfo': 'export',
+        'exportName': 'exportedFunction',
+        'fileId': 'export_named_declare_variable_let_arrow_function',
+        'functionHash':
+            'aa0ee4e215fc5a0f2095a6f48acc7f8e57acc7eb6d2b93933aaeaac85cf8393c',
+        'functionId': 'exportedFunction',
+        'functionRange': (30, 94),
+        'pathToProject': '/project/src'}
 
-    created_functions = analyzer.get_functions()
+    result_test_surfaces = analyzer.get_test_surfaces()
 
-    assert \
-        expected_method_id in created_functions and \
-        created_functions[expected_method_id]["export_info"] == \
-        expected_export_info and \
-        created_functions[expected_method_id]["export_name"] == ""
+    assert len(result_test_surfaces) == 1 and \
+           result_test_surfaces[0] == expected_found_test_surface
 
 
-# TODO: CONTINUE TESTING MORE SPECIFIC CASES (AS ABOVE)
+# Validating AnalyzeJS Post Process get_test_surfaces
 
+def test_ajspp_get_dependency_usages_import_default(mock_project_files):
+    file_location = "/project/src/import_default.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root)
+    analyzer.begin_analyze()
+
+    expected_found_dependency = {
+        'calledFileId': 'shared/importedDefault',
+        'calledFunctionId': 'importedDefault.importedFunctionDependency',
+        'fileId': 'import_default',
+        'functionId': '!OUTSIDE_TEST_SURFACE',
+        'pathToProject': '/project/src'}
+
+    result_dependencies = analyzer.get_dependency_usages()
+
+    assert len(result_dependencies) == 1 and \
+           result_dependencies[0] == expected_found_dependency
+
+
+def test_analyzejs_begin_analyze_dependency_import_named(mock_project_files):
+    file_location = "/project/src/import_named.js"
+    project_root = MOCK_PROJECT_ROOT
+    analyzer = AnalyzeJS(file_location, project_root)
+    analyzer.begin_analyze()
+
+    expected_found_dependency = {
+        'calledFileId': 'shared/importedNamed',
+        'calledFunctionId': 'importedNamedFunctionDepency',
+        'fileId': 'import_named',
+        'functionId': '!OUTSIDE_TEST_SURFACE',
+        'pathToProject': '/project/src'}
+
+    result_dependencies = analyzer.get_dependency_usages()
+
+    assert len(result_dependencies) == 1 and \
+           result_dependencies[0] == expected_found_dependency
+
+
+# Validating analyze_files
 
 def test_analyze_files_arg_not_string():
     project_root = 1

@@ -3,7 +3,7 @@ import os
 import re
 from enum import Enum
 
-from api.analyzer.analyzer import analyze_files
+from api.analyzer.process import analyze_files
 from threading import Thread
 from api.cache import read_file as cache_read_file, save_global_session, \
     read_global_session

@@ -1,17 +1,60 @@
 import React, {useState, useEffect} from 'react';
-import TabGroup from "../../../shared/components/TabGroup";
 import FunctionListTab from "./FunctionListTab";
 import TestListTab from "./TestListTab";
 
 import './ProjectExplorerSidebar.jsx.scss';
 
-import Tabs from "react-bootstrap/Tabs";
-import Tab from "react-bootstrap/Tab";
 import TabContainer from 'react-bootstrap/TabContainer'
 import TabContent from 'react-bootstrap/TabContent'
 import TabPane from 'react-bootstrap/TabPane'
 import {Col, Nav, NavLink, NavItem, Row} from "react-bootstrap";
 
+
+export function FileNameTableRow({fileName, colSpan, haveFunctionChanged}) {
+    return (
+      <tr className ="table-secondary">
+        <td
+            title={fileName}
+            colSpan={colSpan}
+        >
+            <div className ="d-flex flex-row justify-content-sm-between">
+                <span className="bold">
+                    {formatTableString(fileName, 32)}
+                </span>
+                <div>
+                    <span className={(haveFunctionChanged)?"badge bg-warning":"badge bg-success"}>
+                        {(haveFunctionChanged)?'Changed':'Up To Date'}
+                    </span>
+                </div>
+
+            </div>
+        </td>
+      </tr>
+    );
+}
+
+
+export function formatTableString(string, maxLength) {
+    let formattedString;
+    if (string.length >= maxLength) {
+        formattedString = string.substring(string.length-(maxLength-3), string.length);
+        formattedString = '...' + formattedString;
+    } else {
+        formattedString = string;
+    }
+    return formattedString;
+}
+
+export function categorizeList(list, key) {
+    const categorizedList = {};
+    for (const item of list) {
+        if (categorizedList[item[key]] === undefined) {
+            categorizedList[item[key]] = [];
+        }
+        categorizedList[item[key]].push(item);
+    }
+    return categorizedList;
+}
 
 function ProjectExplorerSidebar() {
 
@@ -19,7 +62,6 @@ function ProjectExplorerSidebar() {
 
     function onSelectCallback(k) {
         if (k === selectedTab) {
-            console.log('asdasd');
             setSelectedTab('');
         } else {
             setSelectedTab(k);
@@ -27,7 +69,7 @@ function ProjectExplorerSidebar() {
     }
 
     return (
-        <div className="container project-explorer-sidebar-wrapper">
+        <div className="container project-explorer-sidebar-wrapper ">
             <TabContainer
                 id="project-explorer-sidebar-tab-container"
                 defaultActiveKey={selectedTab}
@@ -48,10 +90,10 @@ function ProjectExplorerSidebar() {
                     { (selectedTab !== '') &&
                         <Col>
                             <TabContent className="sidebar-tab-content">
-                                <TabPane eventKey={'functionList'}>
+                                <TabPane className="h-100" eventKey={'functionList'}>
                                     <FunctionListTab />
                                 </TabPane>
-                                <TabPane eventKey={'testList'}>
+                                <TabPane className="h-100" eventKey={'testList'}>
                                     <TestListTab />
                                 </TabPane>
                             </TabContent>
@@ -64,57 +106,4 @@ function ProjectExplorerSidebar() {
     )
 }
 
-
-function ProjectExplorerSidebar2(){
-
-    const [activeTab, setActiveTab] = useState('');
-
-    function getActiveTabComponent() {
-        if (activeTab === "Function List") {
-            return <FunctionListTab label={'Function Tab'}/>
-        } else if (activeTab === "Test List") {
-            return  <TestListTab label={'Test List'}/>
-        } else {
-            return <div className="empty-sidebar-tab"></div>
-        }
-    }
-
-    function onClickCallback(tabLabel) {
-        if (activeTab === tabLabel) {
-            setActiveTab('');
-        } else if (tabLabel === "Function List") {
-            setActiveTab("Function List");
-        } else if (tabLabel === "Test List") {
-            setActiveTab("Test List");
-        }
-    }
-
-    return (
-        <div className="project-explorer-sidebar-wrapper">
-            <div className='project-explorer-sidebar-header'>
-                <ul className="nav nav-tabs">
-                    <li className="nav-item">
-                        <a
-                            className={"nav-link " + ((activeTab === "Function List")?"active":"")}
-                            aria-current="page"
-                            onClick={() => onClickCallback("Function List")}
-                        >Function List
-                        </a>
-                    </li>
-                    <li className="nav-item">
-                        <a
-                            className={"nav-link " + ((activeTab === "Test List")?"active":"")}
-                            aria-current="page"
-                            onClick={() => onClickCallback("Test List")}
-                        >Test List
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <div className="project-explorer-sidebar-content">
-                {getActiveTabComponent()}
-            </div>
-        </div>
-    );
-}
 export default ProjectExplorerSidebar

@@ -326,10 +326,11 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
     }
 
     return (
-        <div className ="create-object-tab-wrapper">
+        <div className ="create-object-tab-wrapper row">
+            <div className="col">
             <form>
                 <div className="mb-3 input-group">
-                    <span className="input-group-text">Selected scope</span>
+                    <span className="input-group-text">Scope</span>
                     <select
                         className="form-select"
                         id="create-object-select-object-key-input"
@@ -389,7 +390,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                         </div>
                     ) : (
                         <div className="mb-3 input-group">
-                            <span className="input-group-text">Selected Attribute</span>
+                            <span className="input-group-text">Attribute</span>
                             <select
                                 className="form-select"
                                 id="create-attribute-select-object-key-input"
@@ -464,53 +465,57 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                         )
                     }
                 </div>
-                {
-                    (selectedAttribute === '')?
-                        (
-                            <button
-                                className="btn btn-primary"
-                                onClick={addAttributeCallback}
-                            >
-                                Add
-                            </button>
-                        ) : (
-                            <button
-                                className="btn btn-primary"
-                                onClick={updateSelectedAttributeCallback}
-                            >
-                                Edit
-                            </button>
-                        )
-                }
+                <div className ="d-flex flex-row justify-content-sm-between">
+                    {
+                        (selectedAttribute === '')?
+                            (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={addAttributeCallback}
+                                >
+                                    Add
+                                </button>
+                            ) : (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={updateSelectedAttributeCallback}
+                                >
+                                    Edit
+                                </button>
+                            )
+                    }
+                    <button
+                        className="btn btn-success"
+                        onClick={() => onChangeCallback(baseState)}
+                    >
+                        Save & Exit
+                    </button>
+                </div>
             </form>
-            <div className="creat-object-object-viewer">
-                <CollapsibleStateViewer stateData={baseState} />
             </div>
-            <button
-                className="btn btn-primary"
-                onClick={() => onChangeCallback(baseState)}
-            >
-                Save & Exit
-            </button>
+            <CollapsibleStateViewer stateData={baseState} />
         </div>
     );
 
 }
-
 export function CollapsibleStateViewer({stateData}) {
+    return (
+        <div className="creat-object-object-viewer border rounded col">
+            <CollapsibleStateComp stateData={stateData}/>
+        </div>
+    );
+}
+
+ function CollapsibleStateComp({stateData}) {
 
     const [hidden, setHidden] = useState(false);
-
-    useEffect(() => {
-        console.log('stateData: ', stateData);
-    }, [])
 
     function AttributeField(attribute) {
         switch(attribute.type) {
             case 'array':
-                return <CollapsibleStateViewer stateData={attribute}/>
+                return <CollapsibleStateComp stateData={attribute}/>
             case 'object':
-                return <CollapsibleStateViewer stateData={attribute}/>
+                return <CollapsibleStateComp stateData={attribute}/>
             case 'null':
             case 'undefined':
                 return <pre>{attribute.type}</pre>
@@ -524,10 +529,10 @@ export function CollapsibleStateViewer({stateData}) {
     }
 
     function generateAttributeComponent(attribute) {
-        const checkForArray = attribute.argument.match(/_array_\d$/g)
+        const checkForArray = attribute.argument.match(/(?!_array_)\d*$/g);
         return (
             <li key={attribute.argument + "-" + attribute.type + "-"}>
-                <span>{(checkForArray !== null)?checkForArray[0].charAt(checkForArray[0].length-1):attribute.argument}: </span> {AttributeField(attribute)}
+                <span className="collapsible-state-viewer-attribute ">{(checkForArray.length > 1)?checkForArray[0]:attribute.argument}: </span> {AttributeField(attribute)}
             </li>
         );
     }
@@ -537,16 +542,23 @@ export function CollapsibleStateViewer({stateData}) {
     }
 
     return (
-        <>
-            <span>{(stateData.type === 'object')?"{":"["}</span>
-            <button className ="btn" onClick={(e) => {
-                e.preventDefault();
-                setHidden(!hidden);
-            }}> {(hidden)?"+":"-"} </button>
+        <div >
+            <span className= "collapsible-state-viewer">
+                <span>{(stateData.type === 'object')?"{":"["}</span>
+                <button className ="" onClick={(e) => {
+                    e.preventDefault();
+                    setHidden(!hidden);
+                }}>
+
+                        {(hidden)?"+":"-"}
+
+                </button>
+                {
+                    (hidden) && <span>{"}"}</span>
+                }
+            </span>
             {
-                (hidden)? (
-                    <span>{"}"}</span>
-                ) : (
+                (!hidden) && (
                     <>
                         <ul>
                             {
@@ -558,7 +570,7 @@ export function CollapsibleStateViewer({stateData}) {
                 )
             }
 
-        </>
+        </div>
 
     );
 }

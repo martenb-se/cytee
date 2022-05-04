@@ -89,7 +89,7 @@ function TestCreatorPage({}){
     }
 
     return (
-        <div className = "container test-creator-Page-wrapper">
+        <div className = "container-fluid test-creator-Page-wrapper">
             <div className ="row">
                 <div className = "test-creator-side-panel col-auto">
                     <ProjectExplorerSidebar />

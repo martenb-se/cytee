@@ -8,6 +8,7 @@ import TabContainer from 'react-bootstrap/TabContainer'
 import TabContent from 'react-bootstrap/TabContent'
 import TabPane from 'react-bootstrap/TabPane'
 import {Col, Nav, NavLink, NavItem, Row} from "react-bootstrap";
+import GenerateTestsButton from "../GenerateTestsButton";
 
 
 export function FileNameTableRow({fileName, colSpan, haveFunctionChanged}) {
@@ -85,10 +86,15 @@ function ProjectExplorerSidebar() {
                             <NavItem>
                                 <NavLink className="sidebar-nav-link" eventKey="testList">Test List</NavLink>
                             </NavItem>
+                            <NavItem>
+
+                            </NavItem>
                         </Nav>
                     </Col>
+
                     { (selectedTab !== '') &&
                         <Col>
+                            <GenerateTestsButton/>
                             <TabContent className="sidebar-tab-content">
                                 <TabPane className="h-100" eventKey={'functionList'}>
                                     <FunctionListTab />

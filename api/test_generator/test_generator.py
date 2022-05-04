@@ -492,12 +492,20 @@ def __generate_assert(test_info, return_variable):
 
     expected_data = test_info['moduleData']['returnValue']
     match_expression = TYPE_MATCHER_DICT[expected_data['type']]['matcher']
-    expected_value = (
-        TYPE_MATCHER_DICT
-        [expected_data['type']]
-        ['var_formatter']
-        (expected_data['value'])
-    )
+    if match_expression['type'] in ['undefined', 'null'] :
+        expected_value = (
+            TYPE_MATCHER_DICT
+            [expected_data['type']]
+            ['var_formatter']
+            (expected_data['type'])
+        )
+    else:
+        expected_value = (
+            TYPE_MATCHER_DICT
+            [expected_data['type']]
+            ['var_formatter']
+            (expected_data['value'])
+        )
 
     assert_string = (f"expect({return_variable})"
                      f".{match_expression}({expected_value});")

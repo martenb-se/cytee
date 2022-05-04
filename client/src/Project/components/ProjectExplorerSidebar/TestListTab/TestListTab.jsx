@@ -25,15 +25,6 @@ function findFunctionInfoByTestInfo(testInfo) {
     }
 }
 
-function findIfFunctionsHaveChangedByFile(fileName) {
-    for (const functionInfo of store.getState().functionList.list) {
-        if ((functionInfo.fileId === fileName) && functionInfo.haveFunctionChanged) {
-            return true
-        }
-    }
-    return false;
-}
-
 function TestListTab({label}){
 
     const dispatch = useDispatch();
@@ -84,13 +75,13 @@ function TestListTab({label}){
                 {
                     Object.keys(categorizeList(testList, 'fileId')).sort().map( fileName => {
                         const categorizedTestList = categorizeList(testList, 'fileId');
-                        const haveCorrespondingFunctionChanged = findIfFunctionsHaveChangedByFile(fileName);
+                        const firstFuncInf= findFunctionInfoByTestInfo(categorizedTestList[fileName][0]);
                         return (
                             <React.Fragment key={fileName}>
                                 <FileNameTableRow
                                     fileName ={fileName}
                                     colSpan={"3"}
-                                    haveFunctionChanged={haveCorrespondingFunctionChanged}
+                                    haveFunctionChanged={firstFuncInf.haveFunctionChanged}
                                 />
                                 {
                                     categorizedTestList[fileName].map(testInf => {
@@ -101,16 +92,8 @@ function TestListTab({label}){
                                                 onClick={() => onClickCallback(testInf)}
                                                 className={(isActiveTest(testInf))?"table-active table-primary ":((funcInfo.haveFunctionChanged)?"table-warning":"")}
                                             >
-                                                <td
-                                                    title={testInf.functionId}
-                                                >
-                                                    {formatTableString(testInf.functionId, 32)}
-                                                </td>
-                                                <td
-                                                    title={testInf.customName}
-                                                >
-                                                    {formatTableString(testInf.customName, 32)}
-                                                </td>
+                                                <td>{formatTableString(testInf.functionId)}</td>
+                                                <td>{formatTableString(testInf.customName)}</td>
                                             </tr>
                                         )
                                     })

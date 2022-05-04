@@ -3,11 +3,7 @@ import {useDispatch, useSelector} from "react-redux";
 
 import {isEmpty, isEqual} from "lodash";
 
-import {
-    selectActiveFunction,
-    clearChanges,
-    selectActiveFunctionLoadingState
-} from '../../../reducers/activeFunctionSlice';
+import {selectActiveFunction} from '../../../reducers/activeFunctionSlice';
 import {
     deleteTestInfo,
     discardUnsavedChanges,
@@ -33,7 +29,6 @@ import cloneDeep from "lodash/cloneDeep";
 import {generateInitTestState} from "../../../util/generateInitTestState";
 
 import './TestCreatorSection.scss'
-import {fetchFunctionList, selectFunctionListLoading} from "../../../reducers/functionListSlice";
 
 export const moduleNameMapper= {
     argumentList: 'Arguments',
@@ -103,15 +98,8 @@ function TestCreatorSection() {
 function TestCreatorHeaderSection() {
 
     const unsavedTest = useSelector(selectUnsavedActiveTest);
-
-    const activeFunction = useSelector(selectActiveFunction);
-    const activeFunctionLoadingState = useSelector(selectActiveFunctionLoadingState);
-
     const test = useSelector(selectActiveTest);
     const testLoadingState = useSelector(selectActiveTestLoadingState);
-
-    const functionListLoadingState = useSelector(selectFunctionListLoading);
-
     const projectPath = useSelector(state => state.project.path);
 
     const dispatch = useDispatch();
@@ -119,8 +107,6 @@ function TestCreatorHeaderSection() {
     const [createLoadingState, setCreateLoadingState] = useState('');
     const [updateLoadingState, setUpdateLoadingState] = useState('');
     const [deleteLoadingState, setDeleteLoadingState] = useState('');
-    const [clearLoadingState, setClearLoadingState] = useState('');
-    const [fetchingFunctionListLoadingState, setFetchingFunctionListLoadingState] = useState('');
 
     const [tabState, tabDispatch] = useContext(localTabGroupContext);
 
@@ -151,23 +137,6 @@ function TestCreatorHeaderSection() {
             }
         }
     }, [testLoadingState])
-
-    useEffect(() => {
-        if (clearLoadingState === "loading") {
-            if (activeFunctionLoadingState === "succeeded") {
-                dispatch(fetchFunctionList(projectPath));
-                setClearLoadingState('');
-                setFetchingFunctionListLoadingState('loading');
-            }
-        }
-    }, [activeFunctionLoadingState])
-
-    useEffect(() => {
-       if (fetchingFunctionListLoadingState === 'loading') {
-           dispatch(fetchTestList(projectPath));
-           setFetchingFunctionListLoadingState('');
-       }
-    }, [functionListLoadingState])
 
     function createTestCallback(e) {
         e.preventDefault();
@@ -210,98 +179,6 @@ function TestCreatorHeaderSection() {
         e.preventDefault();
         dispatch(updateUnsavedCustomName(e.target.value));
     }
-
-    function onTestShouldPersistCallback(e) {
-        e.preventDefault();
-        dispatch(clearChanges({}));
-        setClearLoadingState('loading');
-
-    }
-
-    return (
-        <form>
-            <div className ="test-creator-section-header">
-                <div className ="btn-group">
-                    {
-                        (isEmpty(test))? (
-                            <>
-                                <button
-                                    className ="btn btn-primary"
-                                    onClick={createTestCallback}
-                                >
-                                    Create Test
-                                </button>
-                                <button
-                                    className ="btn btn-primary"
-                                    onClick={cancelCallback}
-                                >
-                                    Cancel
-                                </button>
-                            </>
-                        ) : (
-                            (activeFunction.haveFunctionChanged) ? (
-                                <>
-                                    <button
-                                        className ="btn btn-warning"
-                                        onClick={onTestShouldPersistCallback}
-                                    >
-                                        Test Should Persist
-                                    </button>
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick ={(e) => {
-                                            deleteTestCallback(e);
-                                            onTestShouldPersistCallback(e);
-                                        }}
-                                    >
-                                        Delete
-                                    </button>
-                                </>
-
-
-                            ) : (
-                                <>
-                                    <button
-                                        className ="btn btn-primary"
-                                        onClick={updateTestCallback}
-                                        disabled={
-                                            (testLoadingState==='loading') || (isEqual(unsavedTest, test))
-                                        }
-                                    >
-                                        Save Test
-                                    </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={discardTestCallback}
-                                    >
-                                        Discard Changes
-                                    </button>
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick ={deleteTestCallback}
-                                    >
-                                        Delete
-                                    </button>
-                                </>
-                            )
-                        )
-                    }
-                </div>
-            </div>
-
-            <div>
-            <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
-            <input
-            className="test-creator-section-custom-name-input form-control"
-            type="text"
-            onChange={onCustomNameChangeCallback}
-            value={unsavedTest.customName}
-            disabled={testLoadingState==='loading'}
-            />
-
-            </div>
-        </form>
-    );
 
     if (isEmpty(test)) {
         return (

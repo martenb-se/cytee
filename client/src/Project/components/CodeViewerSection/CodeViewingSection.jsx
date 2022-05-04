@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import {useSelector} from "react-redux";
 
 import FunctionCodeTab from "./FunctionCodeTab";
@@ -26,12 +26,6 @@ function CodeViewingSection() {
         }
     }
 
-    useEffect(() => {
-        if (activeTab === 'codeCompare') {
-            setActiveTab('functionCode');
-        }
-    }, [activeFunction])
-
     return (
         <>
             {
@@ -43,7 +37,7 @@ function CodeViewingSection() {
                         onSelect={onSelectCallback}
                         className="code-view-tab-group"
                     >
-                        <Row className="h-100">
+                        <Row>
                             <Col>
                                 <Nav variant={"tabs"}>
                                     <NavItem>
@@ -61,9 +55,9 @@ function CodeViewingSection() {
                                         )
                                     }
                                 </Nav>
-                                <Col className ="h-100">
+                                <Col>
                                     <TabContent
-                                        className="code-view-tab-content h-100"
+                                        className="code-view-tab-content"
                                     >
                                         <TabPane eventKey="functionCode">
                                             <FunctionCodeTab />

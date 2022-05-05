@@ -92,8 +92,16 @@ function TestListTab({label}){
                                                 onClick={() => onClickCallback(testInf)}
                                                 className={(isActiveTest(testInf))?"table-active table-primary ":((funcInfo.haveFunctionChanged)?"table-warning":"")}
                                             >
-                                                <td>{formatTableString(testInf.functionId)}</td>
-                                                <td>{formatTableString(testInf.customName)}</td>
+                                                <td
+                                                    title={testInf.functionId}
+                                                >
+                                                    {formatTableString(testInf.functionId, 32)}
+                                                </td>
+                                                <td
+                                                    title={testInf.customName}
+                                                >
+                                                    {formatTableString(testInf.customName, 32)}
+                                                </td>
                                             </tr>
                                         )
                                     })

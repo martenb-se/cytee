@@ -52,12 +52,16 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
     function getAttributeIndex(base, scope, attribute, offset) {
         const scopeRef = getScope(base, scope, offset);
+        if (scopeRef.type === 'array') {
+            return (parseInt(attribute));
+        }
         return scopeRef.value.findIndex(argData => argData.argument === attribute);
+
     }
 
     function deleteAttribute(base, scope, attribute, offset) {
         const stateRef = getScope(base, scope, offset);
-        const attributeIndex = getAttributeIndex(base, scope, attribute, 0);
+        const attributeIndex = getAttributeIndex(base, scope, attribute, offset);
         stateRef.value.splice(attributeIndex, 1);
     }
 
@@ -113,6 +117,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
     function generateAttributeList() {
         const attributeList = [];
         const stateRef = getScope(baseState, selectedScope, 0);
+
         for (let i = 0; i < stateRef.value.length; i++) {
             if (stateRef.type === 'array') {
                 attributeList.push(i.toString());
@@ -269,16 +274,25 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
         const baseStateClone = cloneDeep(baseState);
         const attributeRef = getAttribute(baseStateClone, selectedScope, selectedAttribute, 0);
+        const stateRef = getScope(baseStateClone, selectedScope, 0);
 
-        if (getScope(baseStateClone, selectedScope, 0).type !== 'array')
+        if (stateRef.type !== 'array')
             if ((attributeRef.argument !== attributeLabel) && (!checkValidLabel(attributeLabel)))
                 return;
 
-        attributeRef.argument = attributeLabel;
+        // TODO: Check if array, if that's the case die ie a hole
+
+        if (stateRef.type !== 'array') {
+            attributeRef.argument = attributeLabel;
+        }
+
         if (attributeRef.type !== 'object') {
             attributeRef.type = attributeType;
             attributeRef.value = attributeValue;
         }
+
+
+
 
         setBaseState(baseStateClone);
         setSelectedAttribute('');
@@ -289,6 +303,15 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
         let baseStateClone = cloneDeep(baseState);
         deleteAttribute(baseStateClone, selectedScope, selectedAttribute, 0);
+
+        const stateRef = getScope(baseStateClone, selectedScope, 0);
+        if (stateRef.type === 'array') {
+            for (let i = 0; i < stateRef.value.length; i++) {
+                let labelRef = stateRef.value[i].argument;
+                stateRef.value[i].argument = labelRef.substring(0, labelRef.length-1) + i.toString();
+            }
+        }
+
         if (selectedScope === attributeLabel)
             setSelectedScope(scopeList[0]);
 
@@ -312,8 +335,9 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
     useEffect(() => {
         setAttributeList(generateAttributeList());
-        setSelectedAttribute('');
-        setAttributeLabel('');
+        selectedAttributeChange();
+        //setSelectedAttribute('');
+        //setAttributeLabel('');
     }, [selectedScope]);
 
 
@@ -554,7 +578,7 @@ export function CollapsibleStateViewer({stateData}) {
 
                 </button>
                 {
-                    (hidden) && <span>{"}"}</span>
+                    (hidden) && <span>{(stateData.type === 'object')?"}":"]"}</span>
                 }
             </span>
             {

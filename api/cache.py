@@ -41,7 +41,29 @@ def __get_cache_file(project_root: str, file_id: str) -> str:
     return f"{__get_cache_path(project_root)}/{file_id_hash}.js"
 
 
-def clear_cache(project_root: str):
+def __get_old_cache_file(project_root: str, file_id: str) -> str:
+    """Get old cache path to the file for the current project.
+
+    :param project_root: The project root directory.
+    :type project_root: str
+    :param file_id: The file ID for the file to get the path for.
+    :type file_id: str
+
+    :return: The cache path for the file in the project.
+    :rtype: str
+    """
+    file_id_hash = hashlib.sha256(str.encode(file_id)).hexdigest()
+    return f"{__get_cache_path(project_root)}/{file_id_hash}[OLD].js"
+
+
+def clear_cache(project_root: str) -> None:
+    """Clear the entire cache for the given project.
+
+    :param project_root: The project root directory.
+    :type project_root: str
+
+    :return: None
+    """
     if os.path.isdir(__get_cache_path(project_root)):
         shutil.rmtree(__get_cache_path(project_root))
 
@@ -80,6 +102,18 @@ def save_file(project_root: str, file_id: str, file_data: str):
 
     if not os.path.isdir(__get_cache_path(project_root)):
         os.makedirs(__get_cache_path(project_root), exist_ok=True)
+
+    # Save old cache contents before overwriting new ones.
+    try:
+        old_cache_contents = read_file(project_root, file_id)
+        with open(__get_old_cache_file(project_root, file_id), 'w') as \
+                old_cache_file:
+            old_cache_file.write(old_cache_contents)
+
+    except FileNotFoundError:
+        # No old cache contents, first time saving cache
+        pass
+
     with open(__get_cache_file(project_root, file_id), 'w') as cache_file:
         cache_file.write(file_data)
 
@@ -117,6 +151,43 @@ def read_file(project_root: str, file_id: str) -> str:
             f"with ID '{file_id}'")
 
     with open(__get_cache_file(project_root, file_id), 'r') as cache_file:
+        file_contents = cache_file.read()
+    return file_contents
+
+
+def read_file_old(project_root: str, file_id: str) -> str:
+    """Read old cache file for the given file in the given project.
+
+    :param project_root: The project root directory.
+    :type project_root: str
+    :param file_id: The file ID for the file to read from cache.
+    :type file_id: str
+
+    :return: The contents of the cache file.
+    :rtype: str
+
+    :raises TypeError: If any of the given arguments are of the wrong type.
+    :raises ValueError: If any of the given arguments are missing necessary
+    data.
+    :raises FileNotFoundError: If there is no cache saved for the given
+    project and file ID.
+    """
+    if not isinstance(project_root, str):
+        raise TypeError("'project_root' must be a STRING")
+    elif len(project_root) < 1:
+        raise ValueError("'project_root' cannot be empty")
+
+    if not isinstance(file_id, str):
+        raise TypeError("'file_id' must be a STRING")
+    elif len(file_id) < 1:
+        raise ValueError("'file_id' cannot be empty")
+
+    if not os.path.isfile(__get_old_cache_file(project_root, file_id)):
+        raise FileNotFoundError(
+            f"For project in '{project_root}', there is no old cache for file "
+            f"with ID '{file_id}'")
+
+    with open(__get_old_cache_file(project_root, file_id), 'r') as cache_file:
         file_contents = cache_file.read()
     return file_contents
 
@@ -210,3 +281,12 @@ def read_global_session(cache_prop):
             __MEMORY.pop(cache_prop, None)
 
     return None
+
+
+def debug_get_cache_info(project_root: str, file_id: str):
+    ws = 120
+    ns = 20
+    print(f"{'project_root cache': <{ns}}: "
+          f"{' .' + __get_cache_path(project_root)[62:]:.>{ws}}")
+    print(f"{'file_id cache': <{ns}}: "
+          f"{' .' + __get_cache_file(project_root, file_id)[127:]:.>{ws}}")

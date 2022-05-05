@@ -10,4 +10,5 @@ blacklist:
     - !!python/regexp '(^|/)[^/]+\.test\.js$'             # Test files
     - !!python/regexp '(^|/)[^/]*Styles\.js$'             # Style files contains no logic
     - !!python/regexp '(^|/)styles\.js$'                  # Style files contains no logic
-#    - !!python/regexp '(^|/)[A-Z][A-Za-z]+/index\.jsx?$' # Component/index.js files be analyzed to find dependencies, but should they be tested?
+    - !!python/regexp '(^|/)reportWebVitals.js$'          # npm create-react-app file
+    - !!python/regexp '(^|/)setupTests.js$'               # npm create-react-app file

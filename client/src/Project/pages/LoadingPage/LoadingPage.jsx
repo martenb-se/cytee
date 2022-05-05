@@ -31,6 +31,7 @@ function LoadingPage({}){
     const [socketMessage, setSocketMessage] = useState({"status": "IDLE"});
     const [socketMessages, setSocketMessages] = useState([]);
     const [cancelProcess, setCancelProcess] = useState(false);
+    const [processErrorOccurred, setProcessErrorOccurred] = useState(false);
 
     const processBarSteps = (step) => {
         switch (step) {
@@ -78,6 +79,8 @@ function LoadingPage({}){
             if ("statusCode" in socketMessage) {
                 if (socketMessage["statusCode"] === "ANALYZE_ERR_CLIENT_STOP") {
                     navigate("/");
+                } else {
+                    setProcessErrorOccurred(true);
                 }
             }
         }
@@ -140,17 +143,27 @@ function LoadingPage({}){
                     </div>
                     <div className="row">
                         <div className="col-md-12 text-center">
-                            <button
-                                type="button"
-                                className="btn btn-danger btn-sm"
-                                onClick={() => {
-                                    socket.send(JSON.stringify({
-                                        "userAction": "ANALYZE_STOP"
-                                    }))
-                                    setCancelProcess(true);
-                                }}
-                                disabled={cancelProcess}
-                            >Cancel</button>
+                            {processErrorOccurred ? (
+                                <button
+                                    type="button"
+                                    className="btn btn-warning btn-sm"
+                                    onClick={() => {
+                                        navigate("/");
+                                    }}
+                                >Go Back</button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => {
+                                        socket.send(JSON.stringify({
+                                            "userAction": "ANALYZE_STOP"
+                                        }))
+                                        setCancelProcess(true);
+                                    }}
+                                    disabled={cancelProcess}
+                                >Cancel</button>
+                            )}
                         </div>
                     </div>
                 </div>

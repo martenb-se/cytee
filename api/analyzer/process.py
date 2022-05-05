@@ -486,7 +486,8 @@ class ProjectDataHandler:
                         {
                             **new_function_info,
                             "haveFunctionChanged": True,
-                            "changeList": previous_change_list + change_list
+                            "changeList":
+                                list(set(previous_change_list + change_list))
                         },
                         {'_id': existing_function_info["_id"]}
                     )
@@ -628,7 +629,8 @@ class ProjectDataHandler:
                         {
                             **new_function_info,
                             "haveFunctionChanged": True,
-                            "changeList": previous_change_list + change_list
+                            "changeList":
+                                list(set(previous_change_list + change_list))
                         },
                         {'_id': project_function["_id"]}
                     )
@@ -755,6 +757,10 @@ class ProjectDataHandler:
         self.__project_restore()
 
 
+def action_cancel_analysis_process(project_data: ProjectDataHandler):
+    project_data.restore_backup()
+
+
 def point_client_action_cancel(project_data: ProjectDataHandler):
     if client_action.pop_state() == CACode.ACTION_CANCEL:
         project_data.restore_backup()
@@ -838,6 +844,7 @@ def analyze_files(project_root):
                 WsCode.ANALYZE_ERR_PARSE_FAILURE,
                 f"File '{current_file}' cannot be parsed."
             )
+            action_cancel_analysis_process(project_data)
             return
 
         except Exception as e:
@@ -851,6 +858,7 @@ def analyze_files(project_root):
                 f"An unexpected error occurred while handling "
                 f"'{current_file}'."
             )
+            action_cancel_analysis_process(project_data)
             return
 
         # Uncomment to enable helpful debugging info

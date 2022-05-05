@@ -5,7 +5,8 @@ from enum import Enum
 
 from api.analyzer.process import analyze_files
 from threading import Thread
-from api.cache import read_file as cache_read_file, save_global_session, \
+from api.cache import read_file as cache_read_file, \
+    read_file_old as cache_read_file_old, save_global_session, \
     read_global_session
 from api.instances.database_main import database_handler
 from api.instances.shared_websockets_main import shared_websockets_handler
@@ -13,6 +14,7 @@ from api.util.paths_helper import get_base_directory, \
     sub_directory_to_full_path, full_path_to_correct_sub_directory
 from api.websocket import WsIdentity, WsCode
 from api.test_generator.test_generator import generate_tests
+
 
 class APIStatus(Enum):
     OK = "OK"
@@ -227,13 +229,16 @@ def get_functions_for_project(sub_directory: str) -> dict:
 
 def read_file(
         sub_directory: str,
-        file_id: str) -> dict:
+        file_id: str,
+        read_old_file: bool = False) -> dict:
     """Read a project file.
 
     :param sub_directory: Path to existing project.
     :type sub_directory: str
     :param file_id: The id of the file to get.
     :type file_id: str
+    :param read_old_file: If True, will read the older cache file.
+    :type read_old_file: bool
 
     :return: Operation status data and the file data if successful.
     :rtype: dict
@@ -256,7 +261,11 @@ def read_file(
 
     else:
         try:
-            file_contents = cache_read_file(full_path_to_project, file_id)
+            if read_old_file:
+                file_contents = \
+                    cache_read_file_old(full_path_to_project, file_id)
+            else:
+                file_contents = cache_read_file(full_path_to_project, file_id)
             return_message = {
                 "status": APIStatus.OK.value,
                 "fileContents": file_contents

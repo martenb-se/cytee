@@ -2,6 +2,7 @@ import time
 from api.api import *
 from flask import Flask, request, jsonify
 from flask_sock import Sock
+
 from api.instances.shared_websockets_main import shared_websockets_handler
 from api.websocket import WsIdentity
 import simple_websocket
@@ -115,6 +116,21 @@ def post_read_file():
     file_id = content["fileId"]
 
     api_return = read_file(path_to_project, file_id)
+
+    return jsonify(api_return)
+
+
+@server.route('/api/read_old_file', methods=['POST'])
+def post_read_old_file():
+    """Read a project file.
+
+    :return: JSON with status code.
+    """
+    content = request.json
+    path_to_project = content["pathToProject"]
+    file_id = content["fileId"]
+
+    api_return = read_file(path_to_project, file_id, True)
 
     return jsonify(api_return)
 

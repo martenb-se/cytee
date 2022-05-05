@@ -163,7 +163,7 @@ def read_file_old(project_root: str, file_id: str) -> str:
     :param file_id: The file ID for the file to read from cache.
     :type file_id: str
 
-    :return: The contents of the cache file.
+    :return: The contents of the older cache file.
     :rtype: str
 
     :raises TypeError: If any of the given arguments are of the wrong type.

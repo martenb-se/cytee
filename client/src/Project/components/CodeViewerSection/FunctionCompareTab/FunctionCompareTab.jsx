@@ -1,15 +1,69 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {parseDiff, Diff, Hunk, Decoration} from 'react-diff-view';
 import 'react-diff-view/style/index.css';
 import {diffLines, formatLines} from 'unidiff';
+import {useSelector} from "react-redux";
+import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
+import {getFunction, getOldFunction} from "../../../../util/api";
+import {isEmpty} from "lodash";
+import LoadingComponent from "../../../../shared/components/LoadingComponent";
 
-function FunctionCompareTab() {
-    const oldText = 'const bib = () => {\n\tconst a = 1\n\tconsole.log(\'wawawewa\')\n}';
-    const newText = 'const bib = () => {\n\tconst a = 1\n\tconsole.log(\'wowawowa\')\n}';
-    const diffTest = parseDiff(formatLines(diffLines(oldText, newText), {context:3}));
+import './FunctionCodeCompareTab.scss';
+
+function FunctionCompareTab({}) {
+
+    const [newText, setNewText] = useState('');
+    const [oldText, setOldText] = useState('');
+    const [diffTest, setDiffText] = useState(undefined);
+
+    const [loadingState, setLoadingState] = useState('loading');
+
+    const [newCodeLoadingState, setNewCodeLoadingState] = useState('');
+    const [oldCodeLoadingState, setOldCodeLoadingState] = useState('');
+
+    const activeFunction = useSelector(selectActiveFunction);
+    const projectPath = useSelector(state => state.project.path);
+
+    useEffect(() => {
+        setNewCodeLoadingState('loading');
+        getFunction(projectPath, activeFunction.fileId).then(data => {
+            setNewText(data.fileContents);
+            setNewCodeLoadingState('done');
+        })
+    }, [activeFunction]);
+
+    useEffect(() => {
+        if (newCodeLoadingState === 'done') {
+            setOldCodeLoadingState('loading');
+            getOldFunction(projectPath, activeFunction.fileId).then(data => {
+                setOldText(data.fileContents)
+                setOldCodeLoadingState('done');
+            });
+        }
+    }, [newCodeLoadingState])
+
+
+    useEffect(() => {
+        if (oldCodeLoadingState === 'done') {
+            setDiffText(parseDiff(formatLines(diffLines(oldText, newText), {context:3})));
+        }
+    }, [oldCodeLoadingState])
+
+    useEffect(() => {
+
+    }, [diffTest])
+
+
+    if ((newCodeLoadingState === 'loading') || (oldCodeLoadingState === 'loading')) {
+        return <div className ="code-compare-loading-view"><LoadingComponent/></div>
+    }
+
+    if (diffTest === undefined) {
+        return <div>asdasdas</div>
+    }
 
     const renderFile = ({oldPath, newPath, oldRevision, newRevision, type, hunks}) => (
-        <div key={oldRevision + '-' + newRevision} className="file-diff">
+        <div key={oldRevision + '-' + newRevision} className="code-compare-file-diff">
             <header className="diff-header">{oldPath === newPath ? oldPath : `${oldPath} -> ${newPath}`}</header>
             <Diff viewType="split" diffType={type} hunks={hunks}>
                 {hunks =>
@@ -25,7 +79,7 @@ function FunctionCompareTab() {
     );
 
     return (
-        <div>
+        <div className ="function-compare-tab-wrapper">
             {diffTest.map(renderFile)}
         </div>
     );

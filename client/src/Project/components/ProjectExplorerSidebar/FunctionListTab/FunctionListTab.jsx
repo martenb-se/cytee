@@ -65,7 +65,6 @@ function FunctionListTab({label}) {
 
     const activeFunction = useSelector(selectActiveFunction);
 
-
     function isActiveFunction(funcInfo) {
         return (!isEmpty(activeFunction)) &&
             (activeFunction.pathToProject === funcInfo.pathToProject) &&
@@ -111,12 +110,14 @@ function FunctionListTab({label}) {
                 {
                     Object.keys(categorizeList(functionList, 'fileId')).sort().map( fileName => {
                         const categorizedFunctionList = categorizeList(functionList, 'fileId');
+                        const functionHaveChangedIndex = categorizedFunctionList[fileName].findIndex(functionInf => functionInf.haveFunctionChanged)
+
                         return (
                             <React.Fragment key={fileName}>
                                 <FileNameTableRow
                                     fileName={fileName}
                                     colSpan={"4"}
-                                    haveFunctionChanged={categorizedFunctionList[fileName].haveFunctionChanged}
+                                    haveFunctionChanged={(!!(functionHaveChangedIndex+1))}
                                 />
                                 {
                                     categorizedFunctionList[fileName].map(funcInf => {

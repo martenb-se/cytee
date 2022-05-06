@@ -25,6 +25,15 @@ function findFunctionInfoByTestInfo(testInfo) {
     }
 }
 
+function findIfFunctionsHaveChangedByFile(fileName) {
+    for (const functionInfo of store.getState().functionList.list) {
+        if ((functionInfo.fileId === fileName) && functionInfo.haveFunctionChanged) {
+            return true
+        }
+    }
+    return false;
+}
+
 function TestListTab({label}){
 
     const dispatch = useDispatch();
@@ -75,13 +84,13 @@ function TestListTab({label}){
                 {
                     Object.keys(categorizeList(testList, 'fileId')).sort().map( fileName => {
                         const categorizedTestList = categorizeList(testList, 'fileId');
-                        const firstFuncInf= findFunctionInfoByTestInfo(categorizedTestList[fileName][0]);
+                        const haveCorrespondingFunctionChanged = findIfFunctionsHaveChangedByFile(fileName);
                         return (
                             <React.Fragment key={fileName}>
                                 <FileNameTableRow
                                     fileName ={fileName}
                                     colSpan={"3"}
-                                    haveFunctionChanged={firstFuncInf.haveFunctionChanged}
+                                    haveFunctionChanged={haveCorrespondingFunctionChanged}
                                 />
                                 {
                                     categorizedTestList[fileName].map(testInf => {

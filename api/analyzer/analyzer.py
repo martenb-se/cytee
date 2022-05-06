@@ -110,6 +110,14 @@ class AnalyzeJS:
                    self.path_target_file)
 
     # ~~~~~( Debugging ) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    def __debug_node_in_code(self, node):
+        node_code = self.code_target_file[node.range[0]:node.range[1]]
+        new_lines = self.code_target_file[:node.range[0]].count("\n") + 1
+
+        return f"\n" \
+               f" >>> File: {self.path_target_file}\n" \
+               f" >>> Line {new_lines}: {node_code}"
+
     def __debug_print_location(self, scope, path):
         path_in_program = '/'.join(path)
         scope_in_program = \
@@ -415,7 +423,8 @@ class AnalyzeJS:
             logging.warning(
                 "Object not complete because of unknown data could not be "
                 f"handled in parameter tree: {type(node)}. "
-                "[W-ONCBODCNBHIPTN]")
+                "[W-ONCBODCNBHIPTN]" +
+                self.__debug_node_in_code(node))
 
         return object_data
 
@@ -514,7 +523,8 @@ class AnalyzeJS:
                 logging.warning(
                     "Export information for 'export default' not yet "
                     f"supported: {node.declaration.type}. "
-                    "[W-EIFEDNYSNDT]")
+                    "[W-EIFEDNYSNDT]" +
+                    self.__debug_node_in_code(node.declaration))
 
         return exported
 
@@ -540,13 +550,17 @@ class AnalyzeJS:
                             logging.warning(
                                 "Export specifier export type not supported: "
                                 f"{export_specifier.exported.type}. "
-                                "[W-ESETNSEETA]")
+                                "[W-ESETNSEETA]" +
+                                self.__debug_node_in_code(
+                                    export_specifier.exported))
 
                         if export_specifier.local.type != "Identifier":
                             logging.warning(
                                 "Export specifier export type not supported: "
                                 f"{export_specifier.exported.type}. "
-                                "[W-ESETNSEETB]")
+                                "[W-ESETNSEETB]" +
+                                self.__debug_node_in_code(
+                                    export_specifier.exported))
 
                         if export_specifier.exported.type == "Identifier" and \
                                 export_specifier.local.type == "Identifier":
@@ -559,7 +573,8 @@ class AnalyzeJS:
                         logging.warning(
                             "Export specifier type not supported: "
                             f"{export_specifier.type}. "
-                            "[W-ESTNSET]")
+                            "[W-ESTNSET]" +
+                            self.__debug_node_in_code(export_specifier))
 
         if node.declaration is not None:
             match node.declaration.type:
@@ -581,7 +596,9 @@ class AnalyzeJS:
                                         "id of type: "
                                         f"{node.declaration.id.type} not yet "
                                         "supported. "
-                                        "[W-EVDWIOTNDITNYS]")
+                                        "[W-EVDWIOTNDITNYS]" +
+                                        self.__debug_node_in_code(
+                                            node.declaration))
 
                 case "FunctionDeclaration":
                     if node.declaration.id.type == "Identifier":
@@ -596,7 +613,8 @@ class AnalyzeJS:
                         logging.warning(
                             "Exported function declaration with id of type: "
                             f"{node.declaration.id.type} not yet supported. "
-                            "[W-EFDWIOTNDITNYS]")
+                            "[W-EFDWIOTNDITNYS]" +
+                            self.__debug_node_in_code(node.declaration))
 
                 case "ClassDeclaration":
                     if node.declaration.id.type == "Identifier":
@@ -611,14 +629,16 @@ class AnalyzeJS:
                         logging.warning(
                             "Exported class declaration with id of type: "
                             f"{node.declaration.id.type} not yet supported. "
-                            "[W-ECDWIOTNDITNYS]")
+                            "[W-ECDWIOTNDITNYS]" +
+                            self.__debug_node_in_code(node.declaration))
 
                 case _:
                     logging.warning(
                         "Export information support for type: "
                         f"{node.declaration.type}"
                         " not yet added. "
-                        "[W-EISFTNDTNYS]")
+                        "[W-EISFTNDTNYS]" +
+                        self.__debug_node_in_code(node.declaration))
 
         return exported
 
@@ -805,17 +825,97 @@ class AnalyzeJS:
                     # call cache.
                     return
 
+            case "Super":
+                return
+
             case _:
                 logging.warning(
                     "Handling of caching of method call for final callee of "
                     f"type: {node_walk.type} not yet supported. "
-                    "[W-HOCOMCFFCOTNTNYS]")
+                    "[W-HOCOMCFFCOTNTNYS]" +
+                    self.__debug_node_in_code(node_walk))
                 return
 
         property_chain.reverse()
 
         self.__cache_method_call(
             property_chain[-1][1], scope, node, path, property_chain)
+
+    def __cache_handle_declaration_arrayexpression(
+            self,
+            scope: list,
+            node: esprima.nodes.ArrayExpression,
+            path: list,
+            nested_declaration_name: list = None) -> None:
+        """Handle caching of variable declarators with objects.
+        The following:
+            - aa = [() => {}, () => {}]
+        Will save declarations for aa[0] and aa[1]
+
+        :param scope: The current scope in the AST.
+        :type scope: list
+        :param node: The node to handle.
+        :type node: esprima.nodes.ArrayExpression
+        :param path: The current path taken in the AST.
+        :type path: list
+
+        :return: None
+        """
+        if nested_declaration_name is None:
+            nested_declaration_name = []
+
+        nested_declaration_name_item = nested_declaration_name
+
+        if node.elements is not None:
+            for index, current_element in enumerate(node.elements):
+                if len(nested_declaration_name) >= 1:
+                    nested_declaration_name_item = \
+                        nested_declaration_name[:-1] + \
+                        [nested_declaration_name[-1] + f"[{index}]"]
+
+                self.__cache_declaration(
+                    '.'.join(nested_declaration_name_item),
+                    current_element,
+                    scope,
+                    path + ["elements", str(index)],
+                    "item"
+                )
+
+                match current_element.type:
+                    case "CallExpression":
+                        self.__cache_handle_method_call(
+                            scope + [("array-item", str(index))],
+                            current_element,
+                            path + ["elements", str(index)])
+
+                    case "ObjectExpression":
+                        self.__cache_handle_declaration_objectexpression(
+                            scope + [("array-item", str(index))],
+                            current_element,
+                            path + ["elements", str(index)],
+                            nested_declaration_name_item)
+
+                    case "ArrayExpression":
+                        self.__cache_handle_declaration_arrayexpression(
+                            scope + [("array-item", str(index))],
+                            current_element,
+                            path + ["elements", str(index)],
+                            nested_declaration_name_item)
+
+                    case "Literal" | \
+                         "ArrowFunctionExpression" | \
+                         "FunctionExpression" \
+                         "NewExpression" | "MemberExpression":
+                        continue
+
+                    case _:
+                        logging.warning(
+                            "Cache handling for variable declaration "
+                            "of type ArrayExpression cannot yet "
+                            "handle item of type: "
+                            f"{current_element.type}. "
+                            "[W-CHFVDOTOCYHPVOTOVT]" +
+                            self.__debug_node_in_code(current_element))
 
     def __cache_handle_declaration_objectexpression(
             self,
@@ -853,7 +953,8 @@ class AnalyzeJS:
                         "type ObjectExpression cannot yet handle "
                         "object properties of type "
                         f"{obj_property.type} not yet supported. "
-                        "[W-CHOVDOTOCYHOPOTOKTNYS]")
+                        "[W-CHOVDOTOCYHOPOTOKTNYS]" +
+                        self.__debug_node_in_code(obj_property))
                     continue
 
                 if obj_property.key.type == "Identifier":
@@ -866,7 +967,8 @@ class AnalyzeJS:
                         "type ObjectExpression cannot yet handle "
                         "object property keys of type "
                         f"{obj_property.key.type} not yet supported. "
-                        "[W-CHOVDOTOCYHOPKOTOKTNYS]")
+                        "[W-CHOVDOTOCYHOPKOTOKTNYS]" +
+                        self.__debug_node_in_code(obj_property.key))
                     continue
 
                 self.__cache_declaration(
@@ -891,6 +993,13 @@ class AnalyzeJS:
                             path + ["properties", str(index), "value"],
                             nested_declaration_name + [property_name])
 
+                    case "ArrayExpression":
+                        self.__cache_handle_declaration_arrayexpression(
+                            scope + [("object-variable", property_name)],
+                            obj_property.value,
+                            path + ["properties", str(index), "value"],
+                            nested_declaration_name + [property_name])
+
                     case "Literal" | \
                          "ArrowFunctionExpression" | \
                          "FunctionExpression" \
@@ -903,7 +1012,8 @@ class AnalyzeJS:
                             "of type ObjectExpression cannot yet "
                             "handle property value of type: "
                             f"{obj_property.value.type}. "
-                            "[W-CHFVDOTOCYHPVOTOVT]")
+                            "[W-CHFVDOTOCYHPVOTOVT]" +
+                            self.__debug_node_in_code(obj_property.value))
 
     def __cache_handle_anonymous_objectexpression(
             self,
@@ -931,7 +1041,8 @@ class AnalyzeJS:
                         "Cache handling for anonymous ObjectExpression "
                         "cannot yet handle properties of type: "
                         f"{obj_property.type}. "
-                        "[W-CHFAOCYHPOTOT]")
+                        "[W-CHFAOCYHPOTOT]" +
+                        self.__debug_node_in_code(obj_property))
                     continue
 
                 match obj_property.value.type:
@@ -958,7 +1069,8 @@ class AnalyzeJS:
                             "Cache handling for anonymous ObjectExpression "
                             "cannot yet handle property value of type: "
                             f"{obj_property.value.type}. "
-                            "[W-CHFOCYPVOTOVT]")
+                            "[W-CHFOCYPVOTOVT]" +
+                            self.__debug_node_in_code(obj_property.value))
 
     def __cache_handle_declaration_variabledeclarator(
             self,
@@ -1021,14 +1133,16 @@ class AnalyzeJS:
 
                 case "Literal" | \
                      "ArrowFunctionExpression" | "FunctionExpression" | \
-                     "NewExpression" | "MemberExpression":
+                     "NewExpression" | "MemberExpression" | \
+                     "BinaryExpression":
                     return
 
                 case _:
                     logging.warning(
                         "Cache handling for variable declaration call of "
                         f"type: {node.init.type} not yet supported. "
-                        "[W-CHFVDCOTDITNYS]")
+                        "[W-CHFVDCOTDITNYS]" +
+                        self.__debug_node_in_code(node.init))
 
         elif node.id.type == "ArrayPattern":
             if node.init.type == "ArrayExpression" and \
@@ -1091,7 +1205,9 @@ class AnalyzeJS:
                                 "of type: "
                                 f"{node.init.elements[index].type} "
                                 "not yet supported. "
-                                "[W-CHFVDCWAPAAEOTNIEITNYS]")
+                                "[W-CHFVDCWAPAAEOTNIEITNYS]" +
+                                self.__debug_node_in_code(
+                                    node.init.elements[index]))
 
             else:
                 match node.init.type:
@@ -1114,13 +1230,15 @@ class AnalyzeJS:
                             "Cache handling for variable declarator with "
                             "id of an array pattern and initiator of type: "
                             f"{node.init.type} not yet supported. "
-                            "[W-CHFVDWIOAAPAIOTNITNYS]")
+                            "[W-CHFVDWIOAAPAIOTNITNYS]" +
+                            self.__debug_node_in_code(node.init))
 
         else:
             logging.warning(
                 "Cache handling for variable declaration call with id of "
                 f"type {node.id.type} not yet supported. "
-                "[W-CHFVDCWIOTNITNYS]")
+                "[W-CHFVDCWIOTNITNYS]" +
+                self.__debug_node_in_code(node.id))
 
     def __cache_handle_exported_object_declaration(
             self,
@@ -1157,7 +1275,8 @@ class AnalyzeJS:
                         "Cache handling of special declaration in exported "
                         f"object with property of type {obj_property.type} "
                         "not yet supported. "
-                        "[W-CHOSDIEOWPOTOTNYS]")
+                        "[W-CHOSDIEOWPOTOTNYS]" +
+                        self.__debug_node_in_code(obj_property))
                     continue
 
                 if obj_property.key.type == "Identifier":
@@ -1169,7 +1288,8 @@ class AnalyzeJS:
                         "Cache handling of special declaration in exported "
                         f"object with property keys of type "
                         f"{obj_property.key.type} not yet supported. "
-                        "[W-CHOSDIEOWPKOTOKTNYS]")
+                        "[W-CHOSDIEOWPKOTOKTNYS]" +
+                        self.__debug_node_in_code(obj_property.key))
                     continue
 
                 self.__cache_declaration_exported_object(
@@ -1204,7 +1324,8 @@ class AnalyzeJS:
                             "Cache handling of special declaration in "
                             "exported object cannot yet handle property "
                             f"value of type: {obj_property.value.type}. "
-                            "[W-CHOSDIEOCYHPVOTOVT]")
+                            "[W-CHOSDIEOCYHPVOTOVT]" +
+                            self.__debug_node_in_code(obj_property.value))
 
     # ~~~~~( AST Walk - Tree Exploration ) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def __ast_walk_handle_method_call(
@@ -1266,6 +1387,17 @@ class AnalyzeJS:
                     node_walk = node_walk.callee.object
                     call_path += ["callee", "object"]
 
+                elif node_walk.callee.type == "Super":
+                    call_chain.append(
+                        (node_walk.type,
+                         "super",
+                         call_path + ["arguments"],
+                         node_walk.arguments)
+                    )
+
+                    node_walk = node_walk.callee
+                    call_path += ["callee"]
+
                 elif node_walk.callee.type == "CallExpression" or \
                         node_walk.callee.type == "ArrowFunctionExpression":
                     node_walk = node_walk.callee
@@ -1275,7 +1407,8 @@ class AnalyzeJS:
                     logging.warning(
                         "AST walk handling of method call node walk callee "
                         f"type: {node_walk.callee.type} not yet supported. "
-                        "[W-AWHOMCNWCTNCTNYS]")
+                        "[W-AWHOMCNWCTNCTNYS]" +
+                        self.__debug_node_in_code(node_walk.callee))
                     return
 
             else:
@@ -1310,11 +1443,13 @@ class AnalyzeJS:
                     call_path + ["body"])
 
         elif node_walk.type != "Identifier" and \
-                node_walk.type != "ThisExpression":
+                node_walk.type != "ThisExpression" and \
+                node_walk.type != "Super":
             logging.warning(
                 "AST walk handling of method call for final callee of type: "
-                f"{node_walk.type} not yet supported."
-                "[W-AWHOMCFFCOTNTNYS]")
+                f"{node_walk.type} not yet supported. "
+                "[W-AWHOMCFFCOTNTNYS]" +
+                self.__debug_node_in_code(node_walk))
 
         call_identity = []
         for call in call_chain:
@@ -1327,7 +1462,7 @@ class AnalyzeJS:
 
             call_identity.append((call_type, call_name))
 
-            if call_type == "CallExpression" or call[0] == "NewExpression":
+            if call_type == "CallExpression" or call_type == "NewExpression":
                 self.__process_ast_walk(
                     scope + [("call", call_identity)],
                     call_args,
@@ -1363,7 +1498,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of object expression property of type "
                     f"{obj_property.type} not yet supported. "
-                    "[W-AWHOOEPOTOTNYS]")
+                    "[W-AWHOOEPOTOTNYS]" +
+                    self.__debug_node_in_code(obj_property))
                 continue
 
             if obj_property.key.type == "Identifier":
@@ -1374,7 +1510,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of object expression property with "
                     f"key of type {obj_property.key.type} not yet supported. "
-                    "[W-AWHOOEPWKOTOKTNYS]")
+                    "[W-AWHOOEPWKOTOKTNYS]" +
+                    self.__debug_node_in_code(obj_property.key))
                 continue
 
             match obj_property.value.type:
@@ -1403,6 +1540,12 @@ class AnalyzeJS:
                         obj_property.value,
                         path + ["properties", str(index), "value"])
 
+                case "ArrayExpression":
+                    self.__process_ast_walk(
+                        scope + [("object-variable", property_name)],
+                        obj_property.value,
+                        path + ["properties", str(index), "value"])
+
                 case "Literal":
                     continue
 
@@ -1411,7 +1554,8 @@ class AnalyzeJS:
                         "AST walk handling of object expression property "
                         f"value of type: {obj_property.value.type} not yet "
                         "supported. "
-                        "[W-AWHOOEPVOTOVTNYS]")
+                        "[W-AWHOOEPVOTOVTNYS]" +
+                        self.__debug_node_in_code(obj_property.value))
 
     def __ast_walk_handle_functiondeclaration(
             self,
@@ -1451,7 +1595,8 @@ class AnalyzeJS:
                 "AST walk handling of function declaration of type "
                 f"{node.type} cannot yet handle function body of "
                 f"type {node.body.type}"
-                "[W-AWHOFDOTNTCYHFBOTNBT]")
+                "[W-AWHOFDOTNTCYHFBOTNBT]" +
+                self.__debug_node_in_code(node.body))
 
     def __ast_walk_handle_classdeclaration(
             self,
@@ -1518,7 +1663,8 @@ class AnalyzeJS:
                             "AST walk handling of class declaration cannot "
                             "yet handle internal node of type "
                             f"{class_node.type}. "
-                            "[W-AWHOCDCYHINOTCT]")
+                            "[W-AWHOCDCYHINOTCT]" +
+                            self.__debug_node_in_code(class_node))
 
         for found_method in found_methods:
             method_name, method_value, method_path, method_static = \
@@ -1588,17 +1734,26 @@ class AnalyzeJS:
                         node.__dict__[current_path],
                         path + [current_path])
 
+                case "BinaryExpression":
+                    self.__ast_walk_handle_binaryexpression(
+                        scope,
+                        node.__dict__[current_path],
+                        path + [current_path])
+
                 case "Literal" | "Identifier" | \
-                     "MemberExpression":
+                     "MemberExpression" | \
+                     "UnaryExpression":
                     # Nothing more to enter here.
                     return
 
                 case _:
                     logging.warning(
                         "AST walk handling of binary expression "
-                        f"right hand type: {node.right.type} not yet "
-                        "supported."
-                        "[W-AWHOBERHTNRTNYS]")
+                        f"{current_path} hand type: "
+                        f"{node.__dict__[current_path].type} "
+                        f"not yet supported. "
+                        "[W-AWHOBERHTNRTNYS]" +
+                        self.__debug_node_in_code(node.__dict__[current_path]))
 
     def __ast_walk_handle_logicalexpression(
             self,
@@ -1643,14 +1798,21 @@ class AnalyzeJS:
                     node.left,
                     path + ["left"])
 
-            case "Literal":
+            case "JSXElement":
+                self.__ast_walk_handle_jsxelement(
+                    scope,
+                    node.left,
+                    path + ["left"])
+
+            case "Literal" | "MemberExpression":
                 pass
 
             case _:
                 logging.warning(
                     "AST walk handling of logical expression left hand type: "
                     f"{node.left.type} not yet supported. "
-                    "[W-AWHOLELHTNLTNYS]")
+                    "[W-AWHOLELHTNLTNYS]" +
+                    self.__debug_node_in_code(node.left))
 
         match node.right.type:
             case "BinaryExpression":
@@ -1670,6 +1832,12 @@ class AnalyzeJS:
                     node.right,
                     path + ["right"])
 
+            case "JSXElement":
+                self.__ast_walk_handle_jsxelement(
+                    scope,
+                    node.right,
+                    path + ["right"])
+
             case "Identifier":
                 pass
 
@@ -1677,7 +1845,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of logical expression right hand type: "
                     f"{node.right.type} not yet supported. "
-                    "[W-AWHOLERHTDRTNYS]")
+                    "[W-AWHOLERHTDRTNYS]" +
+                    self.__debug_node_in_code(node.right))
 
     def __ast_walk_handle_ifstatement(
             self,
@@ -1752,7 +1921,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of if statement with test of type: "
                     f"{node.test.type} not yet supported. "
-                    "[W-AWHOISWTOTNTTNYS]")
+                    "[W-AWHOISWTOTNTTNYS]" +
+                    self.__debug_node_in_code(node.test))
 
         condition_range = node.test.range
         condition_text = \
@@ -1792,7 +1962,8 @@ class AnalyzeJS:
                     logging.warning(
                         "AST walk handling of if statement alternate type "
                         f"{node.alternate.type} not yet supported. "
-                        "[W-AWHOISATNATNYS]")
+                        "[W-AWHOISATNATNYS]" +
+                        self.__debug_node_in_code(node.alternate))
 
     def __ast_walk_handle_switchstatement(
             self,
@@ -1843,7 +2014,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of switch statement switch case of "
                     f"type: {switch_case.type} not yet supported. "
-                    "[W-AWHOSSSCOTSTNYS]")
+                    "[W-AWHOSSSCOTSTNYS]" +
+                    self.__debug_node_in_code(switch_case))
                 continue
 
             if switch_case.test is not None:
@@ -1885,7 +2057,8 @@ class AnalyzeJS:
                             "executed, but it's best to inspect the actual "
                             f"code between {switch_case.test.range[0]} and "
                             f"{switch_case.test.range[1]}. "
-                            "[W-AWHOSSFAFEIACTSBNWFTCOITBEBIBTITACBSTRASTR]")
+                            "[W-AWHOSSFAFEIACTSBNWFTCOITBEBIBTITACBSTRASTR]" +
+                            self.__debug_node_in_code(switch_case))
                         # Uncomment to read code
                         # print(
                         #    self.code_target_file[
@@ -1901,7 +2074,8 @@ class AnalyzeJS:
                             "AST walk handling of switch statement and switch "
                             f"case with test of type: {switch_case.test.type} "
                             "not yet supported. "
-                            "[W-AWHOSSASCWTOTSTTNYS]")
+                            "[W-AWHOSSASCWTOTSTTNYS]" +
+                            self.__debug_node_in_code(switch_case.test))
 
             if switch_case.test is not None:
                 switch_case_range = switch_case.test.range
@@ -1971,6 +2145,10 @@ class AnalyzeJS:
                         node.init,
                         path + ["init"])
 
+                case "BinaryExpression":
+                    self.__ast_walk_handle_binaryexpression(
+                        scope, node.init, path + ["init"])
+
                 case "Literal":
                     return
 
@@ -1978,7 +2156,8 @@ class AnalyzeJS:
                     logging.warning(
                         "AST walk handling of variable declarator type: "
                         f"{node.init.type} not yet supported. "
-                        "[W-AWHOVDTNITNYS]")
+                        "[W-AWHOVDTNITNYS]" +
+                        self.__debug_node_in_code(node.init))
 
         elif node.id.type == "ArrayPattern":
             if node.init.type == "ArrayExpression" and \
@@ -2028,7 +2207,9 @@ class AnalyzeJS:
                                 "array pattern with array expression type: "
                                 f"{node.init.elements[index].type} "
                                 f"not yet supported. "
-                                "[W-AWHOVDAPWAETNIEITNYS]")
+                                "[W-AWHOVDAPWAETNIEITNYS]" +
+                                self.__debug_node_in_code(
+                                    node.init.elements[index]))
 
             else:
                 match node.init.type:
@@ -2045,7 +2226,8 @@ class AnalyzeJS:
                             "AST walk handling of variable declarator with "
                             "id of an array pattern and initiator of type: "
                             f"{node.init.type} not yet supported. "
-                            "[W-AWHOVDWIOAAPAIOTNITNYS]")
+                            "[W-AWHOVDWIOAAPAIOTNITNYS]" +
+                            self.__debug_node_in_code(node.init))
 
         else:
             logging.warning(
@@ -2085,7 +2267,9 @@ class AnalyzeJS:
                 logging.warning(
                     "Variable declarator with identifier of type: "
                     f"{declaration.id.type} cannot yet be "
-                    "handled.")
+                    f"handled. "
+                    "[W-VDWIOTDITCYBH]" +
+                    self.__debug_node_in_code(declaration))
                 return
 
             self.__cache_handle_declaration_variabledeclarator(
@@ -2158,7 +2342,8 @@ class AnalyzeJS:
                             "AST walk handling of assignment expression left "
                             "hand member expression object of type: "
                             f"{node_walk.object.type} not yet supported. "
-                            "[W-AWHOAELHMEOOTNOTNYS]")
+                            "[W-AWHOAELHMEOOTNOTNYS]" +
+                            self.__debug_node_in_code(node_walk.object))
 
                     node_walk = node_walk.object
 
@@ -2166,7 +2351,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of assignment expression left hand "
                     f"type: {node.left.type} not yet supported. "
-                    "[W-AWHOAELHTNLTNYS]")
+                    "[W-AWHOAELHTNLTNYS]" +
+                    self.__debug_node_in_code(node.left))
                 return
 
         call_chain.reverse()
@@ -2202,6 +2388,19 @@ class AnalyzeJS:
                     node.right,
                     path + ["right"])
 
+            case "ArrayExpression":
+                # TODO: Adapt when [aa, bb] = [123, 555] is supported
+                self.__cache_handle_declaration_arrayexpression(
+                    scope,
+                    node.right,
+                    path + ["right"],
+                    call_chain)
+
+                self.__process_ast_walk(
+                    scope,
+                    node.right.elements,
+                    path + ["right", "elements"])
+
             case "ArrowFunctionExpression" | "FunctionExpression":
                 if node.right.body.type == "BlockStatement":
                     self.__process_ast_walk(
@@ -2216,12 +2415,6 @@ class AnalyzeJS:
                         node.right.body,
                         path + ["right", "body"])
 
-            case "ArrayExpression":
-                # TODO: Adapt when [aa, bb] = [123, 555] is supported
-
-                self.__process_ast_walk(
-                    scope, node.elements, path + ["elements"])
-
             case "Literal" | \
                  "MemberExpression" | \
                  "Identifier":
@@ -2233,7 +2426,8 @@ class AnalyzeJS:
                     "AST walk handling of assignment expression "
                     f"right hand type: {node.right.type} not yet "
                     "supported. "
-                    "[W-AWHOAERHTNRTNYS]")
+                    "[W-AWHOAERHTNRTNYS]" +
+                    self.__debug_node_in_code(node.right))
 
     def __ast_walk_handle_sequenceexpression(
             self,
@@ -2271,7 +2465,8 @@ class AnalyzeJS:
                     logging.warning(
                         "AST walk handling of sequence expression assignment "
                         f"of type: {assignment.type} is not yet supported. "
-                        "[W-AWHOSEAOTATINYS]")
+                        "[W-AWHOSEAOTATINYS]" +
+                        self.__debug_node_in_code(assignment))
 
     def __ast_walk_handle_expressionstatement(
             self,
@@ -2348,7 +2543,8 @@ class AnalyzeJS:
                 logging.warning(
                     "AST walk handling of expression statement type: "
                     f"{node.expression.type} not yet supported. "
-                    "[W-AWHOESTNETNYS]")
+                    "[W-AWHOESTNETNYS]" +
+                    self.__debug_node_in_code(node.expression))
 
     def __ast_walk_handle_functionexpression(
             self,
@@ -2401,7 +2597,8 @@ class AnalyzeJS:
                         "should be no way for the contents of it to be "
                         "executed, but it's best to inspect the actual code "
                         f"between {node.range[0]} and {node.range[1]}. "
-                        "[W-AWHOESFAFEIABNTSBNWFTCOITBEBIBTITACBNRANR]")
+                        "[W-AWHOESFAFEIABNTSBNWFTCOITBEBIBTITACBNRANR]" +
+                        self.__debug_node_in_code(node))
                     # Uncomment to read code
                     # print(
                     #    self.code_target_file[
@@ -2409,6 +2606,7 @@ class AnalyzeJS:
                     return
 
                 else:
+
                     if node.body.type == "BlockStatement" and \
                             node.body.body is not None:
                         self.__process_ast_walk(
@@ -2416,18 +2614,38 @@ class AnalyzeJS:
                             node.body.body,
                             path + ["body", "body"])
 
+                    elif node.body.type == "JSXElement":
+                        self.__ast_walk_handle_jsxelement(
+                            scope + [("anonymous-function", "")],
+                            node.body,
+                            path + ["body"])
+
+                    elif node.body.type == "BinaryExpression":
+                        self.__ast_walk_handle_binaryexpression(
+                            scope + [("anonymous-function", "")],
+                            node.body,
+                            path + ["body"])
+
+                    elif node.body.type == "LogicalExpression":
+                        self.__ast_walk_handle_logicalexpression(
+                            scope + [("anonymous-function", "")],
+                            node.body,
+                            path + ["body"])
+
                     else:
                         logging.warning(
                             "AST walk handling of function expression of type "
                             f"{node.type} cannot yet handle function body of "
                             f"type {node.body.type}. "
-                            "[W-AWHOFEOTNTCYHFBOTNBT]")
+                            "[W-AWHOFEOTNTCYHFBOTNBT]" +
+                            self.__debug_node_in_code(node.body))
 
             case _:
                 logging.warning(
                     "AST walk handling of function expression type: "
                     f"{node.type} not yet supported. "
-                    "[W-AWHOFETNTNYS]")
+                    "[W-AWHOFETNTNYS]" +
+                    self.__debug_node_in_code(node))
 
     def __ast_walk_handle_returnstatement(
             self,
@@ -2486,19 +2704,61 @@ class AnalyzeJS:
                     node.argument,
                     path + ["argument"])
 
+            case "Identifier":
+                return
+
             case _:
                 logging.warning(
                     "AST walk handling for return statement argument of "
-                    f"type: {node.argument.type} not yet supported"
-                    "[W-AWHFRSAOTNATNYS]")
+                    f"type: {node.argument.type} not yet supported. "
+                    "[W-AWHFRSAOTNATNYS]" +
+                    self.__debug_node_in_code(node.argument))
+
+    def __ast_walk_handle_throwstatement(
+            self,
+            scope: list,
+            node: esprima.nodes.ThrowStatement,
+            path: list) -> None:
+        """Handle AST walk into a throw statements (ThrowStatement). Will
+        continue walking into the arguments of the error.
+
+        Example:
+        .. code-block:: JavaScript
+            throw new Error(/* Walk here */);
+
+        :param scope: The current scope in the AST.
+        :type scope: list
+        :param node: The node to handle.
+        :type node: esprima.nodes.ThrowStatement
+        :param path: The current path taken in the AST.
+        :type path: list
+
+        :return: None
+        """
+        if node.argument.type == "NewExpression" or \
+                node.argument.type == "CallExpression":
+            self.__process_ast_walk(
+                scope,
+                node.argument,
+                path + ["argument"])
+
+        else:
+            logging.warning(
+                "AST walk handling for throw statement argument of "
+                f"type: {node.argument.type} not yet supported. "
+                "[W-AWHFTSAOTNATNYS]" +
+                self.__debug_node_in_code(node.argument))
+
 
     def __ast_walk_handle_jsxelement(
             self,
             scope: list,
-            node: esprima.jsx_nodes.JSXElement,
+            node: (esprima.jsx_nodes.JSXElement |
+                   esprima.jsx_nodes.JSXExpressionContainer),
             path: list) -> None:
         """Handle AST walk into a JSX elements (JSXElement). Will continue
-        walking into the contents of JSXExpressionContainer.
+        walking into the contents of JSXExpressionContainer or
+        BinaryExpression.
 
         Example:
         .. code-block:: JavaScript
@@ -2513,7 +2773,8 @@ class AnalyzeJS:
         :param scope: The current scope in the AST.
         :type scope: list
         :param node: The node to handle.
-        :type node: esprima.jsx_nodes.JSXElement
+        :type node: esprima.jsx_nodes.JSXElement |
+                    esprima.jsx_nodes.JSXExpressionContainer
         :param path: The current path taken in the AST.
         :type path: list
 
@@ -2568,7 +2829,9 @@ class AnalyzeJS:
                     case _:
                         logging.warning(
                             "AST walk handling of expression statement type: "
-                            f"{node.expression.type} not yet supported.")
+                            f"{node.expression.type} not yet supported. "
+                            "[W-AWHOESTNETNYSA]" +
+                            self.__debug_node_in_code(node.expression))
 
             case "JSXText":
                 pass
@@ -2576,7 +2839,9 @@ class AnalyzeJS:
             case _:
                 logging.warning(
                     f"Cache handling for JSX elements of type: {node.type} "
-                    "not yet supported")
+                    "not yet supported. "
+                    "[W-CHFJEOTNTNYS]" +
+                    self.__debug_node_in_code(node))
 
     def __process_ast_walk(
             self,
@@ -2603,6 +2868,9 @@ class AnalyzeJS:
             scope = [("global", "window")]
             node = self.ast_target_file
             path = []
+
+        # Debug help
+        # self.__debug_print_location(scope, path)
 
         if isinstance(node, list):
             for index, same_level_node in enumerate(node):
@@ -2638,6 +2906,10 @@ class AnalyzeJS:
                     self.__ast_walk_handle_expressionstatement(
                         scope, node, path)
 
+                case "BinaryExpression":
+                    self.__ast_walk_handle_binaryexpression(
+                        scope, node, path)
+
                 case "CallExpression" | "NewExpression":
                     # Single call
                     self.__cache_handle_method_call(
@@ -2647,6 +2919,10 @@ class AnalyzeJS:
 
                 case "ReturnStatement":
                     self.__ast_walk_handle_returnstatement(
+                        scope, node, path)
+
+                case "ThrowStatement":
+                    self.__ast_walk_handle_throwstatement(
                         scope, node, path)
 
                 case "JSXElement":
@@ -2684,7 +2960,7 @@ class AnalyzeJS:
                         scope, node.declaration, path + ["declaration"])
 
                 case "ImportDeclaration" | "Literal" | "BreakStatement" | \
-                     "Identifier":
+                     "Identifier" | "MemberExpression":
                     # Nothing interesting in these statements (for now) so
                     # ignore.
                     # TODO: When nested imports are to be supported, allow
@@ -2700,8 +2976,9 @@ class AnalyzeJS:
                 case _:
                     logging.warning(
                         "AST walk process cannot yet handle node of type: "
-                        f"{node.type}"
-                        "[W-AWPCYHNOTNT]")
+                        f"{node.type}. "
+                        "[W-AWPCYHNOTNT]" +
+                        self.__debug_node_in_code(node))
 
     # ~~~~~( Analysis - Post Process ) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def __validate_declaration_candidate(
@@ -2853,6 +3130,7 @@ class AnalyzeJS:
             matching_declaration = None
             matching_name = ""
             matching_type = ""
+            non_valid_declarations = []
 
             for decl_name, decl_alt in \
                     [(decl_name, decl_alt) for decl_name in
@@ -2873,12 +3151,16 @@ class AnalyzeJS:
                         matching_declaration = decl_alt
                         matching_name = decl_name
                         matching_type = "function"
+                    else:
+                        non_valid_declarations.append(decl_alt)
 
                 elif re.match(re.escape(local_name), decl_name):
                     if self.__validate_object_candidate(decl_alt):
                         matching_declaration = decl_alt
                         matching_name = decl_name
                         matching_type = "function"
+                    else:
+                        non_valid_declarations.append(decl_alt)
 
             if matching_declaration is None:
                 for func_name, func_alt in \
@@ -2890,6 +3172,8 @@ class AnalyzeJS:
                             matching_declaration = func_alt
                             matching_name = func_name
                             matching_type = "function"
+                        else:
+                            non_valid_declarations.append(func_alt)
 
             if matching_declaration is None:
                 for decl_name, decl_alt in \
@@ -2902,6 +3186,8 @@ class AnalyzeJS:
                             matching_declaration = decl_alt
                             matching_name = decl_name
                             matching_type = "function"
+                        else:
+                            non_valid_declarations.append(decl_alt)
 
             if matching_declaration is not None:
                 found_export = True
@@ -2929,8 +3215,30 @@ class AnalyzeJS:
                         self.exported_test_surfaces.append(test_surface_object)
 
             if found_export is not True:
-                logging.warning(
-                    f"Could not find declaration for export: {export_name}")
+                if len(non_valid_declarations) == 0:
+                    logging.warning(
+                        f"Did not find any declaration for "
+                        f"export: {export_name}. " 
+                        "[W-DNFADFEE]")
+                else:
+                    string_decl = f" >>> File: {self.path_target_file}\n"
+                    for index, decl in enumerate(non_valid_declarations):
+                        string_decl += \
+                            " >>> Line " + \
+                            str(self.code_target_file[
+                                :decl['node'].range[0]].count('\n') + 1) + \
+                            f" >>> Declaration #{str(index+1):0>3}: " + \
+                            self.code_target_file[
+                                decl['node'].range[0]:
+                                decl['node'].range[1]] + \
+                            "\n"
+
+                    logging.warning(
+                        f"Did not find any function declaration for "
+                        f"export: {export_name}. "
+                        "[W-DNFAFDFEE]\n"
+                        f"Only found it being declared as the "
+                        f"following statement(s):\n{string_decl}")
 
     def __process_find_imported_dependencies(self) -> None:
         """Process to find all imported and used dependencies. Any found
@@ -3087,6 +3395,9 @@ class AnalyzeJS:
 
         # Find Imported and Used Dependencies
         self.__process_find_imported_dependencies()
+
+        # Debug help
+        # self.__debug_print_info()
 
         # Done
         self.ast_analyzed = True

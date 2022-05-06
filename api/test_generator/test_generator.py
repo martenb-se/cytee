@@ -635,7 +635,7 @@ def generate_tests(test_info_list):
     for test_info in test_info_list:
 
         # Check if corresponding file combination exists in the dict
-        abs_func_path = test_info['pathToProject'] + test_info['fileId']
+        abs_func_path = test_info['pathToProject'] + "/" + test_info['fileId']
 
         if abs_func_path not in test_file_dict:
             test_file_dict[abs_func_path] = {}

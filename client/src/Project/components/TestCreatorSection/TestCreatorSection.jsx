@@ -111,6 +111,7 @@ function TestCreatorHeaderSection() {
     const testLoadingState = useSelector(selectActiveTestLoadingState);
 
     const functionListLoadingState = useSelector(selectFunctionListLoading);
+    const testListLoadingState = useSelector(selectTestListLoading);
 
     const projectPath = useSelector(state => state.project.path);
 
@@ -130,18 +131,21 @@ function TestCreatorHeaderSection() {
             if (testLoadingState === "succeeded") {
                 dispatch(setActiveUnsavedTest(test));
                 dispatch(fetchTestList(projectPath));
+                dispatch(fetchFunctionList(projectPath));
                 setCreateLoadingState('');
             }
 
         } else if (updateLoadingState === "loading") {
             if (testLoadingState === "succeeded") {
                 dispatch(fetchTestList(projectPath));
+                dispatch(fetchFunctionList(projectPath));
                 setUpdateLoadingState('');
             }
 
         } else if (deleteLoadingState === "loading") {
             if (testLoadingState === "succeeded") {
                 dispatch(fetchTestList(projectPath));
+                dispatch(fetchFunctionList(projectPath));
                 dispatch(setActiveUnsavedTest({
                     customName: "",
                     moduleData: generateInitTestState()
@@ -164,27 +168,29 @@ function TestCreatorHeaderSection() {
 
     useEffect(() => {
        if (fetchingFunctionListLoadingState === 'loading') {
-           dispatch(fetchTestList(projectPath));
-           setFetchingFunctionListLoadingState('');
+           if (functionListLoadingState === "succeeded") {
+               dispatch(fetchTestList(projectPath));
+               setFetchingFunctionListLoadingState('');
+           }
        }
     }, [functionListLoadingState])
 
     function createTestCallback(e) {
         e.preventDefault();
-        dispatch(saveTestInfo({}));
         setCreateLoadingState("loading");
+        dispatch(saveTestInfo({}));
     }
 
     function updateTestCallback(e) {
         e.preventDefault();
-        dispatch(updateTestInfo({}));
         setUpdateLoadingState("loading");
+        dispatch(updateTestInfo({}));
     }
 
     function deleteTestCallback(e) {
         e.preventDefault();
-        dispatch(deleteTestInfo({}));
         setDeleteLoadingState('loading');
+        dispatch(deleteTestInfo({}));
     }
 
     function discardTestCallback(e) {

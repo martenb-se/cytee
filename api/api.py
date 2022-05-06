@@ -556,6 +556,42 @@ def edit_function_info(
     return return_message
 
 
+def edit_function_info(
+        function_id: str,
+        function_info_data: dict) -> dict:
+    """Edit a function info by specific Id.
+
+    :param function_id: Id of function to edit.
+    :type function_id: str
+    :param function_info_data: Data wich the function should be replaced with.
+    :type function_info_data: dict
+    :return: Operation status data.
+    :rtype: dict
+    """
+    function_info = database_handler.get_function_info({
+        '_id': function_id
+    })
+
+    if function_info is None:
+        return_message = {
+            "status": APIStatus.Error.value,
+            "statusCode": APICode.ERROR_PROJECT_FUNCTION_NOT_EXISTING
+        }
+    else:
+        function_info_data['functionRange'] = tuple(function_info_data['functionRange'])
+
+        database_handler.set_function_info(
+            function_info_data,
+            {'_id': function_id}
+        )
+
+        return_message = {
+            "status": APIStatus.OK.value
+        }
+
+    return return_message
+
+
 def test_socket(socket_identifier):
     """Debugging WebSockets.
 

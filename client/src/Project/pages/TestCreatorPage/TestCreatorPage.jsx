@@ -17,7 +17,7 @@ import {
     fetchTestList
 } from "../../../reducers/testListSlice";
 
-import {generateTests} from "../../../util/api";
+import {generateTests, removeChangesFromUntestedFunctions} from "../../../util/api";
 
 function TestCreatorPage({}){
 
@@ -31,18 +31,29 @@ function TestCreatorPage({}){
     const testListStatus = useSelector(selectTestListLoading);
     const testListError = useSelector(selectTestListError);
 
+    const [loadingClearingSate, setLoadingClearingState] = useState('');
     const [loadingState, setLoadingState] = useState('');
     const [loadingMessage, setLoadingMessage] = useState('');
 
     const [generateTestLoading, setGenerateTestLoading] = useState('');
 
+    useEffect(() => {
+        setLoadingClearingState('loading');
+        removeChangesFromUntestedFunctions(projectPath).then(data => {
+            setLoadingClearingState('succeeded')
+        });
+    }, [])
+
     // Load in functions' info
     useEffect(() => {
-        setLoadingState('loading');
-        setLoadingMessage('Retrieving functions...');
-        dispatch(fetchFunctionList(projectPath));
-        //dispatch(fetchTestList(projectPath));
-    }, [])
+        if (loadingState !== 'loading') {
+            if (loadingClearingSate === 'succeeded') {
+                setLoadingState('loading');
+                setLoadingMessage('Retrieving functions...');
+                dispatch(fetchFunctionList(projectPath));
+            }
+        }
+    }, [loadingClearingSate])
 
     useEffect(() => {
         if (loadingState !== 'done') {

@@ -497,7 +497,6 @@ def __generate_assert(test_info, return_variable):
             TYPE_MATCHER_DICT
             [expected_data['type']]
             ['var_formatter']
-            (expected_data['type'])
         )
     else:
         expected_value = (

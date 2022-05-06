@@ -217,6 +217,21 @@ def post_generate_tests():
     return jsonify(api_return)
 
 
+@server.route('/api/edit_function_info', methods=['POST'])
+def post_edit_function_info():
+    """Edit a function info document by specified Id.
+
+    :return: JSON with status code.
+    """
+    content = request.json
+    function_id = content["functionId"]
+    function_info_data = content["functionInfoData"]
+
+    api_return = edit_function_info(function_id, function_info_data)
+
+    return jsonify(api_return)
+
+
 @server.route('/api/time')
 def get_current_time():
     """Display the current time.

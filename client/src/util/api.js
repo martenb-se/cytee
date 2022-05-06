@@ -157,4 +157,46 @@
      });
  }
 
- export {updateTime, getProjectFunctions, getProjectTest, getFunction, saveTest, updateTest, deleteTest, generateTests};
+ function getOldFunction(pathToProject, fileId) {
+     return new Promise((doResolve, doReject) => {
+         fetch('/api/read_old_file', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+                 "pathToProject": pathToProject,
+                 "fileId": fileId,
+             }),
+         }).then(res => res.json()).then(data => {
+             if (data.status === "OK") {
+                 doResolve(data);
+             } else {
+                 doReject(data);
+             }
+         });
+     });
+ }
+
+ function editFunctionInfo(functionId, functionInfoData) {
+     return new Promise((doResolve, doReject) => {
+         fetch('/api/edit_function_info', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+                 functionId: functionId,
+                 functionInfoData: functionInfoData
+             }),
+         }).then(res => res.json()).then(data => {
+             if (data.status === "OK") {
+                 doResolve(data);
+             } else {
+                 doReject(data);
+             }
+         });
+     });
+ }
+
+ export {updateTime, getProjectFunctions, getProjectTest, getFunction, saveTest, updateTest, deleteTest, generateTests, getOldFunction, editFunctionInfo};

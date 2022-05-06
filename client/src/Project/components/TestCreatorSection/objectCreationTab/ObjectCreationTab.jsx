@@ -52,12 +52,16 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
     function getAttributeIndex(base, scope, attribute, offset) {
         const scopeRef = getScope(base, scope, offset);
+        if (scopeRef.type === 'array') {
+            return (parseInt(attribute));
+        }
         return scopeRef.value.findIndex(argData => argData.argument === attribute);
+
     }
 
     function deleteAttribute(base, scope, attribute, offset) {
         const stateRef = getScope(base, scope, offset);
-        const attributeIndex = getAttributeIndex(base, scope, attribute, 0);
+        const attributeIndex = getAttributeIndex(base, scope, attribute, offset);
         stateRef.value.splice(attributeIndex, 1);
     }
 
@@ -113,6 +117,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
     function generateAttributeList() {
         const attributeList = [];
         const stateRef = getScope(baseState, selectedScope, 0);
+
         for (let i = 0; i < stateRef.value.length; i++) {
             if (stateRef.type === 'array') {
                 attributeList.push(i.toString());
@@ -269,16 +274,25 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
         const baseStateClone = cloneDeep(baseState);
         const attributeRef = getAttribute(baseStateClone, selectedScope, selectedAttribute, 0);
+        const stateRef = getScope(baseStateClone, selectedScope, 0);
 
-        if (getScope(baseStateClone, selectedScope, 0).type !== 'array')
+        if (stateRef.type !== 'array')
             if ((attributeRef.argument !== attributeLabel) && (!checkValidLabel(attributeLabel)))
                 return;
 
-        attributeRef.argument = attributeLabel;
+        // TODO: Check if array, if that's the case die ie a hole
+
+        if (stateRef.type !== 'array') {
+            attributeRef.argument = attributeLabel;
+        }
+
         if (attributeRef.type !== 'object') {
             attributeRef.type = attributeType;
             attributeRef.value = attributeValue;
         }
+
+
+
 
         setBaseState(baseStateClone);
         setSelectedAttribute('');
@@ -289,6 +303,15 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
         let baseStateClone = cloneDeep(baseState);
         deleteAttribute(baseStateClone, selectedScope, selectedAttribute, 0);
+
+        const stateRef = getScope(baseStateClone, selectedScope, 0);
+        if (stateRef.type === 'array') {
+            for (let i = 0; i < stateRef.value.length; i++) {
+                let labelRef = stateRef.value[i].argument;
+                stateRef.value[i].argument = labelRef.substring(0, labelRef.length-1) + i.toString();
+            }
+        }
+
         if (selectedScope === attributeLabel)
             setSelectedScope(scopeList[0]);
 
@@ -312,8 +335,9 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
     useEffect(() => {
         setAttributeList(generateAttributeList());
-        setSelectedAttribute('');
-        setAttributeLabel('');
+        selectedAttributeChange();
+        //setSelectedAttribute('');
+        //setAttributeLabel('');
     }, [selectedScope]);
 
 
@@ -326,10 +350,11 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
     }
 
     return (
-        <div className ="create-object-tab-wrapper">
+        <div className ="create-object-tab-wrapper row">
+            <div className="col">
             <form>
                 <div className="mb-3 input-group">
-                    <span className="input-group-text">Selected scope</span>
+                    <span className="input-group-text">Scope</span>
                     <select
                         className="form-select"
                         id="create-object-select-object-key-input"
@@ -389,7 +414,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                         </div>
                     ) : (
                         <div className="mb-3 input-group">
-                            <span className="input-group-text">Selected Attribute</span>
+                            <span className="input-group-text">Attribute</span>
                             <select
                                 className="form-select"
                                 id="create-attribute-select-object-key-input"
@@ -464,53 +489,57 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                         )
                     }
                 </div>
-                {
-                    (selectedAttribute === '')?
-                        (
-                            <button
-                                className="btn btn-primary"
-                                onClick={addAttributeCallback}
-                            >
-                                Add
-                            </button>
-                        ) : (
-                            <button
-                                className="btn btn-primary"
-                                onClick={updateSelectedAttributeCallback}
-                            >
-                                Edit
-                            </button>
-                        )
-                }
+                <div className ="d-flex flex-row justify-content-sm-between">
+                    {
+                        (selectedAttribute === '')?
+                            (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={addAttributeCallback}
+                                >
+                                    Add
+                                </button>
+                            ) : (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={updateSelectedAttributeCallback}
+                                >
+                                    Edit
+                                </button>
+                            )
+                    }
+                    <button
+                        className="btn btn-success"
+                        onClick={() => onChangeCallback(baseState)}
+                    >
+                        Save & Exit
+                    </button>
+                </div>
             </form>
-            <div className="creat-object-object-viewer">
-                <CollapsibleStateViewer stateData={baseState} />
             </div>
-            <button
-                className="btn btn-primary"
-                onClick={() => onChangeCallback(baseState)}
-            >
-                Save & Exit
-            </button>
+            <CollapsibleStateViewer stateData={baseState} />
         </div>
     );
 
 }
-
 export function CollapsibleStateViewer({stateData}) {
+    return (
+        <div className="creat-object-object-viewer border rounded col">
+            <CollapsibleStateComp stateData={stateData}/>
+        </div>
+    );
+}
+
+ function CollapsibleStateComp({stateData}) {
 
     const [hidden, setHidden] = useState(false);
-
-    useEffect(() => {
-        console.log('stateData: ', stateData);
-    }, [])
 
     function AttributeField(attribute) {
         switch(attribute.type) {
             case 'array':
-                return <CollapsibleStateViewer stateData={attribute}/>
+                return <CollapsibleStateComp stateData={attribute}/>
             case 'object':
-                return <CollapsibleStateViewer stateData={attribute}/>
+                return <CollapsibleStateComp stateData={attribute}/>
             case 'null':
             case 'undefined':
                 return <pre>{attribute.type}</pre>
@@ -524,10 +553,10 @@ export function CollapsibleStateViewer({stateData}) {
     }
 
     function generateAttributeComponent(attribute) {
-        const checkForArray = attribute.argument.match(/_array_\d$/g)
+        const checkForArray = attribute.argument.match(/(?!_array_)\d*$/g);
         return (
             <li key={attribute.argument + "-" + attribute.type + "-"}>
-                <span>{(checkForArray !== null)?checkForArray[0].charAt(checkForArray[0].length-1):attribute.argument}: </span> {AttributeField(attribute)}
+                <span className="collapsible-state-viewer-attribute ">{(checkForArray.length > 1)?checkForArray[0]:attribute.argument}: </span> {AttributeField(attribute)}
             </li>
         );
     }
@@ -537,16 +566,23 @@ export function CollapsibleStateViewer({stateData}) {
     }
 
     return (
-        <>
-            <span>{(stateData.type === 'object')?"{":"["}</span>
-            <button className ="btn" onClick={(e) => {
-                e.preventDefault();
-                setHidden(!hidden);
-            }}> {(hidden)?"+":"-"} </button>
+        <div >
+            <span className= "collapsible-state-viewer">
+                <span>{(stateData.type === 'object')?"{":"["}</span>
+                <button className ="" onClick={(e) => {
+                    e.preventDefault();
+                    setHidden(!hidden);
+                }}>
+
+                        {(hidden)?"+":"-"}
+
+                </button>
+                {
+                    (hidden) && <span>{(stateData.type === 'object')?"}":"]"}</span>
+                }
+            </span>
             {
-                (hidden)? (
-                    <span>{"}"}</span>
-                ) : (
+                (!hidden) && (
                     <>
                         <ul>
                             {
@@ -558,7 +594,7 @@ export function CollapsibleStateViewer({stateData}) {
                 )
             }
 
-        </>
+        </div>
 
     );
 }

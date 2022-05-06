@@ -3285,16 +3285,16 @@ class AnalyzeJS:
                 # arguments
                 if test_surface["declaration"]["constructor"] is not None:
                     arguments.append(
-                        [{test_surface['full_name']:
+                        {test_surface['full_name']:
                             self.__convert_esprima_ast_to_object(
                                 test_surface["declaration"][
-                                    "constructor"].params)}])
+                                    "constructor"].params)})
 
                 arguments.append(
-                    [{test_surface['declaration']['name']:
+                    {test_surface['declaration']['name']:
                         self.__convert_esprima_ast_to_object(
                             test_surface["declaration"][
-                                "node"].params)}])
+                                "node"].params)})
 
             elif test_surface["asset_type"] == "function":
                 # functionId
@@ -3302,10 +3302,10 @@ class AnalyzeJS:
 
                 # arguments
                 arguments.append(
-                    [{test_surface['full_name']:
+                    {test_surface['full_name']:
                         self.__convert_esprima_ast_to_object(
                             test_surface["declaration"][
-                                "node"].params)}])
+                                "node"].params)})
 
             else:
                 logging.warning(

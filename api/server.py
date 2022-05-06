@@ -247,6 +247,20 @@ def post_edit_function_info():
     return jsonify(api_return)
 
 
+@server.route('/api/remove_changes_from_untested_functions', methods=['POST'])
+def post_remove_changes_from_untested_functions():
+    """Removes all changes from all untested functions.
+
+    :return: JSON with status code.
+    """
+    content = request.json
+    path_to_project = content["pathToProject"]
+
+    api_return = remove_changes_from_untested_functions(path_to_project)
+
+    return jsonify(api_return)
+
+
 @server.route('/api/time')
 def get_current_time():
     """Display the current time.

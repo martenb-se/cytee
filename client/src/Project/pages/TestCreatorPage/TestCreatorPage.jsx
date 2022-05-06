@@ -80,13 +80,6 @@ function TestCreatorPage({}){
         }
     }, [testListStatus]);
 
-    function generateProjectTests() {
-        setGenerateTestLoading('loading');
-        generateTests(projectPath).then(data => {
-            setGenerateTestLoading('');
-        })
-    }
-
     if (loadingState === 'failed') {
         return (
             <ErrorScreen errorMessage={loadingMessage} />
@@ -104,13 +97,6 @@ function TestCreatorPage({}){
             <div className ="row">
                 <div className = "test-creator-side-panel col-auto">
                     <ProjectExplorerSidebar />
-                    <button
-                        className="btn btn-primary"
-                        onClick={generateProjectTests}
-                        disabled={generateTestLoading==='loading'}
-                    >
-                        Generate Tests
-                    </button>
                 </div>
                 <div className = "test-creation-area col">
                     <CodeViewingSection/>

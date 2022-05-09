@@ -1,7 +1,4 @@
 .create-object-tab-wrapper {
-  //height: 26vh;
-  //display:flex;
-  //flex-direction: row;
   height: 100%;
   overflow-y: auto;
 }
@@ -29,24 +26,7 @@
     flex-direction: row;
     align-items: baseline;
 
-
-    pre {
-
-    }
-
   }
-}
-
-.collapsible-state-expand-button-content {
-  //position: absolute;
-
-  //bottom: 50%;
-}
-
-.collapsible-state-viewer {
-  //display: flex;
-  //flex-direction: row;
-  //justify-content: flex-start;
 }
 
 .collapsible-state-viewer-attribute {

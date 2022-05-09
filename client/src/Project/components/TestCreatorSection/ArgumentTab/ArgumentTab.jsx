@@ -1,11 +1,9 @@
-import React, {useContext, useEffect, useState} from 'react';
-import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
+import React, {useContext} from 'react';
 import {selectUnsavedActiveTest, updateArgumentList} from "../../../../reducers/activeTestInfoSlice";
 import {useDispatch, useSelector} from "react-redux";
 
 import ArgumentTypeSelector from "../../../../shared/components/ArgumentTypeSelector";
 import ArgumentDataFieldInput from "../../../../shared/components/ArgumentInputValueSelector";
-import ObjectDataFieldInput from "../ObjectDataFieldInput/ObjectDataFieldInput";
 
 import {CollapsibleStateViewer} from "../objectCreationTab/ObjectCreationTab";
 
@@ -15,13 +13,12 @@ import {localTabGroupContext} from "../TestCreatorSection";
 
 import './ArgumentTab.scss';
 
-function ArgumentTab({label, addChildFunction, removeChildFunction}) {
+function ArgumentTab({}) {
 
-    const activeFunction = useSelector(selectActiveFunction);
     const unsavedTest = useSelector(selectUnsavedActiveTest);
     const dispatch = useDispatch();
 
-    const [localTabState, localTabDispatch] = useContext(localTabGroupContext);
+    const [, localTabDispatch] = useContext(localTabGroupContext);
 
     function onChangeCallback(argumentData) {
         dispatch(updateArgumentList(argumentData));
@@ -29,25 +26,11 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
 
     function onSubTabChangeCallback(objectData) {
         const argumentDataClone = cloneDeep(objectData);
-        //removeChildFunction(objectData.argument);
         localTabDispatch({
             type: 'removeChildTab',
             payload: objectData.argument,
         });
         onChangeCallback(argumentDataClone);
-    }
-
-    function openSubTab(argumentData) {
-        localTabDispatch({
-            type: 'addChildTab',
-            payload: {
-                initValue: argumentData,
-                onObjectChangeCallback: onSubTabChangeCallback,
-                parentEventKey: "argumentList",
-                eventKey: argumentData.argument,
-                title: argumentData.argument + "-Object editor"
-            }
-        });
     }
 
     function onEdit(argumentData) {
@@ -72,7 +55,7 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
             });
         }
         argumentDataClone.type = e.target.value;
-        switch(argumentDataClone.type) {
+        switch (argumentDataClone.type) {
             case 'undefined':
             case 'null':
                 delete argumentDataClone.value;
@@ -107,20 +90,18 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
         (unsavedTest.moduleData === undefined) ||
         (unsavedTest.moduleData.argumentList === undefined)
     ) {
-        return <div className ="test-creator-tab-empty">waiting...</div>
+        return <div className="test-creator-tab-empty">waiting...</div>
     }
-
-
 
     return (
         <div className="h-100">
             <form
-                className ="argument-tab-wrapper"
+                className="argument-tab-wrapper"
             >
                 {
                     unsavedTest.moduleData.argumentList.map(argumentData => {
                         return (
-                            <div className ="mb-3" key={argumentData.subFunctionName + '.' + argumentData.argument}>
+                            <div className="" key={argumentData.subFunctionName + '.' + argumentData.argument}>
                                 <div className="argumentField-wrapper">
                                     <label
                                         className="form-label"
@@ -129,19 +110,17 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
                                         {argumentData.subFunctionName + ": " + argumentData.argument}
                                     </label>
                                     <div className="input-group">
-
-                                        <ArgumentTypeSelector
-                                            id={argumentData.subFunctionName + "-" + argumentData.argument}
-                                            type={argumentData.type}
-                                            onChangeCallback={e => changeArgumentType(e, argumentData)}
-                                        />
-                                        <ArgumentDataFieldInput
-                                            argumentData={argumentData}
-                                            onChangeCallback={e => changeArgumentValue(e, argumentData)}
-                                            disabled={false}
-                                            onEdit={onEdit}
-                                        />
-
+                                            <ArgumentTypeSelector
+                                                id={argumentData.subFunctionName + "-" + argumentData.argument}
+                                                type={argumentData.type}
+                                                onChangeCallback={e => changeArgumentType(e, argumentData)}
+                                            />
+                                            <ArgumentDataFieldInput
+                                                argumentData={argumentData}
+                                                onChangeCallback={e => changeArgumentValue(e, argumentData)}
+                                                disabled={false}
+                                                onEdit={onEdit}
+                                            />
                                     </div>
                                     {(argumentData.type === 'object' || argumentData.type === 'array') &&
                                         <CollapsibleStateViewer stateData={argumentData}/>

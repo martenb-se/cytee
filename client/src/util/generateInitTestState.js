@@ -2,7 +2,7 @@ import store from "../reducers/store";
 import {parseFunction} from "./parseFunctionInfo";
 
 export function generateInitTestState() {
-    const funcArguments =  parseFunction(store.getState().activeFunction.activeFunction.arguments);
+    const funcArguments = parseFunction(store.getState().activeFunction.activeFunction.arguments);
     const moduleArguments = [];
 
     for (const argumentData of funcArguments) {

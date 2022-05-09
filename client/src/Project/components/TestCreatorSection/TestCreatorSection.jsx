@@ -1,41 +1,36 @@
-import React, {useState, useEffect, createContext, useContext, useReducer} from 'react';
+import React, {createContext, useContext, useEffect, useReducer, useState} from 'react';
 import {useDispatch, useSelector} from "react-redux";
 
 import {isEmpty, isEqual} from "lodash";
 
 import {
-    selectActiveFunction,
     clearChanges,
+    selectActiveFunction,
     selectActiveFunctionLoadingState
 } from '../../../reducers/activeFunctionSlice';
 import {
     deleteTestInfo,
     discardUnsavedChanges,
+    saveTestInfo,
     selectActiveTest,
     selectActiveTestLoadingState,
+    selectUnsavedActiveTest,
     setActiveTest,
+    setActiveUnsavedTest,
     updateTestInfo,
-
+    updateUnsavedCustomName,
 } from '../../../reducers/activeTestInfoSlice';
-import {fetchTestList, selectTestList, selectTestListLoading} from '../../../reducers/testListSlice'
+import {fetchTestList} from '../../../reducers/testListSlice'
 
 import ModulePanel from './ModulePanel';
 import TestCreatorTabGroup from "./TestCreatorTabGroup/TestCreatorTabGroup";
-
-import {
-    selectUnsavedActiveTest,
-    updateUnsavedCustomName,
-    setActiveUnsavedTest
-} from "../../../reducers/activeTestInfoSlice";
-
-import {saveTestInfo} from "../../../reducers/activeTestInfoSlice";
 import cloneDeep from "lodash/cloneDeep";
 import {generateInitTestState} from "../../../util/generateInitTestState";
 
 import './TestCreatorSection.scss'
 import {fetchFunctionList, selectFunctionListLoading} from "../../../reducers/functionListSlice";
 
-export const moduleNameMapper= {
+export const moduleNameMapper = {
     argumentList: 'Arguments',
     returnValue: 'Return Value',
     exception: 'Exception',
@@ -44,10 +39,10 @@ export const moduleNameMapper= {
 const initLocalTabState = [];
 
 export const localTabGroupContext = createContext();
-const { Provider } = localTabGroupContext;
+const {Provider} = localTabGroupContext;
 
 function localTabGroupReducer(state, action) {
-    switch(action.type) {
+    switch (action.type) {
         case 'addChildTab':
             const addChildLocalTabsClone = cloneDeep(state);
             if (addChildLocalTabsClone.findIndex(childTab => childTab.eventKey === action.payload.eventKey) === -1) {
@@ -67,7 +62,6 @@ function localTabGroupReducer(state, action) {
     }
 }
 
-
 function TestCreatorSection() {
 
     const activeFunction = useSelector(selectActiveFunction);
@@ -77,24 +71,24 @@ function TestCreatorSection() {
 
     useEffect(() => {
         localTabDispatch({
-            type:'removeAllChildTabs'
+            type: 'removeAllChildTabs'
         });
     }, [test, activeFunction])
 
     if (isEmpty(activeFunction)) {
-        return <WaitingForTestPanel />
+        return <WaitingForTestPanel/>
     }
 
     return (
         <Provider value={[localTabState, localTabDispatch]}>
             <div className="test-creator-section-wrapper flex-grow-1 border-top ">
                 <div className="h-100 row overflow-auto">
-                    <div className = "col-2 test-creator-section-wrapper-header">
-                        <ModulePanel />
+                    <div className="col-2 test-creator-section-wrapper-header">
+                        <ModulePanel/>
                     </div>
-                    <div className ="col-10 test-creator-section-wrapper-content d-flex flex-column">
-                        <TestCreatorHeaderSection />
-                        <TestCreatorTabGroup />
+                    <div className="col-10 test-creator-section-wrapper-content d-flex flex-column">
+                        <TestCreatorHeaderSection/>
+                        <TestCreatorTabGroup/>
                     </div>
                 </div>
             </div>
@@ -105,18 +99,12 @@ function TestCreatorSection() {
 function TestCreatorHeaderSection() {
 
     const unsavedTest = useSelector(selectUnsavedActiveTest);
-
     const activeFunction = useSelector(selectActiveFunction);
     const activeFunctionLoadingState = useSelector(selectActiveFunctionLoadingState);
-
     const test = useSelector(selectActiveTest);
     const testLoadingState = useSelector(selectActiveTestLoadingState);
-
     const functionListLoadingState = useSelector(selectFunctionListLoading);
-    const testListLoadingState = useSelector(selectTestListLoading);
-
     const projectPath = useSelector(state => state.project.path);
-
     const dispatch = useDispatch();
 
     const [createLoadingState, setCreateLoadingState] = useState('');
@@ -125,7 +113,7 @@ function TestCreatorHeaderSection() {
     const [clearLoadingState, setClearLoadingState] = useState('');
     const [fetchingFunctionListLoadingState, setFetchingFunctionListLoadingState] = useState('');
 
-    const [tabState, tabDispatch] = useContext(localTabGroupContext);
+    const [, tabDispatch] = useContext(localTabGroupContext);
 
 
     useEffect(() => {
@@ -169,12 +157,12 @@ function TestCreatorHeaderSection() {
     }, [activeFunctionLoadingState])
 
     useEffect(() => {
-       if (fetchingFunctionListLoadingState === 'loading') {
-           if (functionListLoadingState === "succeeded") {
-               dispatch(fetchTestList(projectPath));
-               setFetchingFunctionListLoadingState('');
-           }
-       }
+        if (fetchingFunctionListLoadingState === 'loading') {
+            if (functionListLoadingState === "succeeded") {
+                dispatch(fetchTestList(projectPath));
+                setFetchingFunctionListLoadingState('');
+            }
+        }
     }, [functionListLoadingState])
 
     function createTestCallback(e) {
@@ -206,7 +194,7 @@ function TestCreatorHeaderSection() {
     function cancelCallback(e) {
         e.preventDefault();
         tabDispatch({
-           type: 'removeAllChildTabs',
+            type: 'removeAllChildTabs',
         });
         dispatch(setActiveUnsavedTest({
             customName: "",
@@ -228,19 +216,19 @@ function TestCreatorHeaderSection() {
 
     return (
         <form>
-            <div className ="test-creator-section-header">
-                <div className ="btn-group">
+            <div className="test-creator-section-header">
+                <div className="btn-group">
                     {
-                        (isEmpty(test))? (
+                        (isEmpty(test)) ? (
                             <>
                                 <button
-                                    className ="btn btn-primary"
+                                    className="btn btn-primary"
                                     onClick={createTestCallback}
                                 >
                                     Create Test
                                 </button>
                                 <button
-                                    className ="btn btn-primary"
+                                    className="btn btn-primary"
                                     onClick={cancelCallback}
                                 >
                                     Cancel
@@ -250,14 +238,14 @@ function TestCreatorHeaderSection() {
                             (activeFunction.haveFunctionChanged) ? (
                                 <>
                                     <button
-                                        className ="btn btn-warning"
+                                        className="btn btn-warning"
                                         onClick={onTestShouldPersistCallback}
                                     >
                                         Test Should Persist
                                     </button>
                                     <button
                                         className="btn btn-danger"
-                                        onClick ={(e) => {
+                                        onClick={(e) => {
                                             deleteTestCallback(e);
                                             onTestShouldPersistCallback(e);
                                         }}
@@ -270,10 +258,10 @@ function TestCreatorHeaderSection() {
                             ) : (
                                 <>
                                     <button
-                                        className ="btn btn-primary"
+                                        className="btn btn-primary"
                                         onClick={updateTestCallback}
                                         disabled={
-                                            (testLoadingState==='loading') || (isEqual(unsavedTest, test))
+                                            (testLoadingState === 'loading') || (isEqual(unsavedTest, test))
                                         }
                                     >
                                         Save Test
@@ -286,7 +274,7 @@ function TestCreatorHeaderSection() {
                                     </button>
                                     <button
                                         className="btn btn-danger"
-                                        onClick ={deleteTestCallback}
+                                        onClick={deleteTestCallback}
                                     >
                                         Delete
                                     </button>
@@ -298,14 +286,14 @@ function TestCreatorHeaderSection() {
             </div>
 
             <div>
-            <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
-            <input
-            className="test-creator-section-custom-name-input form-control"
-            type="text"
-            onChange={onCustomNameChangeCallback}
-            value={unsavedTest.customName}
-            disabled={testLoadingState==='loading'}
-            />
+                <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
+                <input
+                    className="test-creator-section-custom-name-input form-control"
+                    type="text"
+                    onChange={onCustomNameChangeCallback}
+                    value={unsavedTest.customName}
+                    disabled={testLoadingState === 'loading'}
+                />
 
             </div>
         </form>
@@ -315,9 +303,10 @@ function TestCreatorHeaderSection() {
 function WaitingForTestPanel() {
     return (
         <div className=" d-flex ">
-            <div className ="alert alert-secondary">
+            <div className="alert alert-secondary">
                 <h4 className="alert-heading">Info </h4>
-                Please select an function to create a new test or select and existing test to modify it. When you are done creating tests press the button labeled 'generate tests'.
+                Please select an function to create a new test or select and existing test to modify it. When you are
+                done creating tests press the button labeled 'generate tests'.
             </div>
         </div>
     );

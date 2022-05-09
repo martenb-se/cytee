@@ -1,9 +1,9 @@
-import React, {useEffect, useState} from 'react';
-import {useSelector, useDispatch} from "react-redux";
+import React, {useState} from 'react';
+import {useDispatch, useSelector} from "react-redux";
 
-import {selectTestList, selectTestListLoading, selectTestListError} from "../../../../reducers/testListSlice";
+import {selectTestList, selectTestListError, selectTestListLoading} from "../../../../reducers/testListSlice";
 import {selectActiveTest, setActiveTest, setActiveUnsavedTest} from "../../../../reducers/activeTestInfoSlice";
-import {selectActiveFunction, setActiveFunction} from "../../../../reducers/activeFunctionSlice";
+import {setActiveFunction} from "../../../../reducers/activeFunctionSlice";
 
 import {isEmpty} from "lodash";
 
@@ -12,7 +12,7 @@ import store from "../../../../reducers/store";
 import './TestListTab.scss';
 import '../ProjectExplorerSidebar.jsx.scss';
 
-import {FileNameTableRow, formatTableString, categorizeList} from "../ProjectExplorerSidebar";
+import {categorizeList, formatTableString} from "../ProjectExplorerSidebar";
 import LoadingComponent from "../../../../shared/components/LoadingComponent";
 import cloneDeep from "lodash/cloneDeep";
 
@@ -57,7 +57,7 @@ const downArrowIcon = () => {
 }
 
 function findFunctionInfoByTestInfo(testInfo) {
-    for(const functionInfo of store.getState().functionList.list) {
+    for (const functionInfo of store.getState().functionList.list) {
         if ((testInfo.pathToProject === functionInfo.pathToProject) &&
             (testInfo.fileId === functionInfo.fileId) &&
             (testInfo.functionId === functionInfo.functionId)) {
@@ -77,6 +77,7 @@ function findIfFunctionsHaveChangedByFile(fileName) {
 
 function sortTestList(testList, sortAttribute, sortOrder) {
     const testListClone = cloneDeep(testList);
+
     function sortList(a, b) {
         if (sortOrder === 'highToLow') {
             if (a[sortAttribute] > b[sortAttribute])
@@ -95,10 +96,11 @@ function sortTestList(testList, sortAttribute, sortOrder) {
         }
 
     }
+
     return testListClone.sort(sortList);
 }
 
-function TestListTab({label}){
+function TestListTab({}) {
 
     const dispatch = useDispatch();
 
@@ -142,7 +144,7 @@ function TestListTab({label}){
     }
 
     if (testListStateLoading === 'loading') {
-        return <LoadingComponent />
+        return <LoadingComponent/>
     }
 
     if (testListStateLoading === 'failed') {
@@ -158,39 +160,39 @@ function TestListTab({label}){
         <div className='test-list-tab'>
             <table className="table table-hover">
                 <thead>
-                    <tr className ="table-list-header-row">
-                        <th
-                            className ="col-auto"
-                            scope="col"
-                            onClick={onSortOrderClickCallback}
-                        >
-                            {(sortOrder==='lowToHigh')?downArrowIcon():upArrowIcon()}
-                        </th>
-                        <th
-                            className ="test-list-header-col"
-                            scope="col"
-                            onClick={() => onAttributeClickCallback('functionId')}
-                        >
-                            Function Name
-                        </th>
-                        <th
-                            className ="test-list-header-col"
-                            scope="col"
-                            onClick={() => onAttributeClickCallback('customName')}
-                        >
-                            Function Description
-                        </th>
-                    </tr>
+                <tr className="table-list-header-row">
+                    <th
+                        className="col-auto"
+                        scope="col"
+                        onClick={onSortOrderClickCallback}
+                    >
+                        {(sortOrder === 'lowToHigh') ? downArrowIcon() : upArrowIcon()}
+                    </th>
+                    <th
+                        className="test-list-header-col"
+                        scope="col"
+                        onClick={() => onAttributeClickCallback('functionId')}
+                    >
+                        Function Name
+                    </th>
+                    <th
+                        className="test-list-header-col"
+                        scope="col"
+                        onClick={() => onAttributeClickCallback('customName')}
+                    >
+                        Function Description
+                    </th>
+                </tr>
                 </thead>
                 <tbody>
                 {
-                    Object.keys(categorizeList(sortTestList(testList, sortAttribute, sortOrder), 'fileId')).map( fileName => {
+                    Object.keys(categorizeList(sortTestList(testList, sortAttribute, sortOrder), 'fileId')).map(fileName => {
                         const categorizedTestList = categorizeList(sortTestList(testList, sortAttribute, sortOrder), 'fileId');
                         const haveCorrespondingFunctionChanged = findIfFunctionsHaveChangedByFile(fileName);
                         return (
                             <React.Fragment key={fileName}>
                                 <FileNameTableRowTestList
-                                    fileName ={fileName}
+                                    fileName={fileName}
                                     colSpan={"3"}
                                     haveFunctionChanged={haveCorrespondingFunctionChanged}
                                 />
@@ -201,7 +203,7 @@ function TestListTab({label}){
                                             <tr
                                                 key={testInf._id}
                                                 onClick={() => onClickCallback(testInf)}
-                                                className={(isActiveTest(testInf))?"table-active table-primary ":((funcInfo.haveFunctionChanged)?"table-warning":"")}
+                                                className={(isActiveTest(testInf)) ? "table-active table-primary " : ((funcInfo.haveFunctionChanged) ? "table-warning" : "")}
                                             >
                                                 <td
                                                     title={testInf.functionId}
@@ -228,16 +230,16 @@ function TestListTab({label}){
     );
 }
 
-function FileNameTableRowTestList({fileName,colSpan, haveFunctionChanged}) {
+function FileNameTableRowTestList({fileName, colSpan, haveFunctionChanged}) {
     return (
-        <tr className ="table-secondary">
+        <tr className="table-secondary">
             <td
                 title={fileName}
                 colSpan={colSpan}
             >
-                <div className ="d-flex flex-row">
+                <div className="d-flex flex-row">
                     {
-                        (haveFunctionChanged)? (
+                        (haveFunctionChanged) ? (
                             <span className="test-list-change-badge badge bg-warning text-black">
                                 {clockIcon()}
                             </span>
@@ -247,7 +249,7 @@ function FileNameTableRowTestList({fileName,colSpan, haveFunctionChanged}) {
                             </span>
                         )
                     }
-                <span className="bold">
+                    <span className="bold">
                     {formatTableString(fileName, 32)}
                 </span>
                 </div>

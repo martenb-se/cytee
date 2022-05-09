@@ -219,4 +219,16 @@
      });
  }
 
- export {updateTime, getProjectFunctions, getProjectTest, getFunction, saveTest, updateTest, deleteTest, generateTests, getOldFunction, editFunctionInfo, removeChangesFromUntestedFunctions};
+ export {
+    updateTime,
+     getProjectFunctions,
+     getProjectTest,
+     getFunction,
+     saveTest,
+     updateTest,
+     deleteTest,
+     generateTests,
+     getOldFunction,
+     editFunctionInfo,
+     removeChangesFromUntestedFunctions
+};

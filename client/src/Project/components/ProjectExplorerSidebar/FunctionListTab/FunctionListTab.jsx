@@ -1,13 +1,13 @@
 import React, {useEffect, useState} from 'react';
 
-import {useSelector, useDispatch} from "react-redux";
+import {useDispatch, useSelector} from "react-redux";
 import {
     selectFunctionList,
     selectFunctionListError,
     selectFunctionListLoading
 } from '../../../../reducers/functionListSlice';
 import {selectActiveFunction, setActiveFunction} from "../../../../reducers/activeFunctionSlice";
-import {setActiveUnsavedTest, setActiveTest} from "../../../../reducers/activeTestInfoSlice";
+import {setActiveTest, setActiveUnsavedTest} from "../../../../reducers/activeTestInfoSlice";
 import {generateInitTestState} from "../../../../util/generateInitTestState";
 
 import {isEmpty} from "lodash";
@@ -15,11 +15,7 @@ import {isEmpty} from "lodash";
 import './FunctionListTab.scss'
 import '../ProjectExplorerSidebar.jsx.scss'
 
-import {
-    formatTableString,
-    categorizeList,
-    FileNameTableRow
-} from "../ProjectExplorerSidebar";
+import {categorizeList, formatTableString} from "../ProjectExplorerSidebar";
 
 import {selectTestList} from "../../../../reducers/testListSlice";
 
@@ -100,6 +96,7 @@ const downArrowIcon = () => {
 
 function sortFunctionList(functionList, sortAttribute, sortOrder) {
     const functionListClone = cloneDeep(functionList);
+
     function sortList(a, b) {
         if (sortOrder === 'highToLow') {
             if (a[sortAttribute] > b[sortAttribute])
@@ -118,22 +115,8 @@ function sortFunctionList(functionList, sortAttribute, sortOrder) {
         }
 
     }
+
     return functionListClone.sort(sortList);
-}
-
-function getFunctionsWithTestList(testList) {
-
-    let functionsWithTestList = []
-    for (const testInfo of testList) {
-        const functionIndex = functionsWithTestList.findIndex(
-            testInf => testInf.functionId === testInfo.functionId
-        );
-        if (functionIndex === -1) {
-            functionsWithTestList.push(testInfo.functionId);
-        }
-    }
-
-    return functionsWithTestList;
 }
 
 function isFileTested(fileName, testList) {
@@ -158,8 +141,7 @@ function haveFileChange(fileFunctionList) {
 }
 
 
-
-function FunctionListTab({label}) {
+function FunctionListTab({}) {
 
     const dispatch = useDispatch();
 
@@ -226,10 +208,10 @@ function FunctionListTab({label}) {
 
     if ((functionListLoadingState === 'loading') ||
         (functionListLoadingState === '')) {
-        return <LoadingComponent />
+        return <LoadingComponent/>
     }
 
-    if (functionListLoadingState === 'failed'){
+    if (functionListLoadingState === 'failed') {
         return (
             <>
                 <div>Error</div>
@@ -239,7 +221,7 @@ function FunctionListTab({label}) {
     }
 
     if (testList === undefined) {
-        return <LoadingComponent />
+        return <LoadingComponent/>
     }
 
     return (
@@ -247,11 +229,11 @@ function FunctionListTab({label}) {
 
             <table className="table table-hover function-list-tab-table">
                 <thead>
-                <tr className ="table-list-header-row">
+                <tr className="table-list-header-row">
                     <th
-                        className ="col-auto"
+                        className="col-auto"
                         onClick={onSortOrderClickCallback}
-                    >{(sortOrder==='lowToHigh')?downArrowIcon():upArrowIcon()}</th>
+                    >{(sortOrder === 'lowToHigh') ? downArrowIcon() : upArrowIcon()}</th>
                     <FunctionNameHeaderCol onClickCallback={onHeaderColClickCallback}/>
                     <DependentsHeaderCol onClickCallback={onHeaderColClickCallback}/>
                     <DependenciesHeaderCol onClickCallback={onHeaderColClickCallback}/>
@@ -259,14 +241,14 @@ function FunctionListTab({label}) {
                 </tr>
                 </thead>
                 <tbody className="function-list-table-content">
-                    <FunctionListTableContent
-                        functionList={functionList}
-                        testList={testList}
-                        sortAttribute={sortAttribute}
-                        sortOrder={sortOrder}
-                        onClickCallback={onClickCallback}
-                        isActiveFunction={isActiveFunction}
-                    />
+                <FunctionListTableContent
+                    functionList={functionList}
+                    testList={testList}
+                    sortAttribute={sortAttribute}
+                    sortOrder={sortOrder}
+                    onClickCallback={onClickCallback}
+                    isActiveFunction={isActiveFunction}
+                />
                 </tbody>
             </table>
         </div>
@@ -276,12 +258,12 @@ function FunctionListTab({label}) {
 function FunctionNameHeaderCol({onClickCallback}) {
     return (
         <th
-            className ="function-list-header-col"
+            className="function-list-header-col"
             scope="col"
             title="Function Name"
             onClick={() => onClickCallback('functionId')}
         >
-          Function Name
+            Function Name
         </th>
     );
 }
@@ -289,12 +271,12 @@ function FunctionNameHeaderCol({onClickCallback}) {
 function DependentsHeaderCol({onClickCallback}) {
     return (
         <th
-            className ="function-list-header-col"
+            className="function-list-header-col"
             scope="col"
             title="dependents"
             onClick={() => onClickCallback('dependents')}
         >
-          {dependentsIcon()}
+            {dependentsIcon()}
         </th>
     );
 }
@@ -302,7 +284,7 @@ function DependentsHeaderCol({onClickCallback}) {
 function DependenciesHeaderCol({onClickCallback}) {
     return (
         <th
-            className ="function-list-header-col"
+            className="function-list-header-col"
             scope="col"
             title="dependencies"
             onClick={() => onClickCallback('dependencies')}
@@ -315,7 +297,7 @@ function DependenciesHeaderCol({onClickCallback}) {
 function TestsHeaderCol({onClickCallback}) {
     return (
         <th
-            className ="function-list-header-col"
+            className="function-list-header-col"
             scope="col"
             title="Number of tests"
             onClick={() => onClickCallback('numberOfTests')}
@@ -325,7 +307,14 @@ function TestsHeaderCol({onClickCallback}) {
     );
 }
 
-function FunctionListTableContent({functionList, testList, sortAttribute, sortOrder, onClickCallback, isActiveFunction}) {
+function FunctionListTableContent({
+          functionList,
+          testList,
+          sortAttribute,
+          sortOrder,
+          onClickCallback,
+          isActiveFunction
+      }) {
 
     const categorizedFunctionList = categorizeList(
         sortFunctionList(functionList, sortAttribute, sortOrder),
@@ -333,66 +322,66 @@ function FunctionListTableContent({functionList, testList, sortAttribute, sortOr
     );
 
     return (
-      <>
-          {
-              Object.keys(categorizedFunctionList).map(fileName => {
-                  return (
-                      <React.Fragment key={fileName}>
-                          <FileNameTableRowFunctionList
-                            fileName={fileName}
-                            testList={testList}
-                            colSpan={"2"}
-                            fileFunctionList={categorizedFunctionList[fileName]}
+        <>
+            {
+                Object.keys(categorizedFunctionList).map(fileName => {
+                    return (
+                        <React.Fragment key={fileName}>
+                            <FileNameTableRowFunctionList
+                                fileName={fileName}
+                                testList={testList}
+                                colSpan={"2"}
+                                fileFunctionList={categorizedFunctionList[fileName]}
 
-                          />
-                          {
-                              categorizedFunctionList[fileName].map(funcInf => {
-                                  return (
-                                      <tr
-                                        key={funcInf._id}
-                                        title={funcInf.functionId}
-                                        onClick={() => onClickCallback(funcInf)}
-                                        className={(isActiveFunction(funcInf))?(
-                                            "table-active table-primary"
-                                        ) : (
-                                            (
-                                                isFunctionTested(funcInf.functionId, testList) &&
-                                                funcInf.haveFunctionChanged
-                                            )? (
-                                                "table-warning"
+                            />
+                            {
+                                categorizedFunctionList[fileName].map(funcInf => {
+                                    return (
+                                        <tr
+                                            key={funcInf._id}
+                                            title={funcInf.functionId}
+                                            onClick={() => onClickCallback(funcInf)}
+                                            className={(isActiveFunction(funcInf)) ? (
+                                                "table-active table-primary"
                                             ) : (
-                                                ""
-                                            )
-                                        )}
-                                      >
-                                          <td
-                                            colSpan="2"
+                                                (
+                                                    isFunctionTested(funcInf.functionId, testList) &&
+                                                    funcInf.haveFunctionChanged
+                                                ) ? (
+                                                    "table-warning"
+                                                ) : (
+                                                    ""
+                                                )
+                                            )}
+                                        >
+                                            <td
+                                                colSpan="2"
 
-                                          >
+                                            >
                                               <span className="function-list-function-name">
                                                 {formatTableString(funcInf.functionId, 32)}
                                               </span>
-                                          </td>
-                                          <FunctionListChangeNotificationCol
-                                              funcInf={funcInf}
-                                              changedAttribute={'dependents'}
-                                              functionAttribute={'dependents'}
-                                          />
-                                          <FunctionListChangeNotificationCol
-                                              funcInf={funcInf}
-                                              changedAttribute={'dependencies'}
-                                              functionAttribute={'dependencies'}
-                                          />
-                                          <td>{funcInf.numberOfTests}</td>
-                                      </tr>
-                                  )
-                              })
-                          }
-                      </React.Fragment>
-                  )
-              })
-          }
-      </>
+                                            </td>
+                                            <FunctionListChangeNotificationCol
+                                                funcInf={funcInf}
+                                                changedAttribute={'dependents'}
+                                                functionAttribute={'dependents'}
+                                            />
+                                            <FunctionListChangeNotificationCol
+                                                funcInf={funcInf}
+                                                changedAttribute={'dependencies'}
+                                                functionAttribute={'dependencies'}
+                                            />
+                                            <td>{funcInf.numberOfTests}</td>
+                                        </tr>
+                                    )
+                                })
+                            }
+                        </React.Fragment>
+                    )
+                })
+            }
+        </>
     );
 
 }

@@ -18,14 +18,12 @@ function FunctionCodeTab() {
     const projectPath = useSelector(state => state.project.path);
 
     useEffect(() => {
-        if (!isEmpty(activeFunc) ) {
+        if (!isEmpty(activeFunc)) {
             getFunction(projectPath, activeFunc.fileId).then(data => {
                 setFunctionCode(data.fileContents);
             });
         }
     }, [activeFunc])
-
-
 
     return (
         <>
@@ -34,7 +32,7 @@ function FunctionCodeTab() {
                 <div className={'functionCodeView'}>
                     <SyntaxHighlighter
                         language="javascript"
-                        className = "function-code-view"
+                        className="function-code-view"
                         style={monokai}
                         showLineNumbers={true}
                         wrapLines={true}

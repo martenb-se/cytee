@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import FunctionListTab from "./FunctionListTab";
 import TestListTab from "./TestListTab";
 
@@ -7,30 +7,30 @@ import './ProjectExplorerSidebar.jsx.scss';
 import TabContainer from 'react-bootstrap/TabContainer'
 import TabContent from 'react-bootstrap/TabContent'
 import TabPane from 'react-bootstrap/TabPane'
-import {Col, Nav, NavLink, NavItem, Row} from "react-bootstrap";
+import {Col, Nav, NavItem, NavLink, Row} from "react-bootstrap";
 import GenerateTestsButton from "../GenerateTestsButton";
 
 
 export function FileNameTableRow({fileName, colSpan, haveFunctionChanged}) {
     return (
-      <tr className ="table-secondary">
-        <td
-            title={fileName}
-            colSpan={colSpan}
-        >
-            <div className ="d-flex flex-row justify-content-sm-between">
+        <tr className="table-secondary">
+            <td
+                title={fileName}
+                colSpan={colSpan}
+            >
+                <div className="d-flex flex-row justify-content-sm-between">
                 <span className="bold">
                     {formatTableString(fileName, 32)}
                 </span>
-                <div>
-                    <span className={(haveFunctionChanged)?"badge bg-warning":"badge bg-success"}>
-                        {(haveFunctionChanged)?'Changed':'Up To Date'}
+                    <div>
+                    <span className={(haveFunctionChanged) ? "badge bg-warning" : "badge bg-success"}>
+                        {(haveFunctionChanged) ? 'Changed' : 'Up To Date'}
                     </span>
-                </div>
+                    </div>
 
-            </div>
-        </td>
-      </tr>
+                </div>
+            </td>
+        </tr>
     );
 }
 
@@ -38,7 +38,7 @@ export function FileNameTableRow({fileName, colSpan, haveFunctionChanged}) {
 export function formatTableString(string, maxLength) {
     let formattedString;
     if (string.length >= maxLength) {
-        formattedString = string.substring(string.length-(maxLength-3), string.length);
+        formattedString = string.substring(string.length - (maxLength - 3), string.length);
         formattedString = '...' + formattedString;
     } else {
         formattedString = string;
@@ -80,7 +80,7 @@ function ProjectExplorerSidebar() {
                 <Row>
                     <Col md='auto'>
                         <Nav className="flex-column" variant={"pills"}>
-                            <NavItem >
+                            <NavItem>
                                 <NavLink className="sidebar-nav-link" eventKey="functionList">Function List</NavLink>
                             </NavItem>
                             <NavItem>
@@ -92,15 +92,15 @@ function ProjectExplorerSidebar() {
                         </Nav>
                     </Col>
 
-                    { (selectedTab !== '') &&
+                    {(selectedTab !== '') &&
                         <Col>
                             <GenerateTestsButton/>
                             <TabContent className="sidebar-tab-content">
                                 <TabPane className="h-100" eventKey={'functionList'}>
-                                    <FunctionListTab />
+                                    <FunctionListTab/>
                                 </TabPane>
                                 <TabPane className="h-100" eventKey={'testList'}>
-                                    <TestListTab />
+                                    <TestListTab/>
                                 </TabPane>
                             </TabContent>
                         </Col>

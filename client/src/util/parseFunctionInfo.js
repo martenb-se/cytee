@@ -1,10 +1,8 @@
-
-
 function parseFunctionArgs(args) {
     const argumentList = [];
 
     for (const argumentData of args) {
-        switch(argumentData.type) {
+        switch (argumentData.type) {
             case 'Identifier':
                 argumentList.push(argumentData.name);
                 break;

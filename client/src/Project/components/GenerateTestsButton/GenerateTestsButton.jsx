@@ -11,19 +11,19 @@ function GenerateTestsButton() {
 
     function generateProjectTests() {
         setGenerateTestLoading('loading');
-        generateTests(projectPath).then(data => {
+        generateTests(projectPath).then(() => {
             setGenerateTestLoading('');
         })
     }
 
     return (
-      <button
-          className ="generate-tests-button btn btn-primary"
-          onClick={() => generateProjectTests()}
-          disabled={generateTestLoading !== ''}
-      >
-        Generate Tests
-      </button>
+        <button
+            className ="generate-tests-button btn btn-primary"
+            onClick={() => generateProjectTests()}
+            disabled={generateTestLoading !== ''}
+        >
+            Generate Tests
+        </button>
     );
 
 }

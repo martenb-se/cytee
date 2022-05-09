@@ -2,7 +2,7 @@ import React from 'react';
 import {useDispatch, useSelector} from "react-redux";
 import {selectUnsavedActiveTest, updateException} from "../../../../reducers/activeTestInfoSlice";
 
-function ExceptionTab({label}) {
+function ExceptionTab({}) {
 
     const dispatch = useDispatch();
     const unsavedTest = useSelector(selectUnsavedActiveTest);

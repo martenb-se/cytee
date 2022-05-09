@@ -10,7 +10,7 @@ import './ModulePanel.scss'
 
 function ModulePanel() {
     return (
-        <div className ="module-panel-wrapper border-end">
+        <div className ="module-panel-wrapper h-100 border-end">
             <ModuleSelector />
             <ModuleList/>
         </div>

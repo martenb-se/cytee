@@ -113,8 +113,10 @@ function ArgumentTab({label, addChildFunction, removeChildFunction}) {
 
 
     return (
-        <div className="argument-tab-wrapper">
-            <form>
+        <div className="h-100">
+            <form
+                className ="argument-tab-wrapper"
+            >
                 {
                     unsavedTest.moduleData.argumentList.map(argumentData => {
                         return (

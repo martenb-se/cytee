@@ -79,7 +79,7 @@ export const activeTestSlice = createSlice({
                     addUnsavedTestState.returnValue = {type: 'undefined'};
                     break;
                 case 'exception':
-                    addUnsavedTestState.exception = {exception: ''};
+                    addUnsavedTestState.exception = {value: ''};
                     break;
                 default:
                     break;
@@ -113,7 +113,8 @@ export const activeTestSlice = createSlice({
             state.unsavedTest = cloneDeep(state.test);
         },
         updateException: (state, action) =>{
-            state.unsavedTest.moduleData.exception = action.payload;
+            state.unsavedTest.moduleData.exception.value = action.payload;
+            console.log(state.unsavedTest.moduleData);
         }
     },
     extraReducers(builder) {

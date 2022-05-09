@@ -35,8 +35,6 @@ function TestCreatorPage({}){
     const [loadingState, setLoadingState] = useState('');
     const [loadingMessage, setLoadingMessage] = useState('');
 
-    const [generateTestLoading, setGenerateTestLoading] = useState('');
-
     useEffect(() => {
         setLoadingClearingState('loading');
         removeChangesFromUntestedFunctions(projectPath).then(data => {
@@ -94,13 +92,13 @@ function TestCreatorPage({}){
 
     return (
         <div className = "container-fluid test-creator-Page-wrapper">
-            <div className ="row">
+            <div className ="row h-100">
                 <div className = "test-creator-side-panel col-auto">
                     <ProjectExplorerSidebar />
                 </div>
-                <div className = "test-creation-area col">
+                <div className = "test-creation-area h-100 col d-flex flex-column">
                     <CodeViewingSection/>
-                    <TestCreatorSection/>
+                        <TestCreatorSection/>
                 </div>
             </div>
         </div>

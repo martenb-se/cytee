@@ -381,7 +381,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                 {
                     (getScope(baseState, selectedScope, 0).type === 'array')? (
                         <div className="mb-3 input-group">
-                            <span className="input-group-text">Selected Index</span>
+                            <span className="input-group-text">Index</span>
                             <select
                                 className="form-select"
                                 onChange ={onSelectedAttributeChangeCallback}
@@ -446,36 +446,35 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                         </div>
                     )
                 }
-                {
-                    (getScope(baseState, selectedScope, 0).type !== 'array') && (
-                        <>
-                            <div className="input-group mb-3">
-                                <span className="input-group-text">Key</span>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="key"
-                                    value={attributeLabel}
-                                    onChange={onAttributeLabelChangeCallback}
-                                />
-                            </div>
-                            {(errorMessage !== '') && (
-                                <div className="alert alert-danger" role="alert">
-                                    {errorMessage}
-                                </div>
-                            )}
-                        </>
-                    )
-                }
-                <div className="input-group mb-3">
-                    <span className="input-group-text">Type</span>
-                    <ArgumentTypeSelector
-                        id="create-object-type-selector-input"
-                        type={attributeType}
-                        onChangeCallback={onAttributeTypeChangeCallback}
-                        disabled={((selectedAttribute !== '') && (attributeType === 'object'))}
-                    />
+                <div className ="mb-3 input-group">
+                    {
+                        (getScope(baseState, selectedScope, 0).type !== 'array') && (
+                            <>
+
+                                    <span className="input-group-text">Key</span>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="key"
+                                        value={attributeLabel}
+                                        onChange={onAttributeLabelChangeCallback}
+                                    />
+                            </>
+                        )
+                    }
+                        <span className="input-group-text">Type</span>
+                        <ArgumentTypeSelector
+                            id="create-object-type-selector-input"
+                            type={attributeType}
+                            onChangeCallback={onAttributeTypeChangeCallback}
+                            disabled={((selectedAttribute !== '') && (attributeType === 'object'))}
+                        />
                 </div>
+                {(errorMessage !== '') && (
+                    <div className="alert alert-danger" role="alert">
+                        {errorMessage}
+                    </div>
+                )}
                 <div className="input-group mb-3">
                     {
                         ((attributeType !== "object") && (attributeType !== "array")) && (
@@ -509,7 +508,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                             )
                     }
                     <button
-                        className="btn btn-success"
+                        className="btn btn-secondary"
                         onClick={() => onChangeCallback(baseState)}
                     >
                         Save & Exit

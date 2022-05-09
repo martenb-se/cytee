@@ -87,13 +87,15 @@ function TestCreatorSection() {
 
     return (
         <Provider value={[localTabState, localTabDispatch]}>
-            <div className="test-creator-section-wrapper h-100 border-top row flex-row">
-                <div className = "col-2 test-creator-section-wrapper-header">
-                    <ModulePanel />
-                </div>
-                <div className ="col-10 test-creator-section-wrapper-content">
-                    <TestCreatorHeaderSection />
-                    <TestCreatorTabGroup />
+            <div className="test-creator-section-wrapper flex-grow-1 border-top ">
+                <div className="h-100 row overflow-auto">
+                    <div className = "col-2 test-creator-section-wrapper-header">
+                        <ModulePanel />
+                    </div>
+                    <div className ="col-10 test-creator-section-wrapper-content d-flex flex-column">
+                        <TestCreatorHeaderSection />
+                        <TestCreatorTabGroup />
+                    </div>
                 </div>
             </div>
         </Provider>
@@ -308,88 +310,6 @@ function TestCreatorHeaderSection() {
             </div>
         </form>
     );
-
-    if (isEmpty(test)) {
-        return (
-            <form>
-                <div className="test-creator-section-header flex-column">
-                    <div className="btn-group">
-                        <button
-                            className="btn btn-primary"
-                            onClick={createTestCallback}
-                            disabled={testLoadingState==='loading'}
-                        >
-                            Create Test
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={cancelCallback}
-                            disabled={testLoadingState==='loading'}
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-
-                <div className="mb-3">
-                    <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
-                    <input
-                        className="test-creator-section-custom-name-input form-control"
-                        type="text"
-                        onChange={onCustomNameChangeCallback}
-                        value={unsavedTest.customName}
-                        disabled={testLoadingState==='loading'}
-                    />
-                </div>
-
-            </form>
-        );
-    }
-
-    return (
-        <form>
-            <div className="test-creator-section-header">
-                <div className="btn-group">
-                    <button
-                        className="btn btn-primary"
-                        onClick={updateTestCallback}
-                        disabled={
-                        (testLoadingState==='loading') || (isEqual(unsavedTest, test))
-                    }
-                    >
-                        Save Test
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={discardTestCallback}
-                        disabled={
-                        (testLoadingState==='loading') || (isEqual(unsavedTest, test))
-                    }
-                    >
-                        Discard Changes
-                    </button>
-                    <button
-                        className="btn btn-danger"
-                        onClick={deleteTestCallback}
-                        disabled={testLoadingState==='loading'}
-                    >
-                        Delete
-                    </button>
-                </div>
-            </div>
-            <div className="mb-3">
-                <label htmlFor="test-creator-section-custom-name-input">Custom Name</label>
-                <input
-                    className="test-creator-section-custom-name-input form-control"
-                    type="text"
-                    onChange={onCustomNameChangeCallback}
-                    value={unsavedTest.customName}
-                    disabled={testLoadingState==='loading'}
-                />
-            </div>
-        </form>
-    );
-
 }
 
 function WaitingForTestPanel() {

@@ -95,8 +95,9 @@ function ReturnTab({label}) {
     }
 
     return (
-            <div className="return-value-tab-wrapper">
+            <div className="return-value-tab-wrapper h-100">
                 <form
+                    className ="h-100"
                     onSubmit={e => e.preventDefault()}
                 >
                     <label

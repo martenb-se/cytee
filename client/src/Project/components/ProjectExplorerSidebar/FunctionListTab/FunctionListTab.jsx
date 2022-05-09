@@ -355,7 +355,10 @@ function FunctionListTableContent({functionList, testList, sortAttribute, sortOr
                                         className={(isActiveFunction(funcInf))?(
                                             "table-active table-primary"
                                         ) : (
-                                            (isFunctionTested(funcInf.functionId, testList) && funcInf.haveFunctionChanged)? (
+                                            (
+                                                isFunctionTested(funcInf.functionId, testList) &&
+                                                funcInf.haveFunctionChanged
+                                            )? (
                                                 "table-warning"
                                             ) : (
                                                 ""
@@ -370,8 +373,16 @@ function FunctionListTableContent({functionList, testList, sortAttribute, sortOr
                                                 {formatTableString(funcInf.functionId, 32)}
                                               </span>
                                           </td>
-                                          <td>{funcInf.dependents}</td>
-                                          <td>{funcInf.dependencies}</td>
+                                          <FunctionListChangeNotificationCol
+                                              funcInf={funcInf}
+                                              changedAttribute={'dependents'}
+                                              functionAttribute={'dependents'}
+                                          />
+                                          <FunctionListChangeNotificationCol
+                                              funcInf={funcInf}
+                                              changedAttribute={'dependencies'}
+                                              functionAttribute={'dependencies'}
+                                          />
                                           <td>{funcInf.numberOfTests}</td>
                                       </tr>
                                   )
@@ -390,43 +401,58 @@ function FileNameTableRowFunctionList({fileName, testList, fileFunctionList, col
 
     return (
         <tr
-            className ="table-secondary"
+            className="table-secondary"
         >
             <td
                 title={fileName}
                 colSpan={colSpan}
                 className="col"
             >
-                <div className ="d-flex flex-row">
+                <div className="d-flex flex-row">
                     {
-                        (isFileTested(fileName, testList) && haveFileChange(fileFunctionList))?(
-                            <span className="function-list-change-badge badge bg-warning text-black">{clockIcon()}</span>
-                        ):(
+                        (isFileTested(fileName, testList) && haveFileChange(fileFunctionList)) ? (
+                            <span
+                                className="function-list-change-badge badge bg-warning text-black">{clockIcon()}</span>
+                        ) : (
                             <span className="function-list-change-badge badge bg-success">{checkIcon()}</span>
                         )
                     }
-                    <span className ="bold function-list-file-name">
+                    <span className="bold function-list-file-name">
                         {formatTableString(fileName, 32)}
                     </span>
                 </div>
             </td>
             <td
-                className ="bold"
+                className="bold"
             >
                 {fileFunctionList.reduce((prev, curr) => prev + curr.dependents, 0)}
             </td>
             <td
-                className ="bold"
+                className="bold"
             >
                 {fileFunctionList.reduce((prev, curr) => prev + curr.dependencies, 0)}
             </td>
             <td
-                className ="bold"
+                className="bold"
             >
                 {fileFunctionList.reduce((prev, curr) => prev + curr.numberOfTests, 0)}
             </td>
         </tr>
     );
+}
+
+function FunctionListChangeNotificationCol({funcInf, changedAttribute, functionAttribute}) {
+    return (
+        <td>
+            {
+                ((funcInf.haveFunctionChanged) && (funcInf.changeList.findIndex(attribute => attribute === changedAttribute) !== -1)) ? (
+                    <span className="badge bg-warning text-black">{funcInf[functionAttribute]}</span>
+                ) : (
+                    <>{funcInf[functionAttribute]}</>
+                )
+            }
+        </td>
+    )
 }
 
 export default FunctionListTab;

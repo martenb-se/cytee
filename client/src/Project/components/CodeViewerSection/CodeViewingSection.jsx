@@ -69,7 +69,8 @@ function CodeViewingSection() {
                                             <FunctionCodeTab />
                                         </TabPane>
                                         {
-                                            (activeFunction.haveFunctionChanged) && (
+                                            (activeFunction.haveFunctionChanged &&
+                                                (activeFunction.changeList.findIndex(attribute => attribute === 'dependents') === -1)) && (
                                                 <TabPane eventKey="codeCompare">
                                                     <FunctionCompareTab />
                                                 </TabPane>

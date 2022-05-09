@@ -1,13 +1,8 @@
-
-.function-list-tab-table th{
-  //text-align: left;
-  //top: 0;
-  //position: sticky;
-
+.function-list-header-col {
+  cursor: pointer;
 }
 
-
-.function-list-table-content {
-
+.function-list-change-badge {
+  margin-right: 5px;
+  transform: scale(.7);
 }
-

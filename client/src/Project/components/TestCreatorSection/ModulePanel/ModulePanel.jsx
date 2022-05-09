@@ -1,17 +1,17 @@
-import React, {useContext, useEffect} from "react";
+import React from "react";
 import {addModuleData, removeModuleData, selectUnsavedActiveTest} from "../../../../reducers/activeTestInfoSlice";
 import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
 import {moduleNameMapper} from "../TestCreatorSection";
 import {isEmpty} from "lodash";
 
-import {useSelector, useDispatch} from "react-redux";
+import {useDispatch, useSelector} from "react-redux";
 
 import './ModulePanel.scss'
 
 function ModulePanel() {
     return (
-        <div className ="module-panel-wrapper border-end">
-            <ModuleSelector />
+        <div className="module-panel-wrapper h-100 border-end">
+            <ModuleSelector/>
             <ModuleList/>
         </div>
     )
@@ -36,9 +36,15 @@ function ModuleSelector() {
                 Add Module
             </button>
             <ul className="dropdown-menu" aria-labelledby="dropdownMenuButton1">
-                <li><button className="dropdown-item" onClick ={ () => addModule('argumentList')}>Arguments</button></li>
-                <li><button className="dropdown-item" onClick ={ () => addModule('returnValue')}>Return Value</button></li>
-                <li><button className="dropdown-item" onClick ={ () => addModule('exception')}>Exception</button></li>
+                <li>
+                    <button className="dropdown-item" onClick={() => addModule('argumentList')}>Arguments</button>
+                </li>
+                <li>
+                    <button className="dropdown-item" onClick={() => addModule('returnValue')}>Return Value</button>
+                </li>
+                <li>
+                    <button className="dropdown-item" onClick={() => addModule('exception')}>Exception</button>
+                </li>
             </ul>
         </div>
     );
@@ -56,13 +62,16 @@ function ModuleList() {
     return (
         <table className="table">
             <thead>
-            <tr><td>Modules</td></tr>
+            <tr>
+                <td>Modules</td>
+            </tr>
             </thead>
             <tbody>
-            { (!isEmpty(unsavedTest)) &&
-                Object.keys(unsavedTest.moduleData).sort().map( moduleName => {
+            {(!isEmpty(unsavedTest)) &&
+                Object.keys(unsavedTest.moduleData).sort().map(moduleName => {
                     return (
-                        <tr key={moduleName}><td>{moduleNameMapper[moduleName]}</td>
+                        <tr key={moduleName}>
+                            <td>{moduleNameMapper[moduleName]}</td>
                             <td>
                                 <button
                                     type="button"

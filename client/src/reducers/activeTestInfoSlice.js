@@ -1,8 +1,6 @@
 import {createSlice, createAsyncThunk} from "@reduxjs/toolkit";
 import cloneDeep from 'lodash/cloneDeep';
 import {saveTest, updateTest, deleteTest} from "../util/api";
-import {parseFunction} from "../Project/components/TestCreatorSection/unsavedTestInfoReducer";
-
 
 const initialState = {
     status: "",
@@ -11,7 +9,7 @@ const initialState = {
     unsavedTest: {},
 };
 
-export const saveTestInfo = createAsyncThunk('activeTest/saveTestInfo', async ({}, {dispatch, getState}) => {
+export const saveTestInfo = createAsyncThunk('activeTest/saveTestInfo', async ({}, {getState}) => {
     const unsavedData = getState().activeTest.unsavedTest;
     const pathToProject = getState().project.path;
     const functionInfo = getState().activeFunction.activeFunction;
@@ -33,13 +31,13 @@ export const saveTestInfo = createAsyncThunk('activeTest/saveTestInfo', async ({
     return testInfoState;
 
 })
-export const updateTestInfo = createAsyncThunk('activeTest/updateTestInfo', async ({}, {dispatch, getState}) => {
+export const updateTestInfo = createAsyncThunk('activeTest/updateTestInfo', async ({}, {getState}) => {
     const testInfoState = cloneDeep(getState().activeTest.unsavedTest);
     await updateTest(testInfoState._id, testInfoState.moduleData, testInfoState.customName);
     return testInfoState;
 });
 
-export const deleteTestInfo = createAsyncThunk('activeTest/deleteTestInfo', async ({},{dispatch, getState}) => {
+export const deleteTestInfo = createAsyncThunk('activeTest/deleteTestInfo', async ({},{getState}) => {
     return await deleteTest(getState().activeTest.test._id);
 })
 
@@ -54,7 +52,6 @@ export const activeTestSlice = createSlice({
             state.test = cloneDeep(action.payload);
         },
         addModuleData: (state, action) => {
-            // action.payload should contain activeFunctionInfo and moduleName
             const addUnsavedTestState = cloneDeep(state.unsavedTest.moduleData);
             const functionInfo = action.payload.activeFunction;
 
@@ -79,7 +76,7 @@ export const activeTestSlice = createSlice({
                     addUnsavedTestState.returnValue = {type: 'undefined'};
                     break;
                 case 'exception':
-                    addUnsavedTestState.exception = {exception: ''};
+                    addUnsavedTestState.exception = {value: ''};
                     break;
                 default:
                     break;
@@ -109,28 +106,27 @@ export const activeTestSlice = createSlice({
         updateUnsavedCustomName: (state, action) => {
             state.unsavedTest.customName = cloneDeep(action.payload);
         },
-        discardUnsavedChanges: (state, action) => {
+        discardUnsavedChanges: (state) => {
             state.unsavedTest = cloneDeep(state.test);
         },
         updateException: (state, action) =>{
-            state.unsavedTest.moduleData.exception = action.payload;
+            state.unsavedTest.moduleData.exception.value = action.payload;
         }
     },
     extraReducers(builder) {
         builder
-            .addCase(saveTestInfo.pending, (state, action) => {
+            .addCase(saveTestInfo.pending, (state) => {
                 state.status = 'loading';
             })
             .addCase(saveTestInfo.fulfilled, (state, action) => {
                 state.status = 'succeeded';
                 state.test = action.payload;
-                //state.unsavedTest = cloneDeep(action.payload);
             })
             .addCase(saveTestInfo.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.error.message;
             })
-            .addCase(updateTestInfo.pending, (state, action) => {
+            .addCase(updateTestInfo.pending, (state) => {
                 state.status = 'loading';
             })
             .addCase(updateTestInfo.fulfilled, (state, action) => {
@@ -141,10 +137,10 @@ export const activeTestSlice = createSlice({
                 state.status = 'failed';
                 state.error = action.error.message;
             })
-            .addCase(deleteTestInfo.pending, (state, action) => {
+            .addCase(deleteTestInfo.pending, (state) => {
                 state.status = 'loading';
             })
-            .addCase(deleteTestInfo.fulfilled, (state, action) => {
+            .addCase(deleteTestInfo.fulfilled, (state) => {
                 state.status = 'succeeded';
             })
             .addCase(deleteTestInfo.rejected, (state, action) => {
@@ -157,7 +153,6 @@ export const activeTestSlice = createSlice({
 export const selectActiveTest = state => state.activeTest.test;
 export const selectUnsavedActiveTest = state => state.activeTest.unsavedTest;
 export const selectActiveTestLoadingState = state => state.activeTest.status;
-export const selectActiveTestError = state => state.activeTest.error;
 
 export const {
     setActiveUnsavedTest,

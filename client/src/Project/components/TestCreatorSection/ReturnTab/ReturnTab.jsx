@@ -12,12 +12,12 @@ import {localTabGroupContext} from "../TestCreatorSection";
 import {CollapsibleStateViewer} from "../objectCreationTab/ObjectCreationTab";
 
 
-function ReturnTab({label}) {
+function ReturnTab({}) {
 
     const dispatch = useDispatch();
     const unsavedTest = useSelector(selectUnsavedActiveTest);
 
-    const [localTabState, localTabDispatch] = useContext(localTabGroupContext);
+    const [, localTabDispatch] = useContext(localTabGroupContext);
 
     function onChangeCallback(returnValue) {
         dispatch(updateReturnValue(returnValue));
@@ -26,7 +26,7 @@ function ReturnTab({label}) {
     if (isEmpty(unsavedTest) ||
         (unsavedTest.moduleData === undefined) ||
         (unsavedTest.moduleData.returnValue === undefined)) {
-        return <div className ="test-creator-tab-empty">waiting...</div>
+        return <div className="test-creator-tab-empty">waiting...</div>
     }
 
     function changeReturnValueTypeCallback(e, returnValueData) {
@@ -38,7 +38,7 @@ function ReturnTab({label}) {
             });
         }
         returnValueClone.type = e.target.value;
-        switch(returnValueClone.type) {
+        switch (returnValueClone.type) {
             case 'undefined':
             case 'null':
                 delete returnValueClone.value;
@@ -89,40 +89,41 @@ function ReturnTab({label}) {
                 onObjectChangeCallback: onSubTabChangeCallback,
                 parentEventKey: "returnValue",
                 eventKey: 'returnValueChild',
-                title:  "return value - editor"
+                title: "return value - editor"
             }
         });
     }
 
     return (
-            <div className="return-value-tab-wrapper">
-                <form
-                    onSubmit={e => e.preventDefault()}
+        <div className="return-value-tab-wrapper h-100">
+            <form
+                className="h-100"
+                onSubmit={e => e.preventDefault()}
+            >
+                <label
+                    className="form-label"
+                    htmlFor={"return-value-tab-type-field"}
                 >
-                    <label
-                        className="form-label"
-                        htmlFor={"return-value-tab-type-field"}
-                    >
-                        Return Value
-                    </label>
-                    <div className="input-group">
-                        <ArgumentTypeSelector
-                            id={"return-value-tab-type-field"}
-                            type={unsavedTest.moduleData.returnValue.type}
-                            onChangeCallback={changeReturnValueTypeCallback}
-                        />
-                        <ArgumentDataFieldInput
-                            argumentData={unsavedTest.moduleData.returnValue}
-                            onChangeCallback={changeReturnValueCallback}
-                            disabled={false}
-                            onEdit={onEdit}
-                        />
-                    </div>
-                    {((unsavedTest.moduleData.returnValue.type === 'object') || (unsavedTest.moduleData.returnValue.type === 'array')) &&
-                        <CollapsibleStateViewer stateData={unsavedTest.moduleData.returnValue}/>
-                    }
-                </form>
-            </div>
+                    Return Value
+                </label>
+                <div className="input-group">
+                    <ArgumentTypeSelector
+                        id={"return-value-tab-type-field"}
+                        type={unsavedTest.moduleData.returnValue.type}
+                        onChangeCallback={changeReturnValueTypeCallback}
+                    />
+                    <ArgumentDataFieldInput
+                        argumentData={unsavedTest.moduleData.returnValue}
+                        onChangeCallback={changeReturnValueCallback}
+                        disabled={false}
+                        onEdit={onEdit}
+                    />
+                </div>
+                {((unsavedTest.moduleData.returnValue.type === 'object') || (unsavedTest.moduleData.returnValue.type === 'array')) &&
+                    <CollapsibleStateViewer stateData={unsavedTest.moduleData.returnValue}/>
+                }
+            </form>
+        </div>
     );
 }
 

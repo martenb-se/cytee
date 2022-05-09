@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import ArgumentTypeSelector from "../../../../shared/components/ArgumentTypeSelector";
 import ArgumentDataFieldInput from "../../../../shared/components/ArgumentInputValueSelector";
 import './ObjectCreationTab.scss';
@@ -82,7 +82,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                 'Property with label \"' +
                 label +
                 "\" already exists in the scope \"" +
-                ((selectedScope === '')?'root':selectedScope) +
+                ((selectedScope === '') ? 'root' : selectedScope) +
                 "\".");
             return false;
         }
@@ -144,7 +144,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
 
     function onAttributeTypeChangeCallback(e) {
         setAttributeType(e.target.value);
-        switch(e.target.value) {
+        switch (e.target.value) {
             case 'undefined':
             case 'null':
                 setAttributeValue(undefined);
@@ -179,7 +179,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
                 setArrayIndex(parseInt(selectedAttribute));
                 setAttributeType(stateRef.value[selectedAttribute.toString()].type);
                 setAttributeValue(stateRef.value[selectedAttribute.toString()].value);
-            } else  {
+            } else {
                 setArrayIndex(stateRef.value.length);
                 setAttributeLabel('');
                 setAttributeType('undefined');
@@ -280,8 +280,6 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
             if ((attributeRef.argument !== attributeLabel) && (!checkValidLabel(attributeLabel)))
                 return;
 
-        // TODO: Check if array, if that's the case die ie a hole
-
         if (stateRef.type !== 'array') {
             attributeRef.argument = attributeLabel;
         }
@@ -290,8 +288,6 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
             attributeRef.type = attributeType;
             attributeRef.value = attributeValue;
         }
-
-
 
 
         setBaseState(baseStateClone);
@@ -308,7 +304,7 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
         if (stateRef.type === 'array') {
             for (let i = 0; i < stateRef.value.length; i++) {
                 let labelRef = stateRef.value[i].argument;
-                stateRef.value[i].argument = labelRef.substring(0, labelRef.length-1) + i.toString();
+                stateRef.value[i].argument = labelRef.substring(0, labelRef.length - 1) + i.toString();
             }
         }
 
@@ -336,8 +332,6 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
     useEffect(() => {
         setAttributeList(generateAttributeList());
         selectedAttributeChange();
-        //setSelectedAttribute('');
-        //setAttributeLabel('');
     }, [selectedScope]);
 
 
@@ -350,178 +344,179 @@ function ObjectCreationTab({initBaseState, onChangeCallback}) {
     }
 
     return (
-        <div className ="create-object-tab-wrapper row">
+        <div className="create-object-tab-wrapper row">
             <div className="col">
-            <form>
-                <div className="mb-3 input-group">
-                    <span className="input-group-text">Scope</span>
-                    <select
-                        className="form-select"
-                        id="create-object-select-object-key-input"
-                        onChange={onSelectedScopeChangeCallback}
-                        value={selectedScope}
-                    >
-                        {scopeList.map(objPath => {
-                            return (
-                                <option key={objPath} value={objPath}>{(objPath==="")?"(root)":objPath}</option>
-                            )
-                        })}
-                    </select>
-                    <button
-                        disabled={selectedScope===""}
-                        className="btn btn-danger"
-                        onClick={e => {
-                            e.preventDefault();
-                            deleteScopeCallback(selectedScope);
-                        }}
-                    >
-                        Delete
-                    </button>
-                </div>
-                {
-                    (getScope(baseState, selectedScope, 0).type === 'array')? (
-                        <div className="mb-3 input-group">
-                            <span className="input-group-text">Selected Index</span>
-                            <select
-                                className="form-select"
-                                onChange ={onSelectedAttributeChangeCallback}
-                                value ={selectedAttribute}
-                            >
-                                <option value={''}>
-                                    --New Item ({getScope(baseState, selectedScope, 0).value.length})--
-                                </option>
-                                {
-                                    (attributeList.length > 0) && (
-                                        <optgroup label="Indecies">
-                                            {
-                                                attributeList.map(attribute => {
-                                                    return (
-                                                        <option key={attribute} value={attribute}>{attribute}</option>
-                                                    );
-                                                })
-                                            }
-                                        </optgroup>
-                                    )
-                                }
-                            </select>
-                            <button
-                                className="btn btn-danger"
-                                onClick={deleteSelectedAttributeCallback}
-                                disabled={selectedAttribute===""}
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="mb-3 input-group">
-                            <span className="input-group-text">Attribute</span>
-                            <select
-                                className="form-select"
-                                id="create-attribute-select-object-key-input"
-                                onChange={onSelectedAttributeChangeCallback}
-                                value={selectedAttribute}
-                            >
-                                <option value=''>--New Attribute--</option>
-                                {
-                                    (attributeList.length > 0) && (
-                                        <optgroup label="Attributes">
-                                            {
-                                                attributeList.map(attribute => {
-                                                    return (
-                                                        <option key={attribute} value={attribute}>{attribute}</option>
-                                                    );
-                                                })
-                                            }
-                                        </optgroup>
-                                    )
-                                }
-                            </select>
-                            <button
-                                className="btn btn-danger"
-                                onClick={deleteSelectedAttributeCallback}
-                                disabled={selectedAttribute===""}
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    )
-                }
-                {
-                    (getScope(baseState, selectedScope, 0).type !== 'array') && (
-                        <>
-                            <div className="input-group mb-3">
-                                <span className="input-group-text">Key</span>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="key"
-                                    value={attributeLabel}
-                                    onChange={onAttributeLabelChangeCallback}
-                                />
-                            </div>
-                            {(errorMessage !== '') && (
-                                <div className="alert alert-danger" role="alert">
-                                    {errorMessage}
-                                </div>
-                            )}
-                        </>
-                    )
-                }
-                <div className="input-group mb-3">
-                    <span className="input-group-text">Type</span>
-                    <ArgumentTypeSelector
-                        id="create-object-type-selector-input"
-                        type={attributeType}
-                        onChangeCallback={onAttributeTypeChangeCallback}
-                        disabled={((selectedAttribute !== '') && (attributeType === 'object'))}
-                    />
-                </div>
-                <div className="input-group mb-3">
+                <form>
+                    <div className="mb-3 input-group">
+                        <span className="input-group-text">Scope</span>
+                        <select
+                            className="form-select"
+                            id="create-object-select-object-key-input"
+                            onChange={onSelectedScopeChangeCallback}
+                            value={selectedScope}
+                        >
+                            {scopeList.map(objPath => {
+                                return (
+                                    <option key={objPath}
+                                            value={objPath}>{(objPath === "") ? "(root)" : objPath}</option>
+                                )
+                            })}
+                        </select>
+                        <button
+                            disabled={selectedScope === ""}
+                            className="btn btn-danger"
+                            onClick={e => {
+                                e.preventDefault();
+                                deleteScopeCallback(selectedScope);
+                            }}
+                        >
+                            Delete
+                        </button>
+                    </div>
                     {
-                        ((attributeType !== "object") && (attributeType !== "array")) && (
-                            <>
-                                <span className="input-group-text">Value</span>
-                                <ArgumentDataFieldInput
-                                    argumentData={{value: attributeValue, type:attributeType}}
-                                    onChangeCallback={onAttributeValueChangeCallback}
-                                />
-                            </>
+                        (getScope(baseState, selectedScope, 0).type === 'array') ? (
+                            <div className="mb-3 input-group">
+                                <span className="input-group-text">Index</span>
+                                <select
+                                    className="form-select"
+                                    onChange={onSelectedAttributeChangeCallback}
+                                    value={selectedAttribute}
+                                >
+                                    <option value={''}>
+                                        --New Item ({getScope(baseState, selectedScope, 0).value.length})--
+                                    </option>
+                                    {
+                                        (attributeList.length > 0) && (
+                                            <optgroup label="Indecies">
+                                                {
+                                                    attributeList.map(attribute => {
+                                                        return (
+                                                            <option key={attribute} value={attribute}>{attribute}</option>
+                                                        );
+                                                    })
+                                                }
+                                            </optgroup>
+                                        )
+                                    }
+                                </select>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={deleteSelectedAttributeCallback}
+                                    disabled={selectedAttribute === ""}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="mb-3 input-group">
+                                <span className="input-group-text">Attribute</span>
+                                <select
+                                    className="form-select"
+                                    id="create-attribute-select-object-key-input"
+                                    onChange={onSelectedAttributeChangeCallback}
+                                    value={selectedAttribute}
+                                >
+                                    <option value=''>--New Attribute--</option>
+                                    {
+                                        (attributeList.length > 0) && (
+                                            <optgroup label="Attributes">
+                                                {
+                                                    attributeList.map(attribute => {
+                                                        return (
+                                                            <option key={attribute} value={attribute}>{attribute}</option>
+                                                        );
+                                                    })
+                                                }
+                                            </optgroup>
+                                        )
+                                    }
+                                </select>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={deleteSelectedAttributeCallback}
+                                    disabled={selectedAttribute === ""}
+                                >
+                                    Delete
+                                </button>
+                            </div>
                         )
                     }
-                </div>
-                <div className ="d-flex flex-row justify-content-sm-between">
-                    {
-                        (selectedAttribute === '')?
-                            (
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={addAttributeCallback}
-                                >
-                                    Add
-                                </button>
-                            ) : (
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={updateSelectedAttributeCallback}
-                                >
-                                    Edit
-                                </button>
+                    <div className="mb-3 input-group">
+                        {
+                            (getScope(baseState, selectedScope, 0).type !== 'array') && (
+                                <>
+
+                                    <span className="input-group-text">Key</span>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="key"
+                                        value={attributeLabel}
+                                        onChange={onAttributeLabelChangeCallback}
+                                    />
+                                </>
                             )
-                    }
-                    <button
-                        className="btn btn-success"
-                        onClick={() => onChangeCallback(baseState)}
-                    >
-                        Save & Exit
-                    </button>
-                </div>
-            </form>
+                        }
+                        <span className="input-group-text">Type</span>
+                        <ArgumentTypeSelector
+                            id="create-object-type-selector-input"
+                            type={attributeType}
+                            onChangeCallback={onAttributeTypeChangeCallback}
+                            disabled={((selectedAttribute !== '') && (attributeType === 'object'))}
+                        />
+                    </div>
+                    {(errorMessage !== '') && (
+                        <div className="alert alert-danger" role="alert">
+                            {errorMessage}
+                        </div>
+                    )}
+                    <div className="input-group mb-3">
+                        {
+                            ((attributeType !== "object") && (attributeType !== "array")) && (
+                                <>
+                                    <span className="input-group-text">Value</span>
+                                    <ArgumentDataFieldInput
+                                        argumentData={{value: attributeValue, type: attributeType}}
+                                        onChangeCallback={onAttributeValueChangeCallback}
+                                    />
+                                </>
+                            )
+                        }
+                    </div>
+                    <div className="d-flex flex-row justify-content-sm-between">
+                        {
+                            (selectedAttribute === '') ?
+                                (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={addAttributeCallback}
+                                    >
+                                        Add
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={updateSelectedAttributeCallback}
+                                    >
+                                        Edit
+                                    </button>
+                                )
+                        }
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => onChangeCallback(baseState)}
+                        >
+                            Save & Exit
+                        </button>
+                    </div>
+                </form>
             </div>
-            <CollapsibleStateViewer stateData={baseState} />
+            <CollapsibleStateViewer stateData={baseState}/>
         </div>
     );
 
 }
+
 export function CollapsibleStateViewer({stateData}) {
     return (
         <div className="creat-object-object-viewer border rounded col">
@@ -530,12 +525,12 @@ export function CollapsibleStateViewer({stateData}) {
     );
 }
 
- function CollapsibleStateComp({stateData}) {
+function CollapsibleStateComp({stateData}) {
 
     const [hidden, setHidden] = useState(false);
 
     function AttributeField(attribute) {
-        switch(attribute.type) {
+        switch (attribute.type) {
             case 'array':
                 return <CollapsibleStateComp stateData={attribute}/>
             case 'object':
@@ -556,7 +551,8 @@ export function CollapsibleStateViewer({stateData}) {
         const checkForArray = attribute.argument.match(/(?!_array_)\d*$/g);
         return (
             <li key={attribute.argument + "-" + attribute.type + "-"}>
-                <span className="collapsible-state-viewer-attribute ">{(checkForArray.length > 1)?checkForArray[0]:attribute.argument}: </span> {AttributeField(attribute)}
+                <span
+                    className="collapsible-state-viewer-attribute ">{(checkForArray.length > 1) ? checkForArray[0] : attribute.argument}: </span> {AttributeField(attribute)}
             </li>
         );
     }
@@ -566,19 +562,19 @@ export function CollapsibleStateViewer({stateData}) {
     }
 
     return (
-        <div >
-            <span className= "collapsible-state-viewer">
-                <span>{(stateData.type === 'object')?"{":"["}</span>
-                <button className ="" onClick={(e) => {
+        <div>
+            <span className="collapsible-state-viewer">
+                <span>{(stateData.type === 'object') ? "{" : "["}</span>
+                <button className="" onClick={(e) => {
                     e.preventDefault();
                     setHidden(!hidden);
                 }}>
 
-                        {(hidden)?"+":"-"}
+                        {(hidden) ? "+" : "-"}
 
                 </button>
                 {
-                    (hidden) && <span>{(stateData.type === 'object')?"}":"]"}</span>
+                    (hidden) && <span>{(stateData.type === 'object') ? "}" : "]"}</span>
                 }
             </span>
             {
@@ -589,7 +585,7 @@ export function CollapsibleStateViewer({stateData}) {
                                 stateData.value.map(objData => generateAttributeComponent(objData))
                             }
                         </ul>
-                        <div>{(stateData.type === 'object')?"}":"]"}</div>
+                        <div>{(stateData.type === 'object') ? "}" : "]"}</div>
                     </>
                 )
             }

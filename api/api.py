@@ -556,6 +556,54 @@ def edit_function_info(
     return return_message
 
 
+def remove_changes_from_untested_functions(sub_directory):
+    """Removes all changes form untested functions in the project specified
+    by the project path.
+
+    :param sub_directory: Path to project.
+    :type sub_directory: str
+    :return: Operation status data.
+    :rtype: dict
+    """
+    full_path_to_project = sub_directory_to_full_path(sub_directory)
+
+    project_functions = __get_function_info_project(full_path_to_project)
+
+    if project_functions is None:
+        return_message = {
+            "status": APIStatus.ERROR.value,
+            "statusCode": APICode.ERROR_PROJECT_NOT_EXISTING.value
+        }
+    else:
+        project_tests = \
+            database_handler.get_test_info({
+                'pathToProject': full_path_to_project
+            })
+
+        if project_tests is None:
+            project_tests = []
+
+        tested_functions_list = []
+        for test_info in project_tests:
+            if test_info['functionId'] not in tested_functions_list:
+                tested_functions_list.append(test_info['functionId'])
+
+        for function_info in project_functions:
+            if function_info['functionId'] not in tested_functions_list:
+                function_info['haveFunctionChanged'] = False
+                function_info['changeList'] = []
+                database_handler.set_function_info(
+                    function_info,
+                    {'_id': function_info['_id']}
+                )
+
+        return_message = {
+            "status": APIStatus.OK.value
+        }
+
+    return return_message
+
+
 def test_socket(socket_identifier):
     """Debugging WebSockets.
 

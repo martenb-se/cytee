@@ -1,5 +1,4 @@
 import React from 'react';
-import {ObjectCreator} from "../../../Project/components/TestCreatorSection/ArgumentTab/ArgumentTab";
 
 function ArgumentDataFieldInput(
     {

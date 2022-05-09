@@ -1,25 +1,19 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import './TestCreatorPage.scss';
 
 import ProjectExplorerSidebar from '../../components/ProjectExplorerSidebar'
 import CodeViewingSection from "../../components/CodeViewerSection";
 import TestCreatorSection from "../../components/TestCreatorSection";
 
-import {useSelector, useDispatch} from "react-redux";
-import {
-    selectFunctionListLoading,
-    selectFunctionListError,
-    fetchFunctionList
-} from "../../../reducers/functionListSlice";
-import {
-    selectTestListLoading,
-    selectTestListError,
-    fetchTestList
-} from "../../../reducers/testListSlice";
+import {useDispatch, useSelector} from "react-redux";
+import {fetchFunctionList, selectFunctionListError, selectFunctionListLoading} from "../../../reducers/functionListSlice";
+import {fetchTestList, selectTestListError, selectTestListLoading} from "../../../reducers/testListSlice";
 
-import {generateTests} from "../../../util/api";
+import {removeChangesFromUntestedFunctions} from "../../../util/api";
 
-function TestCreatorPage({}){
+
+
+function TestCreatorPage({}) {
 
     const dispatch = useDispatch();
 
@@ -31,18 +25,26 @@ function TestCreatorPage({}){
     const testListStatus = useSelector(selectTestListLoading);
     const testListError = useSelector(selectTestListError);
 
+    const [loadingClearingSate, setLoadingClearingState] = useState('');
     const [loadingState, setLoadingState] = useState('');
     const [loadingMessage, setLoadingMessage] = useState('');
 
-    const [generateTestLoading, setGenerateTestLoading] = useState('');
-
-    // Load in functions' info
     useEffect(() => {
-        setLoadingState('loading');
-        setLoadingMessage('Retrieving functions...');
-        dispatch(fetchFunctionList(projectPath));
-        //dispatch(fetchTestList(projectPath));
+        setLoadingClearingState('loading');
+        removeChangesFromUntestedFunctions(projectPath).then(() => {
+            setLoadingClearingState('succeeded')
+        });
     }, [])
+
+    useEffect(() => {
+        if (loadingState !== 'loading') {
+            if (loadingClearingSate === 'succeeded') {
+                setLoadingState('loading');
+                setLoadingMessage('Retrieving functions...');
+                dispatch(fetchFunctionList(projectPath));
+            }
+        }
+    }, [loadingClearingSate])
 
     useEffect(() => {
         if (loadingState !== 'done') {
@@ -69,39 +71,25 @@ function TestCreatorPage({}){
         }
     }, [testListStatus]);
 
-    function generateProjectTests() {
-        setGenerateTestLoading('loading');
-        generateTests(projectPath).then(data => {
-            setGenerateTestLoading('');
-        })
-    }
-
     if (loadingState === 'failed') {
         return (
-            <ErrorScreen errorMessage={loadingMessage} />
+            <ErrorScreen errorMessage={loadingMessage}/>
         );
     }
 
     if (loadingState !== 'done') {
         return (
-                <LoadingScreen loadingMessage={loadingMessage}/>
+            <LoadingScreen loadingMessage={loadingMessage}/>
         );
     }
 
     return (
-        <div className = "container-fluid test-creator-Page-wrapper">
-            <div className ="row">
-                <div className = "test-creator-side-panel col-auto">
-                    <ProjectExplorerSidebar />
-                    <button
-                        className="btn btn-primary"
-                        onClick={generateProjectTests}
-                        disabled={generateTestLoading==='loading'}
-                    >
-                        Generate Tests
-                    </button>
+        <div className="container-fluid test-creator-Page-wrapper">
+            <div className="row h-100">
+                <div className="test-creator-side-panel col-auto">
+                    <ProjectExplorerSidebar/>
                 </div>
-                <div className = "test-creation-area col">
+                <div className="test-creation-area h-100 col d-flex flex-column">
                     <CodeViewingSection/>
                     <TestCreatorSection/>
                 </div>
@@ -109,6 +97,7 @@ function TestCreatorPage({}){
         </div>
     );
 }
+
 
 function LoadingScreen({loadingMessage}) {
     return (

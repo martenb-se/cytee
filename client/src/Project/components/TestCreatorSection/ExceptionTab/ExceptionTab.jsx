@@ -2,21 +2,21 @@ import React from 'react';
 import {useDispatch, useSelector} from "react-redux";
 import {selectUnsavedActiveTest, updateException} from "../../../../reducers/activeTestInfoSlice";
 
-function ExceptionTab({label}) {
+function ExceptionTab({}) {
 
     const dispatch = useDispatch();
     const unsavedTest = useSelector(selectUnsavedActiveTest);
 
     function changeExceptionCallback(e) {
         e.preventDefault();
-        const exceptionClone = cloneDeep(e.target.value);
-        dispatch(updateException(exceptionClone));
+        dispatch(updateException(e.target.value));
     }
 
     return (
-      <div className="return-value-tab-wrapper">
+      <div className="return-value-tab-wrapper h-100">
           <form
             onSubmit={e => e.preventDefault()}
+            className="h-100"
           >
               <label
                   className="form-label"

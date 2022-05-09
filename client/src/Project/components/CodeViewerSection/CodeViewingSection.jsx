@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useSelector} from "react-redux";
 
 import FunctionCodeTab from "./FunctionCodeTab";
@@ -8,7 +8,7 @@ import {selectActiveFunction} from "../../../reducers/activeFunctionSlice";
 import TabContainer from 'react-bootstrap/TabContainer'
 import TabContent from 'react-bootstrap/TabContent'
 import TabPane from 'react-bootstrap/TabPane'
-import {Col, Nav, NavLink, NavItem, Row} from "react-bootstrap";
+import {Col, Nav, NavItem, NavLink, Row} from "react-bootstrap";
 
 import './CodeViewingSection.scss'
 import {isEmpty} from "lodash";
@@ -61,17 +61,18 @@ function CodeViewingSection() {
                                         )
                                     }
                                 </Nav>
-                                <Col className ="h-100">
+                                <Col className="h-100">
                                     <TabContent
                                         className="code-view-tab-content h-100"
                                     >
                                         <TabPane eventKey="functionCode">
-                                            <FunctionCodeTab />
+                                            <FunctionCodeTab/>
                                         </TabPane>
                                         {
-                                            (activeFunction.haveFunctionChanged) && (
+                                            (activeFunction.haveFunctionChanged &&
+                                                (activeFunction.changeList.findIndex(attribute => attribute === 'dependents') === -1)) && (
                                                 <TabPane eventKey="codeCompare">
-                                                    <FunctionCompareTab />
+                                                    <FunctionCompareTab/>
                                                 </TabPane>
                                             )
                                         }

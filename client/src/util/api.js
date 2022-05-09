@@ -199,4 +199,36 @@
      });
  }
 
- export {updateTime, getProjectFunctions, getProjectTest, getFunction, saveTest, updateTest, deleteTest, generateTests, getOldFunction, editFunctionInfo};
+ function removeChangesFromUntestedFunctions(pathToProject) {
+     return new Promise((doResolve, doReject) => {
+         fetch('/api/remove_changes_from_untested_functions', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+                 "pathToProject": pathToProject
+             }),
+         }).then(res => res.json()).then(data => {
+             if (data.status === "OK") {
+                 doResolve(data);
+             } else {
+                 doReject(data);
+             }
+         });
+     });
+ }
+
+ export {
+    updateTime,
+     getProjectFunctions,
+     getProjectTest,
+     getFunction,
+     saveTest,
+     updateTest,
+     deleteTest,
+     generateTests,
+     getOldFunction,
+     editFunctionInfo,
+     removeChangesFromUntestedFunctions
+};

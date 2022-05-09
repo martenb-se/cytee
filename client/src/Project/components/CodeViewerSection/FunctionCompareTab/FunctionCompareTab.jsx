@@ -1,11 +1,10 @@
-import React, {useState, useEffect} from 'react';
-import {parseDiff, Diff, Hunk, Decoration} from 'react-diff-view';
+import React, {useEffect, useState} from 'react';
+import {Decoration, Diff, Hunk, parseDiff} from 'react-diff-view';
 import 'react-diff-view/style/index.css';
 import {diffLines, formatLines} from 'unidiff';
 import {useSelector} from "react-redux";
 import {selectActiveFunction} from "../../../../reducers/activeFunctionSlice";
 import {getFunction, getOldFunction} from "../../../../util/api";
-import {isEmpty} from "lodash";
 import LoadingComponent from "../../../../shared/components/LoadingComponent";
 
 import './FunctionCodeCompareTab.scss';
@@ -15,8 +14,6 @@ function FunctionCompareTab({}) {
     const [newText, setNewText] = useState('');
     const [oldText, setOldText] = useState('');
     const [diffTest, setDiffText] = useState(undefined);
-
-    const [loadingState, setLoadingState] = useState('loading');
 
     const [newCodeLoadingState, setNewCodeLoadingState] = useState('');
     const [oldCodeLoadingState, setOldCodeLoadingState] = useState('');
@@ -42,24 +39,18 @@ function FunctionCompareTab({}) {
         }
     }, [newCodeLoadingState])
 
-
     useEffect(() => {
         if (oldCodeLoadingState === 'done') {
-            setDiffText(parseDiff(formatLines(diffLines(oldText, newText), {context:3})));
+            setDiffText(parseDiff(formatLines(diffLines(oldText, newText), {context: 3})));
         }
     }, [oldCodeLoadingState])
 
-    useEffect(() => {
-
-    }, [diffTest])
-
-
     if ((newCodeLoadingState === 'loading') || (oldCodeLoadingState === 'loading')) {
-        return <div className ="code-compare-loading-view"><LoadingComponent/></div>
+        return <div className="code-compare-loading-view"><LoadingComponent/></div>
     }
 
     if (diffTest === undefined) {
-        return <div>asdasdas</div>
+        return <div></div>
     }
 
     const renderFile = ({oldPath, newPath, oldRevision, newRevision, type, hunks}) => (
@@ -71,7 +62,7 @@ function FunctionCompareTab({}) {
                         <Decoration key={'deco-' + hunk.content}>
                             <div className="hunk-header">{hunk.content}</div>
                         </Decoration>,
-                        <Hunk key={hunk.content} hunk={hunk} />,
+                        <Hunk key={hunk.content} hunk={hunk}/>,
                     ])
                 }
             </Diff>
@@ -79,7 +70,7 @@ function FunctionCompareTab({}) {
     );
 
     return (
-        <div className ="function-compare-tab-wrapper">
+        <div className="function-compare-tab-wrapper">
             {diffTest.map(renderFile)}
         </div>
     );

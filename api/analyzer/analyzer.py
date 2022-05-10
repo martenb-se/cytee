@@ -757,7 +757,6 @@ class AnalyzeJS:
             self,
             scope: list,
             node: (esprima.nodes.CallExpression |
-                   esprima.nodes.StaticMemberExpression |
                    esprima.nodes.NewExpression),
             path: list) -> None:
         """Handle caching of method calls of the following kinds:
@@ -770,7 +769,6 @@ class AnalyzeJS:
         :type scope: list
         :param node: The node to handle.
         :type node: esprima.nodes.CallExpression |
-                    esprima.nodes.StaticMemberExpression |
                     esprima.nodes.NewExpression
         :param path: The current path taken in the AST.
         :type path: list
@@ -797,6 +795,7 @@ class AnalyzeJS:
                     last_node = node_walk
 
                 property_chain = []
+                last_node = node_walk
                 node_walk = node_walk.callee
 
             else:
@@ -2504,7 +2503,7 @@ class AnalyzeJS:
         :return: None
         """
         match node.expression.type:
-            case "CallExpression" | "NewExpression" | "MemberExpression":
+            case "CallExpression" | "NewExpression":
                 self.__cache_handle_method_call(
                     scope,
                     node.expression,
@@ -2538,6 +2537,9 @@ class AnalyzeJS:
                     scope,
                     node.expression,
                     path + ["expression"])
+
+            case "MemberExpression":
+                pass
 
             case _:
                 logging.warning(
@@ -2788,10 +2790,27 @@ class AnalyzeJS:
                         jsx_child,
                         path + ["children", str(index)])
 
+                if node.openingElement is not None and \
+                        node.openingElement.attributes is not None:
+                    for index, jsx_attribute in \
+                            enumerate(node.openingElement.attributes):
+                        if jsx_attribute.type == "JSXAttribute":
+                            self.__process_ast_walk(
+                                scope,
+                                jsx_attribute.value,
+                                path + ["openingElement", "attributes",
+                                        str(index), "value"])
+                        else:
+                            logging.warning(
+                                "AST walk handling of JSXElement with "
+                                "attribute of type: "
+                                f"{jsx_attribute.type} not yet supported. "
+                                "[W-AWHOJWAOTJTNYS]" +
+                                self.__debug_node_in_code(jsx_attribute))
+
             case "JSXExpressionContainer":
                 match node.expression.type:
-                    case "CallExpression" | "NewExpression" | \
-                         "MemberExpression":
+                    case "CallExpression" | "NewExpression":
                         self.__cache_handle_method_call(
                             scope,
                             node.expression,
@@ -2825,6 +2844,9 @@ class AnalyzeJS:
                             scope,
                             node.expression,
                             path + ["expression"])
+
+                    case "MemberExpression":
+                        pass
 
                     case _:
                         logging.warning(
@@ -2925,7 +2947,7 @@ class AnalyzeJS:
                     self.__ast_walk_handle_throwstatement(
                         scope, node, path)
 
-                case "JSXElement":
+                case "JSXElement" | "JSXExpressionContainer":
                     self.__ast_walk_handle_jsxelement(
                         scope, node, path)
 
@@ -2983,8 +3005,9 @@ class AnalyzeJS:
     # ~~~~~( Analysis - Post Process ) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def __validate_declaration_candidate(
             self,
+            declaration_name: str,
             declaration: dict,
-            first_declaration: dict = None) -> bool:
+            first_declarations: dict = None) -> bool:
         """Validate a variable declaration candidate for it to be eligible
         as a function definition for an exported asset.
 
@@ -2997,35 +3020,35 @@ class AnalyzeJS:
 
         :param declaration: The variable declaration to validate.
         :type declaration: dict
-        :param first_declaration:
-        :type first_declaration: dict
+        :param first_declarations:
+        :type first_declarations: dict
 
         :return: True it declaration is a possible candidate, False otherwise.
         :rtype: bool
         """
         # Declaration is a function
-        if declaration["node_type"] != "ArrowFunctionExpression" and \
-                declaration["node_type"] != "FunctionExpression":
+        if declaration["info"]["node_type"] != "ArrowFunctionExpression" and \
+                declaration["info"]["node_type"] != "FunctionExpression":
             return False
 
         # Explicit declaration in window can always be exported no matter
         # the scope
-        if declaration["kind"] == "window-explicit":
+        if declaration["info"]["kind"] == "window-explicit":
             return True
 
         # First declaration
-        if first_declaration is None:
+        if declaration_name not in first_declarations:
 
             # Only candidate if scope is global when first declared
-            if len(declaration["scope"]) > 1 or \
-                    declaration["scope"] != [("global", "window")]:
+            if len(declaration["info"]["scope"]) > 1 or \
+                    declaration["info"]["scope"] != [("global", "window")]:
                 return False
 
             # Not allowed to implicitly declare variable in 'window'
-            if declaration["kind"] == "window":
+            if declaration["info"]["kind"] == "window":
                 new_lines = \
                     self.code_target_file[
-                        :declaration['node'].range[0]].count("\n") + 1
+                        :declaration["info"]['node'].range[0]].count("\n") + 1
                 logging.warning(
                     f"Variable name first used but never previously declared "
                     f"in file {self.js_target_file_import_path}, on line "
@@ -3039,30 +3062,30 @@ class AnalyzeJS:
         # Redeclaration
         else:
             # Same scope
-            if len(declaration["scope"]) == 1 and \
-                    declaration["scope"] == [("global", "window")]:
+            if len(declaration["info"]["scope"]) == 1 and \
+                    declaration["info"]["scope"] == [("global", "window")]:
 
                 # Not allowed to redeclare let or const
-                if declaration["kind"] == "const" or \
-                        declaration["kind"] == "let":
+                if declaration["info"]["kind"] == "const" or \
+                        declaration["info"]["kind"] == "let":
                     return False
 
                 # Only allowed to redeclare if first declaration was not const
-                if first_declaration["kind"] == "const":
+                if first_declarations[declaration_name]["kind"] == "const":
                     return False
 
                 # Only allowed to redeclare if first declaration was let
                 # and redeclaration is in implicit window.
-                if first_declaration["kind"] == "let" and \
-                        declaration["kind"] != "window":
+                if first_declarations[declaration_name]["kind"] == "let" and \
+                        declaration["info"]["kind"] != "window":
                     return True
 
             # Different scope
             else:
                 # Declaration with same name in different scope is not
                 # a redeclaration, it's a different variable.
-                if declaration["kind"] == "const" or \
-                        declaration["kind"] == "let":
+                if declaration["info"]["kind"] == "const" or \
+                        declaration["info"]["kind"] == "let":
                     return False
 
             return True
@@ -3126,10 +3149,8 @@ class AnalyzeJS:
             export_name = exported_asset["export_name"]
 
             found_export = False
-            first_declaration = None
-            matching_declaration = None
-            matching_name = ""
-            matching_type = ""
+            first_declarations = {}
+            matching_declarations = {}
             non_valid_declarations = []
 
             for decl_name, decl_alt in \
@@ -3143,63 +3164,85 @@ class AnalyzeJS:
                     decl_name = local_name
 
                 if decl_name == local_name:
+                    alternative_declaration = {
+                        "type": "function",
+                        "info": decl_alt
+                    }
+
                     if self.__validate_declaration_candidate(
-                            decl_alt, first_declaration):
-                        if first_declaration is None:
-                            first_declaration = decl_alt
+                            decl_name,
+                            alternative_declaration,
+                            first_declarations):
+                        if decl_name not in first_declarations:
+                            first_declarations[decl_name] = \
+                                alternative_declaration
 
-                        matching_declaration = decl_alt
-                        matching_name = decl_name
-                        matching_type = "function"
+                        matching_declarations[decl_name] = \
+                            alternative_declaration
                     else:
                         non_valid_declarations.append(decl_alt)
 
-                elif re.match(re.escape(local_name), decl_name):
+                elif re.match(re.escape(local_name) + r"\.", decl_name):
+                    alternative_declaration = {
+                        "type": "function",
+                        "info": decl_alt
+                    }
+
                     if self.__validate_object_candidate(decl_alt):
-                        matching_declaration = decl_alt
-                        matching_name = decl_name
-                        matching_type = "function"
+                        matching_declarations[decl_name] = \
+                            alternative_declaration
                     else:
                         non_valid_declarations.append(decl_alt)
 
-            if matching_declaration is None:
+            if len(matching_declarations) == 0:
                 for func_name, func_alt in \
                         [(func_name, func_alt) for func_name in
                          self.cache_functions for func_alt in
                          self.cache_functions[func_name]]:
                     if func_name == local_name:
+                        alternative_declaration = {
+                            "type": "function",
+                            "info": func_alt
+                        }
+
                         if self.__validate_function_candidate(func_alt):
-                            matching_declaration = func_alt
-                            matching_name = func_name
-                            matching_type = "function"
+                            matching_declarations[func_name] = \
+                                alternative_declaration
                         else:
                             non_valid_declarations.append(func_alt)
 
-            if matching_declaration is None:
+            if len(matching_declarations) == 0:
                 for decl_name, decl_alt in \
                         [(decl_name, decl_alt) for decl_name in
                          self.cache_declarations_exported_object
                          for decl_alt in
                          self.cache_declarations_exported_object[decl_name]]:
                     if decl_name == local_name:
+                        alternative_declaration = {
+                            "type": "function",
+                            "info": decl_alt
+                        }
+
                         if self.__validate_object_candidate(decl_alt):
-                            matching_declaration = decl_alt
-                            matching_name = decl_name
-                            matching_type = "function"
+                            matching_declarations[decl_name] = \
+                                alternative_declaration
                         else:
                             non_valid_declarations.append(decl_alt)
 
-            if matching_declaration is not None:
+            if len(matching_declarations) > 0:
                 found_export = True
-                test_surface_object = {
-                    **exported_asset,
-                    "declaration": matching_declaration,
-                    "full_name": matching_name,
-                    "asset_type": matching_type
-                }
-                self.exported_test_surfaces.append(test_surface_object)
+                for match_name in matching_declarations:
+                    test_surface_object = {
+                        **exported_asset,
+                        "declaration":
+                            matching_declarations[match_name]["info"],
+                        "full_name": match_name,
+                        "asset_type":
+                            matching_declarations[match_name]["type"]
+                    }
+                    self.exported_test_surfaces.append(test_surface_object)
 
-            if matching_declaration is None:
+            else:
                 for class_name, class_method in \
                         [(class_name, class_method) for class_name in
                          self.cache_classes for class_method in

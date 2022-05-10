@@ -110,7 +110,7 @@ function ReturnTab({}) {
                     <ArgumentTypeSelector
                         id={"return-value-tab-type-field"}
                         type={unsavedTest.moduleData.returnValue.type}
-                        onChangeCallback={changeReturnValueTypeCallback}
+                        onChangeCallback={e => changeReturnValueTypeCallback(e, unsavedTest.moduleData.returnValue)}
                     />
                     <ArgumentDataFieldInput
                         argumentData={unsavedTest.moduleData.returnValue}

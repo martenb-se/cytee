@@ -107,7 +107,7 @@ def array_var_formatter(array_arg: list) -> str:
 
 TYPE_MATCHER_DICT = {
     'array': {
-        'matcher': 'toBeEqual',
+        'matcher': 'toEqual',
         'var_formatter': array_var_formatter
     },
     'bigInt': {

@@ -574,8 +574,12 @@ def __generate_assert(
             (expected_data['value'])
         )
 
-    assert_string = (f"expect({return_variable})"
-                     f".{match_expression}({expected_value});")
+    assert_string = f"expect({return_variable})"
+
+    if not expected_data['equal']:
+        assert_string += ".not"
+
+    assert_string += f".{match_expression}({expected_value});"
 
     return assert_string
 
@@ -598,15 +602,19 @@ def __generate_exception(
     """
 
     exception_string = "try {" + function_call_string + ";} catch (e) {"
-
     if len(test_info['moduleData']['exception']['value']) > 0:
         exception = test_info['moduleData']['exception']['value']
-        exception_string += "expect(e.name).toBe(\"" + exception + "\");"
+        exception_string += "expect(e.name)"
+        if not test_info['moduleData']['exception']['equal']:
+            exception_string += ".not"
+        exception_string += ".toBe(\"" + exception + "\");"
 
     if len(test_info['moduleData']['exception']['message']) > 0:
         exception_message = test_info['moduleData']['exception']['message']
-        exception_string += "expect(e.message).toBe(\"" + \
-                            exception_message + "\");"
+        exception_string += "expect(e.message)"
+        if not test_info['moduleData']['exception']['equal']:
+            exception_string += ".not"
+        exception_string += ".toBe(\"" + exception_message + "\");"
 
     exception_string += "}"
     return exception_string

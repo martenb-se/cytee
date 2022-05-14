@@ -6,6 +6,7 @@ import cloneDeep from "lodash/cloneDeep";
 
 import ArgumentTypeSelector from "../../../../shared/components/ArgumentTypeSelector";
 import ArgumentDataFieldInput from "../../../../shared/components/ArgumentInputValueSelector";
+import ShouldEqualSelector from "../../../../shared/components/ShouldEqualSelector";
 import {isEmpty} from "lodash";
 
 import {localTabGroupContext} from "../TestCreatorSection";
@@ -70,6 +71,13 @@ function ReturnTab({}) {
         onChangeCallback(returnValueClone);
     }
 
+    function onShouldEqualChangeCallback(e) {
+        e.preventDefault();
+        const returnValueClone = cloneDeep(unsavedTest.moduleData.returnValue);
+        returnValueClone.equal = (e.target.value === 'true');
+        onChangeCallback(returnValueClone);
+    }
+
     function onSubTabChangeCallback(objectData) {
         const argumentDataClone = cloneDeep(objectData);
         localTabDispatch({
@@ -100,6 +108,12 @@ function ReturnTab({}) {
                 className="h-100"
                 onSubmit={e => e.preventDefault()}
             >
+                <ShouldEqualSelector
+                    value={(unsavedTest.moduleData.returnValue['equal'])?'true':'false'}
+                    onChange={onShouldEqualChangeCallback}
+                    shouldEqualLabel={"Should Equal"}
+                    shouldNotEqualLabel={"Should Not Equal"}
+                />
                 <label
                     className="form-label"
                     htmlFor={"return-value-tab-type-field"}

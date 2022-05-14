@@ -439,7 +439,8 @@ TEST_INFO_DATA = {
                     }
                 ],
                 "exception": {
-                    "value": "Error"
+                    "value": "Error",
+                    "message": ""
                 }
             },
             "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"

@@ -597,17 +597,13 @@ def __generate_exception(
     :rtype: str
     """
 
-    #exception = test_info['moduleData']['exception']['value']
-
-    #exception_message = test_info['moduleData']['exception']['message']
-
     exception_string = "try {" + function_call_string + ";} catch (e) {"
 
-    if 'value' in test_info['moduleData']['exception']:
+    if len(test_info['moduleData']['exception']['value']) > 0:
         exception = test_info['moduleData']['exception']['value']
         exception_string += "expect(e.name).toBe(\"" + exception + "\");"
 
-    if 'message' in test_info['moduleData']['exception']:
+    if len(test_info['moduleData']['exception']['message']) > 0:
         exception_message = test_info['moduleData']['exception']['message']
         exception_string += "expect(e.message).toBe(\"" + \
                             exception_message + "\");"

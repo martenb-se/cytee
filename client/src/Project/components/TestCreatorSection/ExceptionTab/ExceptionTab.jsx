@@ -19,11 +19,20 @@ function ExceptionTab({}) {
         unsavedTest.moduleData.exception.message:activeTest.moduleData.exception.message
     );
 
-    const [exceptionNameCheck, setExceptionNameCheck] = useState(true);
-    const [exceptionMessageCheck, setExceptionMessageCheck] = useState(true);
+    const [exceptionNameCheck, setExceptionNameCheck] = useState(exceptionName !== '');
+    const [exceptionMessageCheck, setExceptionMessageCheck] = useState(exceptionMessage !== '');
 
     const [exceptionNameErrorMessage, setExceptionNameErrorMessage] = useState('');
     const [exceptionMessageErrorMessage, setExceptionMessageErrorMessage] = useState('');
+
+    useEffect(() => {
+        if (!isEmpty(activeTest)) {
+            setExceptionName(activeTest.moduleData.exception.value);
+            setExceptionNameCheck(activeTest.moduleData.exception.value !== '');
+            setExceptionMessage(activeTest.moduleData.exception.message);
+            setExceptionMessageCheck(activeTest.moduleData.exception.message !== '');
+        }
+    }, [activeTest])
 
     useEffect(() => {
 

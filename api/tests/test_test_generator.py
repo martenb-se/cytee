@@ -447,8 +447,8 @@ TEST_INFO_DATA = {
         },
     "argument_exception_test_message":
         {
-            "_id": {"$oid": "627f5001eaff9d6d6a92ba10"},
-            "customName": "exception",
+            "_id": {"$oid": "627f7645ba0c5f5becef1ab4"},
+            "customName": "exception message",
             "fileId": "shared/utils/file1",
             "functionId": "test_function_1",
             "moduleData": {
@@ -472,12 +472,12 @@ TEST_INFO_DATA = {
                     }
                 ],
                 "exception": {
-                    "value": "Error",
-                    "message": "This is a message"
+                    "message": "This is a message",
+                    "value": "Error"
                 }
             },
             "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
-        },
+        }
 }
 
 
@@ -575,7 +575,7 @@ def test_test_generator_generate_exception_message_test(
     file_path = '/home/jobe/tidab3/exjobb/react_test_project/src/shared' \
                 '/utils/file1.urang.spec.js'
 
-    expected_data = 'test("exception", () =>  {' \
+    expected_data = 'test("exception message", () =>  {' \
                         'let a_0=false;' \
                         'let a_1=\'hmggf\';' \
                         'let a_2=null;' \

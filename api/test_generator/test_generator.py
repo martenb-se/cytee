@@ -240,7 +240,7 @@ def __generate_test_start(test_info: dict) -> str:
     """
     description_string = ""
 
-    if test_info['customName'] is "":
+    if test_info['customName'] == "":
         if 'returnValue' in test_info['moduleData']:
 
             var_formatter = (
@@ -602,14 +602,14 @@ def __generate_exception(
     """
 
     exception_string = "try {" + function_call_string + ";} catch (e) {"
-    if len(test_info['moduleData']['exception']['value']) > 0:
+    if 'value' in test_info['moduleData']['exception']:
         exception = test_info['moduleData']['exception']['value']
         exception_string += "expect(e.name)"
         if not test_info['moduleData']['exception']['equal']:
             exception_string += ".not"
         exception_string += ".toBe(\"" + exception + "\");"
 
-    if len(test_info['moduleData']['exception']['message']) > 0:
+    if 'message' in test_info['moduleData']['exception']:
         exception_message = test_info['moduleData']['exception']['message']
         exception_string += "expect(e.message)"
         if not test_info['moduleData']['exception']['equal']:

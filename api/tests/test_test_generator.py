@@ -7,7 +7,7 @@ MOCKED_FILES = {
     "/home/user/projects/cool_project/src/shared/utils/api": "bibibobobo",
     "/home/user/projects/cool_project/urangutest/shared/utils/api": ""
 }
-TEST_INFO_DATA = [
+TEST_INFO_DATA2 = [
     {
         'pathToProject': '/home/jobe/tidab3/exjobb/jira_clone/client/src/',
         'fileId': 'shared/utils/api',
@@ -352,9 +352,132 @@ TEST_INFO_DATA = [
             }
         },
         "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
+    },
+    {
+        "_id": {"$oid": "627a8d6322d6d40dfed4bbad"},
+        "customName": "kdjsfhskdjfh",
+        "fileId": "shared/utils/file1",
+        "functionId": "hidden_secretFunction",
+        "moduleData": {
+            "argumentList": [
+                {
+                    "subFunctionName": "hidden_secretFunction",
+                    "argument": "secretArg1",
+                    "type": "undefined"
+                },
+                {
+                    "subFunctionName": "hidden_secretFunction",
+                    "argument": "secretArg2",
+                    "type": "undefined"
+                }
+            ],
+            "exception": {
+                "value": "Error"
+            }
+        },
+        "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
     }
-
 ]
+
+TEST_INFO_DATA = {
+    "argument_return_val_test": {
+        "_id": {"$oid": "627cd82c21dc71fee6ba634b"},
+        "customName": "return",
+        "fileId": "shared/utils/file1",
+        "functionId": "test_function_1",
+        "moduleData": {
+            "argumentList": [
+                {
+                    "argument": "arg1",
+                    "subFunctionName": "test_function_1",
+                    "type": "boolean",
+                    "value": False
+                },
+                {
+                    "argument": "arg2",
+                    "subFunctionName": "test_function_1",
+                    "type": "number",
+                    "value": "5"
+                },
+                {
+                    "argument": "arg3",
+                    "subFunctionName": "test_function_1",
+                    "type": "null"
+                }
+            ],
+            "returnValue": {
+                "type": "string",
+                "value": "Bad request"
+            }
+        },
+        "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
+    },
+    "argument_exception_test":
+        {
+            "_id": {"$oid": "627f5001eaff9d6d6a92ba10"},
+            "customName": "exception",
+            "fileId": "shared/utils/file1",
+            "functionId": "test_function_1",
+            "moduleData": {
+                "argumentList": [
+                    {
+                        "argument": "arg1",
+                        "subFunctionName": "test_function_1",
+                        "type": "boolean",
+                        "value": False
+                    },
+                    {
+                        "argument": "arg2",
+                        "subFunctionName": "test_function_1",
+                        "type": "string",
+                        "value": "hmggf"
+                    },
+                    {
+                        "argument": "arg3",
+                        "subFunctionName": "test_function_1",
+                        "type": "null"
+                    }
+                ],
+                "exception": {
+                    "value": "Error"
+                }
+            },
+            "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
+        },
+    "argument_exception_test_message":
+        {
+            "_id": {"$oid": "627f5001eaff9d6d6a92ba10"},
+            "customName": "exception",
+            "fileId": "shared/utils/file1",
+            "functionId": "test_function_1",
+            "moduleData": {
+                "argumentList": [
+                    {
+                        "argument": "arg1",
+                        "subFunctionName": "test_function_1",
+                        "type": "boolean",
+                        "value": False
+                    },
+                    {
+                        "argument": "arg2",
+                        "subFunctionName": "test_function_1",
+                        "type": "string",
+                        "value": "hmggf"
+                    },
+                    {
+                        "argument": "arg3",
+                        "subFunctionName": "test_function_1",
+                        "type": "null"
+                    }
+                ],
+                "exception": {
+                    "value": "Error",
+                    "message": "This is a message"
+                }
+            },
+            "pathToProject": "/home/jobe/tidab3/exjobb/react_test_project/src"
+        },
+}
 
 
 @pytest.fixture
@@ -375,5 +498,93 @@ def test_test_generator_generate_tests(mock_os_make_dirs, mocker_open):
 
     generate_tests([TEST_INFO_DATA[4], TEST_INFO_DATA[5]])
 
-    print("")
-    print(content_drain)
+    # print("")
+    # print(content_drain)
+
+
+def test_test_generator_generate_return_value_test(
+        mock_os_make_dirs,
+        mocker_open
+):
+    content_drain = {}
+    mocker_open(
+        'api.test_generator.test_generator.open',
+        file_mocks=MOCKED_FILES,
+        content_drain=content_drain
+    )
+
+    generate_tests([TEST_INFO_DATA["argument_return_val_test"]])
+
+    file_path = '/home/jobe/tidab3/exjobb/react_test_project/src/shared' \
+                '/utils/file1.urang.spec.js'
+
+    expected_data = 'test("return", () =>  {' \
+                        'let a_0=false;' \
+                        'let a_1=5;' \
+                        'let a_2=null;' \
+                        'let r_1=test_function_1(a_0,a_1,a_2);' \
+                        'expect(r_1).toEqual(\'Bad request\');' \
+                    '});'
+
+    # print("")
+    # print(content_drain)
+    assert content_drain[file_path] == expected_data
+
+
+def test_test_generator_generate_exception_test(
+        mock_os_make_dirs,
+        mocker_open
+):
+    content_drain = {}
+    mocker_open(
+        'api.test_generator.test_generator.open',
+        file_mocks=MOCKED_FILES,
+        content_drain=content_drain
+    )
+    generate_tests([TEST_INFO_DATA["argument_exception_test"]])
+    file_path = '/home/jobe/tidab3/exjobb/react_test_project/src/shared' \
+                '/utils/file1.urang.spec.js'
+
+    expected_data = 'test("exception", () =>  {' \
+                        'let a_0=false;' \
+                        'let a_1=\'hmggf\';' \
+                        'let a_2=null;' \
+                        'try {' \
+                            'test_function_1(a_0,a_1,a_2);' \
+                        '} catch (e) {' \
+                            'expect(e.name).toBe("Error");' \
+                        '}' \
+                    '});'
+    # print("")
+    # print(content_drain)
+    assert content_drain[file_path] == expected_data
+
+
+def test_test_generator_generate_exception_message_test(
+        mock_os_make_dirs,
+        mocker_open
+):
+    content_drain = {}
+    mocker_open(
+        'api.test_generator.test_generator.open',
+        file_mocks=MOCKED_FILES,
+        content_drain=content_drain
+    )
+    generate_tests([TEST_INFO_DATA["argument_exception_test_message"]])
+    file_path = '/home/jobe/tidab3/exjobb/react_test_project/src/shared' \
+                '/utils/file1.urang.spec.js'
+
+    expected_data = 'test("exception", () =>  {' \
+                        'let a_0=false;' \
+                        'let a_1=\'hmggf\';' \
+                        'let a_2=null;' \
+                        'try {' \
+                            'test_function_1(a_0,a_1,a_2);' \
+                        '} catch (e) {' \
+                            'expect(e.name).toBe("Error");' \
+                            'expect(e.message).toBe("This is a message");' \
+                        '}' \
+                    '});'
+    #print("")
+    #print(content_drain)
+    assert content_drain[file_path] == expected_data

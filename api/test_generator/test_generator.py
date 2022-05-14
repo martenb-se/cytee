@@ -240,47 +240,50 @@ def __generate_test_start(test_info: dict) -> str:
     """
     description_string = ""
 
-    if 'returnValue' in test_info['moduleData']:
+    if test_info['customName'] is "":
+        if 'returnValue' in test_info['moduleData']:
 
-        var_formatter = (
-            TYPE_MATCHER_DICT[
-                test_info['moduleData']['returnValue']['type']
-            ]['var_formatter']
-        )
-
-        if isinstance(var_formatter, str):
-            expected_value = var_formatter
-        else:
-            expected_value = var_formatter(
-                test_info['moduleData']['returnValue']['value']
+            var_formatter = (
+                TYPE_MATCHER_DICT[
+                    test_info['moduleData']['returnValue']['type']
+                ]['var_formatter']
             )
 
-        description_string += ("Function is expected to return " +
-                               f"{expected_value}")
+            if isinstance(var_formatter, str):
+                expected_value = var_formatter
+            else:
+                expected_value = var_formatter(
+                    test_info['moduleData']['returnValue']['value']
+                )
+
+            description_string += ("Function is expected to return " +
+                                   f"{expected_value}")
+        else:
+
+            exception = test_info['moduleData']['exception']['value']
+            description_string += f"Function is expected to throw {exception}"
+
+        # Check if arguments exists
+        if 'argumentList' in test_info['moduleData']:
+
+            description_string += ", when given the arguments: "
+            first = True
+            for argument_data in test_info['moduleData']['argumentList']:
+                if first:
+                    first = False
+                else:
+                    description_string += ', '
+
+                argument_name = argument_data['argument']
+                if (argument_data['type'] == 'undefined' or
+                        argument_data['type'] == 'null'):
+                    argument_value = argument_data['type']
+                else:
+                    argument_value = argument_data['value']
+
+                description_string += f"{argument_name} = {argument_value}"
     else:
-
-        exception = test_info['moduleData']['exception']['value']
-        description_string += f"Function is expected to throw {exception}"
-
-    # Check if arguments exists
-    if 'argumentList' in test_info['moduleData']:
-
-        description_string += ", when given the arguments: "
-        first = True
-        for argument_data in test_info['moduleData']['argumentList']:
-            if first:
-                first = False
-            else:
-                description_string += ', '
-
-            argument_name = argument_data['argument']
-            if (argument_data['type'] == 'undefined' or
-                    argument_data['type'] == 'null'):
-                argument_value = argument_data['type']
-            else:
-                argument_value = argument_data['value']
-
-            description_string += f"{argument_name} = {argument_value}"
+        description_string = test_info['customName']
 
     return f"""test("{description_string}", () => """ + """ {"""
 
@@ -428,7 +431,10 @@ def __generate_arguments(
 
 def __generate_function_call(
         test_info: dict,
-        func_arg_var_map: dict
+        func_arg_var_map: dict,
+        /,
+        return_value: bool = True,
+        end_of_line: bool = True
 ) -> (str, str):
     """Generates a string with the function call of the functon being tested.
 
@@ -440,6 +446,9 @@ def __generate_function_call(
     :return: A tuple containing the function call as a string and the string
     representation of the return variable.
     """
+    result_string = ""
+    func_return_variable = ""
+
     function_info_documents = database_handler.get_function_info({
         'pathToProject': test_info['pathToProject'],
         'functionId': test_info['functionId'],
@@ -516,11 +525,16 @@ def __generate_function_call(
 
         function_call_string += expression_string
 
-    func_return_variable = "r_1"
-
     # TODO: Format the string
 
-    result_string = (f"let {func_return_variable}={function_call_string};")
+    if return_value is True:
+        func_return_variable = "r_1"
+        result_string = (f"let {func_return_variable}={function_call_string}")
+    else:
+        result_string = function_call_string
+
+    if end_of_line is True:
+        result_string += ";"
 
     return result_string, func_return_variable
 
@@ -531,7 +545,7 @@ def __generate_assert(
 ) -> str:
     """generates and assert string based on the given test info document and
     the return value of the executed function.
-    
+
     :param test_info: Test info document.
     :type test_info: dict
     :param return_variable: A string representation of the variable with the
@@ -582,13 +596,23 @@ def __generate_exception(
     :return: The function call string with the toThrow expression.
     :rtype: str
     """
-    exception = test_info['moduleData']['exception']['value']
 
-    exception_string = function_call_string.replace(
-        ";",
-        f".toThrow({exception});",
-        1
-    )
+    #exception = test_info['moduleData']['exception']['value']
+
+    #exception_message = test_info['moduleData']['exception']['message']
+
+    exception_string = "try {" + function_call_string + ";} catch (e) {"
+
+    if 'value' in test_info['moduleData']['exception']:
+        exception = test_info['moduleData']['exception']['value']
+        exception_string += "expect(e.name).toBe(\"" + exception + "\");"
+
+    if 'message' in test_info['moduleData']['exception']:
+        exception_message = test_info['moduleData']['exception']['message']
+        exception_string += "expect(e.message).toBe(\"" + \
+                            exception_message + "\");"
+
+    exception_string += "}"
     return exception_string
 
 
@@ -617,22 +641,36 @@ def generate_test(
     variable_declaration_string, func_var_arg_map = \
         __generate_variable_declarations(test_info)
 
-    function_call_string, return_var = __generate_function_call(
-        test_info,
-        func_var_arg_map)
+    if 'returnValue' in test_info['moduleData']:
+        function_call_string, return_var = __generate_function_call(
+            test_info,
+            func_var_arg_map)
+    else:
+        function_call_string, return_var = __generate_function_call(
+            test_info,
+            func_var_arg_map,
+            return_value=False,
+            end_of_line=False,
+        )
 
     if 'returnValue' in test_info['moduleData']:
         assert_string = __generate_assert(test_info, return_var)
+        test_string = (
+                __generate_test_start(test_info) +
+                variable_declaration_string +
+                function_call_string +
+                assert_string +
+                __generate_test_end()
+        )
     else:
         assert_string = __generate_exception(test_info, function_call_string)
+        test_string = (
+                __generate_test_start(test_info) +
+                variable_declaration_string +
+                assert_string +
+                __generate_test_end()
+        )
 
-    test_string = (
-            __generate_test_start(test_info) +
-            variable_declaration_string +
-            function_call_string +
-            assert_string +
-            __generate_test_end()
-    )
     return test_string, import_string
 
 

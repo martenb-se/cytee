@@ -6,7 +6,7 @@ import {isEmpty, isEqual} from "lodash";
 import {
     clearChanges,
     selectActiveFunction,
-    selectActiveFunctionLoadingState
+    selectActiveFunctionLoadingState, setActiveFunction
 } from '../../../reducers/activeFunctionSlice';
 import {
     deleteTestInfo,
@@ -202,6 +202,16 @@ function TestCreatorHeaderSection() {
         }));
     }
 
+    function createNewTestForFunction(e) {
+        e.preventDefault();
+        dispatch(setActiveFunction(activeFunction));
+        dispatch(setActiveUnsavedTest({
+            customName: "",
+            moduleData: generateInitTestState(),
+        }));
+        dispatch(setActiveTest({}));
+    }
+
     function onCustomNameChangeCallback(e) {
         e.preventDefault();
         dispatch(updateUnsavedCustomName(e.target.value));
@@ -216,7 +226,7 @@ function TestCreatorHeaderSection() {
 
     return (
         <form>
-            <div className="test-creator-section-header">
+            <div className="test-creator-section-header d-flex flex-row justify-content-sm-between">
                 <div className="btn-group">
                     {
                         (isEmpty(test)) ? (
@@ -283,6 +293,15 @@ function TestCreatorHeaderSection() {
                         )
                     }
                 </div>
+                {
+                    (!isEmpty(test) && (!activeFunction.haveFunctionChanged)) &&
+                    <button
+                        className="btn btn-secondary"
+                        onClick ={createNewTestForFunction}
+                    >
+                        Create New Test For Function
+                    </button>
+                }
             </div>
 
             <div>

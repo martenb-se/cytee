@@ -18,7 +18,7 @@ $ git clone git@github.com:martenb-se/cytee.git
 In order to run Cytee using Docker the following must be prepared.
 
 #### Host Project Folder
-In [docker-compose.yml:19](https://github.com/martenb-se/cytee/blob/main/docker-compose.yml), 
+In [docker-compose.yml:19](https://github.com/martenb-se/cytee/blob/main/docker-compose.yml#L19), 
 change the `[EDIT-ME]` to the directory where projects you want to analyze are 
 listed. For example, if your JavaScript projects are in 
 `/home/Urangutest/Projects`, then change line 19 to:
@@ -36,7 +36,7 @@ Further, there's no need to change anything in `docker-compose.yml` on line
 ## Run (and build if necessary)
 Go to the main directory for Cytee and just type:
 ```
-$ docker-compose up
+$ docker compose up
 ```
 If the container has not yet been built, it will then be built before running 
 it. If you have already built it, and used it to create tests for projects, 

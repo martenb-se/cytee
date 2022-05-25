@@ -1,0 +1,29 @@
+# Debian 11
+# Version Used in Development
+FROM python:3.10.4-slim-bullseye
+
+# Create App (and Client) Directory in Container
+RUN mkdir -p /opt/cytee/client
+
+# Copy Back-End Python Dependency Requirements
+COPY docker/requirements.txt /opt/cytee/
+
+# Copy Back-End Configurations
+COPY analyze.config.yml docker/urang.config.yml docker/db.config.yml /opt/cytee/
+
+# Copy Back-End Source Files
+COPY api /opt/cytee/api
+
+# Install Dependencies for Back-End
+WORKDIR /opt/cytee
+RUN pip install -r ./requirements.txt
+
+# Set Environment Variable
+ENV FLASK_ENV production
+
+# Clean Up after Install
+RUN rm -r requirements.txt
+
+# Start Server and Expose Port 5000
+EXPOSE 5000
+CMD ["gunicorn", "-b", ":5000", "--threads", "100", "api.server:server"]

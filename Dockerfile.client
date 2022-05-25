@@ -1,0 +1,29 @@
+# Alpine
+# Version Used in Development
+FROM node:16-alpine as build-client
+
+# Done in Dockerfile.api
+# RUN mkdir -p /opt/cytee/client
+
+# Copy Front-End NodeJS Dependency Requirements
+#COPY client/package.json client/package-lock.json /opt/cytee/client/
+COPY client/package.json /opt/cytee/client/
+
+# Copy Front-End Source Files
+COPY client/webpack.production.js client/.babelrc /opt/cytee/client/
+COPY client/src /opt/cytee/client/src
+
+# Install & Build Front-End
+WORKDIR /opt/cytee/client
+RUN npm install
+RUN npm run build
+
+# Clean Up after Install
+RUN rm -r node_modules src package-lock.json package.json webpack.production.js
+
+# Copy Client Build Files to NGINX
+FROM nginx:stable-alpine
+COPY --from=build-client /opt/cytee/client/build /usr/share/nginx/html
+
+# Copy NGINX Config
+COPY docker/nginx.default.conf /etc/nginx/conf.d/default.conf

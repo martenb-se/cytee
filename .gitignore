@@ -6,10 +6,9 @@
 __pycache__/
 .pytest_cache
 
-# Ignore lock files
-Pipfile.lock
+# Ignore some lock files
 package-lock.json
 **/package-lock.json
 
 # database comfig
-db.config.yml
+/db.config.yml

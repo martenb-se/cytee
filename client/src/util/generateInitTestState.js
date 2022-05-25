@@ -24,6 +24,6 @@ export function generateInitTestState() {
         newModuleData.argumentList = moduleArguments;
     }
 
-    newModuleData.returnValue = {type: 'undefined'};
+    newModuleData.returnValue = {type: 'undefined', equal: true};
     return newModuleData;
 }

@@ -3,6 +3,7 @@ import hashlib
 import os
 import difflib
 import shutil
+from api.util.paths_helper import full_path_to_correct_sub_directory
 
 # TODO: Move configuration to config.urangu.yaml
 CONFIG_LOCATION_CACHE = \
@@ -16,20 +17,21 @@ __MEMORY = {}
 def __get_cache_path(project_root: str) -> str:
     """Get cache path for the current project.
 
-    :param project_root: The project root directory.
+    :param project_root: The complete project root directory.
     :type project_root: str
 
     :return: The project's cache path.
     :rtype: str
     """
-    project_root_hash = hashlib.sha256(str.encode(project_root)).hexdigest()
+    sub_directory = full_path_to_correct_sub_directory(project_root)
+    project_root_hash = hashlib.sha256(str.encode(sub_directory)).hexdigest()
     return CONFIG_LOCATION_CACHE + f"/{project_root_hash}"
 
 
 def __get_cache_file(project_root: str, file_id: str) -> str:
     """Get cache path to the file for the current project.
 
-    :param project_root: The project root directory.
+    :param project_root: The complete project root directory.
     :type project_root: str
     :param file_id: The file ID for the file to get the path for.
     :type file_id: str
@@ -44,7 +46,7 @@ def __get_cache_file(project_root: str, file_id: str) -> str:
 def __get_old_cache_file(project_root: str, file_id: str) -> str:
     """Get old cache path to the file for the current project.
 
-    :param project_root: The project root directory.
+    :param project_root: The complete project root directory.
     :type project_root: str
     :param file_id: The file ID for the file to get the path for.
     :type file_id: str
@@ -59,7 +61,7 @@ def __get_old_cache_file(project_root: str, file_id: str) -> str:
 def clear_cache(project_root: str) -> None:
     """Clear the entire cache for the given project.
 
-    :param project_root: The project root directory.
+    :param project_root: The complete project root directory.
     :type project_root: str
 
     :return: None

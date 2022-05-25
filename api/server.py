@@ -232,21 +232,6 @@ def post_edit_function_info():
     return jsonify(api_return)
 
 
-@server.route('/api/edit_function_info', methods=['POST'])
-def post_edit_function_info():
-    """Edit a function info document by specified Id.
-
-    :return: JSON with status code.
-    """
-    content = request.json
-    function_id = content["functionId"]
-    function_info_data = content["functionInfoData"]
-
-    api_return = edit_function_info(function_id, function_info_data)
-
-    return jsonify(api_return)
-
-
 @server.route('/api/remove_changes_from_untested_functions', methods=['POST'])
 def post_remove_changes_from_untested_functions():
     """Removes all changes from all untested functions.

@@ -1,6 +1,7 @@
 import {createSlice, createAsyncThunk} from "@reduxjs/toolkit";
 import cloneDeep from 'lodash/cloneDeep';
 import {saveTest, updateTest, deleteTest} from "../util/api";
+import {parseFunction} from "../util/parseFunctionInfo";
 
 const initialState = {
     status: "",
@@ -73,10 +74,10 @@ export const activeTestSlice = createSlice({
                     addUnsavedTestState.argumentList = moduleArguments;
                     break;
                 case 'returnValue':
-                    addUnsavedTestState.returnValue = {type: 'undefined'};
+                    addUnsavedTestState.returnValue = {type: 'undefined', equal: true};
                     break;
                 case 'exception':
-                    addUnsavedTestState.exception = {value: ''};
+                    addUnsavedTestState.exception = {value: '', equal: true};
                     break;
                 default:
                     break;
@@ -110,7 +111,7 @@ export const activeTestSlice = createSlice({
             state.unsavedTest = cloneDeep(state.test);
         },
         updateException: (state, action) =>{
-            state.unsavedTest.moduleData.exception.value = action.payload;
+            state.unsavedTest.moduleData.exception = action.payload;
         }
     },
     extraReducers(builder) {
